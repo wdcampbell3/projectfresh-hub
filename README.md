@@ -1,3 +1,6 @@
+# projectfresh-hub
+All of Dougie's public vibe coding experiments!
+
 <p align="center">
     <picture>
         <img width="420" alt="SaaS Starter Header reading: The open source, fast, and free to host SaaS template" src="https://github.com/CriticalMoments/CMSaasStarter/assets/848343/12f47617-e5be-4694-affc-23310e54b885">
@@ -343,4 +346,7 @@ CMSaasStarter is sponsored by [Kiln AI](https://getkiln.ai): the easiest way to 
 
 **Demo of Kiln AI:**
 
-https://github.com/user-attachments/assets/0fb3cd48-0f2c-40f5-baf2-b38f11ed85ea
+https://github.com/user-attachments/assets/0fb3cd48-0f2c-40f5-baf2-b38f11ed85ea=======
+# projectfresh-hub
+All of Dougie's public vibe coding experiments!
+>>>>>>> d4337b791261fdea406d7601b33d61b511be8c98
