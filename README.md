@@ -346,7 +346,4 @@ CMSaasStarter is sponsored by [Kiln AI](https://getkiln.ai): the easiest way to 
 
 **Demo of Kiln AI:**
 
-https://github.com/user-attachments/assets/0fb3cd48-0f2c-40f5-baf2-b38f11ed85ea=======
-# projectfresh-hub
-All of Dougie's public vibe coding experiments!
->>>>>>> d4337b791261fdea406d7601b33d61b511be8c98
+https://github.com/user-attachments/assets/0fb3cd48-0f2c-40f5-baf2-b38f11ed85ea
