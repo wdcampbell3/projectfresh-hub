@@ -1,5 +1,5 @@
 // src/hooks.server.ts
-import { PRIVATE_SUPABASE_SERVICE_ROLE } from "$env/static/private"
+import { env } from "$env/dynamic/private"
 import {
   PUBLIC_SUPABASE_ANON_KEY,
   PUBLIC_SUPABASE_URL,
@@ -34,7 +34,7 @@ export const supabase: Handle = async ({ event, resolve }) => {
 
   event.locals.supabaseServiceRole = createClient<Database>(
     PUBLIC_SUPABASE_URL,
-    PRIVATE_SUPABASE_SERVICE_ROLE,
+    env.PRIVATE_SUPABASE_SERVICE_ROLE,
     { auth: { persistSession: false } },
   )
 

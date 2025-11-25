@@ -1,5 +1,6 @@
 {
-  "name": "cmsassstarter",
+  "name": "projectfresh-hub",
+  "description": "ProjectFresh Hub: Dougie's Experiments in Vibe Coding",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -16,7 +17,7 @@
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^6.0.0",
-    "@sveltejs/adapter-cloudflare": "^7.2.4",
+    "@sveltejs/adapter-netlify": "^5.2.4",
     "@sveltejs/kit": "^2.48.4",
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
     "@tailwindcss/postcss": "^4.0.9",
