@@ -74,8 +74,8 @@
       <p class="text-xl text-white italic">
         Vibe Coded—100% AI Chat-Prompted—Game Experiments!
       </p>
-      <div>
-      This project is open source on GitHub! Check it out <a href="https://github.com/douglas-fresh/project-fresh-hub">here</a>. Wait, who's <a href="http://www.projectfresh.com" target="_blank">Dougie</a>?
+      <div class="text-white italic">
+      This project is open source on <a style="text-decoration:underline" href="https://github.com/douglas-fresh/project-fresh-hub">GitHub</a>! Wait, who's <a style="text-decoration:underline" href="http://www.projectfresh.com" target="_blank">Dougie</a>?
       </div>
     </div>
   </div>
