@@ -101,7 +101,7 @@
     enemyFireRate: number
     mouseSensitivity: number
     autoMoveSpeed: AutoMoveSpeed
-    mouseInput: 'auto' | 'mouse' | 'trackpad'
+    mouseInput: 'auto' | 'external' | 'trackpad'
     powerUpFrequency: PowerUpFrequency
     initialPowerUps: number
   }
@@ -192,6 +192,7 @@
 
   // Flight controls
   let velocity = new THREE.Vector3()
+  let currentSpeed = 0
   const maxSpeed = 30
   const acceleration = 20
   const baseTurnSpeed = 2.0
@@ -270,8 +271,12 @@
   let boostEndTime = 0
   const boostDuration = 2000  // 2 seconds of boost per charge
 
-  // Power-up collection alert
   let powerUpAlert: { message: string; color: string; timestamp: number } | null = null
+  
+  // Low health warning
+  let lowHealthOpacity = 0
+  let lastHealth = 100
+  let flashTimer = 0
   const powerUpNames: Record<string, { name: string; color: string }> = {
     health: { name: 'HEALTH +30', color: '#ff4444' },
     ammo: { name: 'AMMO +10', color: '#44ff44' },
@@ -973,6 +978,21 @@
 
   // Check if we should drop a power-up based on frequency setting
   function trySpawnPowerUpOnKill(position: THREE.Vector3) {
+    // Critical Health Override: If health < 15% and no health pack on field, force drop
+    if (health < 15 && !powerUps.some(p => p.type === 'health')) {
+      spawnPowerUpAt(position, 'health')
+      killsSinceLastDrop = 0 // Reset counter
+      return
+    }
+
+    // Boost Priority: If player has 2+ weapons with ammo and no boost on field, prioritize boost
+    const weaponsWithAmmo = weaponInventory.filter(w => w.ammo !== 0 && w.type !== 'laser').length
+    if (weaponsWithAmmo >= 2 && !powerUps.some(p => p.type === 'boost')) {
+      spawnPowerUpAt(position, 'boost')
+      killsSinceLastDrop = 0 // Reset counter
+      return
+    }
+
     killsSinceLastDrop++
     const dropRate = powerUpDropRates[gameConfig.powerUpFrequency]
     if (killsSinceLastDrop >= dropRate) {
@@ -1324,6 +1344,7 @@
         // Create lightning from ship to first target
         createLightningArc(playerShip.position.clone().add(dir.clone().multiplyScalar(1.5)), primaryTarget.mesh.position)
 
+
         // Damage first target
         primaryTarget.health -= chainDamage
         if (primaryTarget.type === 'boss') bossHealth = primaryTarget.health
@@ -1537,6 +1558,25 @@
       boostActive = false
     }
 
+    // Update low health warning
+    if (health <= 10) {
+      // Critical: Fast flashing (0.05 to 1.0)
+      flashTimer += delta * 10
+      lowHealthOpacity = (Math.sin(flashTimer) + 1) * 0.475 + 0.05
+    } else if (health <= 20) {
+      // Severe: Pulsing (0.05 to 1.0)
+      flashTimer += delta * 3
+      lowHealthOpacity = (Math.sin(flashTimer) + 1) * 0.475 + 0.05
+    } else if (health <= 30) {
+      // Warning: Static border
+      lowHealthOpacity = 1.0
+      flashTimer = 0
+    } else {
+      lowHealthOpacity = 0
+      flashTimer = 0
+    }
+    lastHealth = health
+
     // Boost animation - spawn trail particles when boosting
     if (boostActive && Math.random() < 0.5) {
       spawnBoostParticles()
@@ -1666,6 +1706,7 @@
 
     velocity.lerp(target, delta * 3)
     velocity.clampLength(0, maxSpeed * (boostActive ? 3 : 1))
+    currentSpeed = velocity.length()
     playerShip.position.add(velocity.clone().multiplyScalar(delta))
 
     if (playerShip.position.length() > 250) playerShip.position.multiplyScalar(0.99)
@@ -1967,15 +2008,48 @@
     // Clear existing solid objects before loading new level
     solidObjects.forEach(obj => scene.remove(obj))
     solidObjects = []
+    
+    // Clear existing power-ups to prevent compounding
+    powerUps.forEach(p => scene.remove(p.mesh))
+    powerUps = []
 
-    // Try to load next saved map, otherwise auto-generate
-    const nextMapIndex = level - 1  // level 2 uses map index 1, etc.
+    // Determine next map data
+    const nextMapIndex = level - 1
+    let mapData: MapData | null = null
+    
     if (availableMaps.length > 0 && nextMapIndex < availableMaps.length) {
-      // Use the next saved map
-      await loadMap(availableMaps[nextMapIndex])
+      mapData = availableMaps[nextMapIndex]
     } else {
-      // No more saved maps, auto-generate
-      await generateLevelScenery()
+      // No more saved maps, will use default/procedural
+      mapData = await getDefaultMapData()
+    }
+
+    // Identify required models for the new level
+    const requiredModels = new Set<string>()
+    // Always include player ship (it's already loaded, but good for completeness in cache)
+    requiredModels.add(selectedSpaceship.path)
+    
+    if (mapData) {
+      mapData.objects.forEach(obj => requiredModels.add(obj.modelPath))
+    }
+
+    // Preload only the required models for the NEW level
+    loadingStatus = "Loading next sector..."
+    await preloadModels(Array.from(requiredModels))
+
+    // Load the map
+    if (mapData) {
+      // Check if it's one of our available maps to use loadMap, otherwise createDefaultMap
+      // Actually, loadMap works with any MapData, so we can use it if we have data.
+      // But createDefaultMap handles the "procedural fallback" if data is missing/default.
+      // Let's stick to the pattern:
+      if (availableMaps.length > 0 && nextMapIndex < availableMaps.length) {
+         await loadMap(mapData)
+      } else {
+         await createDefaultMap(mapData)
+      }
+    } else {
+      await createDefaultMap()
     }
 
     // Reposition player to safe location
@@ -2034,7 +2108,7 @@
     score = 0; level = 1; health = gameConfig.startingHealth; kills = 0; nextLevelScore = 1000
     isBossLevel = false; bossEnemy = null; bossHealth = 0; bossMaxHealth = 0
     weaponInventory = [{ type: 'laser', ammo: -1, name: 'Laser Cannon' }]; currentWeaponIndex = 0
-    boostCharges = 0; boostActive = false; boostEndTime = 0
+    boostCharges = 1; boostActive = false; boostEndTime = 0
     continuousMotion = { x: 0, y: 0 }; movementSamples = []; lastMovementTime = 0; isFingerOnTrackpad = false
     gameConfig.mouseInput = 'auto'; detectedInputType = 'unknown'
     killsSinceLastDrop = 0
@@ -2043,6 +2117,11 @@
     barrelRollAngle = 0
     shipYaw = 0
     shipPitch = -Math.PI / 4  // Face down towards center from (0,100,100)
+    
+    // Low health warning state
+    lowHealthOpacity = 0
+    lastHealth = gameConfig.startingHealth
+    flashTimer = 0
 
     // Clean up old game objects
     enemies.forEach(e => scene.remove(e.mesh)); enemies = []
@@ -2431,7 +2510,7 @@
                 <li><kbd class="kbd kbd-sm">Mouse</kbd> - Aim</li>
                 <li><kbd class="kbd kbd-sm">Shift/Click</kbd> - Fire</li>
                 <li><kbd class="kbd kbd-sm">Space</kbd> - Boost</li>
-                <li><kbd class="kbd kbd-sm">Q/E</kbd> - Barrel Roll</li>
+                <li><kbd class="kbd kbd-sm">Q/E</kbd> - Barrel Roll / Dodge</li>
                 <li><kbd class="kbd kbd-sm">↑/↓ or 1-5</kbd> - Switch Weapons</li>
                 <li><kbd class="kbd kbd-sm">ESC</kbd> - Pause</li>
               </ul>
@@ -2446,7 +2525,11 @@
                 <li><span class="inline-block w-3 h-3 rounded-full bg-red-500 mr-1"></span> Health - Restore hull</li>
                 <li><span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span> Ammo - +20 rounds</li>
                 <li><span class="inline-block w-3 h-3 rounded-full bg-cyan-500 mr-1"></span> Shield - Temporary protection</li>
-                <li><span class="inline-block w-3 h-3 rounded-full bg-yellow-500 mr-1"></span> Missiles - +10 rockets</li>
+                <li><span class="inline-block w-3 h-3 rounded-full bg-yellow-500 mr-1"></span> Missiles - Homing rockets</li>
+                <li><span class="inline-block w-3 h-3 rounded-full bg-orange-500 mr-1"></span> Scatter - High-velocity shards</li>
+                <li><span class="inline-block w-3 h-3 rounded-full bg-lime-500 mr-1"></span> Drone - Autonomous ally</li>
+                <li><span class="inline-block w-3 h-3 rounded-full bg-blue-400 mr-1"></span> Chain - Arcing lightning</li>
+                <li><span class="inline-block w-3 h-3 rounded-full bg-fuchsia-500 mr-1"></span> Plasma - Explosive bolts</li>
               </ul>
             </div>
           </div>
@@ -2458,6 +2541,7 @@
               <ul class="space-y-1 text-xs">
                 <li><span class="text-red-500">Red</span> - Basic fighters</li>
                 <li><span class="text-cyan-500">Cyan</span> - Fast interceptors</li>
+                <li><span class="text-orange-500">Orange</span> - Armored Tanks</li>
                 <li><span class="text-purple-500">Purple</span> - Boss ships</li>
               </ul>
             </div>
@@ -2469,6 +2553,7 @@
               <h3 class="font-semibold mb-2 text-sm">Tips:</h3>
               <p class="text-xs">
                 Use barrel rolls to dodge enemy fire! Collect power-ups to stay alive.
+                Adjust "Initial Power Ups" to start with a full arsenal.
                 Every 5 levels features a boss battle. Watch your hull integrity!
               </p>
             </div>
@@ -2516,7 +2601,15 @@
   {/if}
 
   {#if isPlaying && !isGameOver && !showLevelComplete && !isSpawning}
-    <div class="absolute top-4 left-4 text-white font-bold z-10 bg-black/70 p-4 rounded-lg space-y-2 border-2 border-cyan-500">
+    <div 
+      class="absolute top-4 left-4 text-white font-bold z-10 bg-black/70 p-4 rounded-lg space-y-2 border-2 transition-colors duration-100"
+      class:border-cyan-500={health >= 20}
+      class:border-red-500={health < 20}
+      style="
+        {health < 10 ? `background-color: rgba(${100 + lowHealthOpacity * 100}, 0, 0, 0.7);` : ''}
+        {health < 20 ? `box-shadow: 0 0 ${10 + lowHealthOpacity * 20}px rgba(255, 0, 0, 0.5);` : ''}
+      "
+    >
       <div class="text-2xl text-yellow-400">Score: {score}</div>
       <div class="text-xl">Level: {level} {#if isBossLevel}<span class="text-red-400 animate-pulse">⚡ BOSS ⚡</span>{/if}</div>
       <div class="text-xl">Kills: {kills}</div>
@@ -2544,7 +2637,19 @@
       </div>
     {/if}
     <div class="absolute top-4 right-4 text-white font-bold z-10 bg-black/70 p-4 rounded-lg border-2 border-red-500"><div class="text-xl text-red-400">HOSTILES</div><div class="text-4xl text-center">{enemies.length}</div></div>
-    <div class="absolute bottom-4 left-4 text-white font-bold z-10 bg-black/70 p-4 rounded-lg border-2 border-cyan-500"><div class="text-sm">SPEED</div><div class="w-32 bg-gray-700 h-3 rounded-full overflow-hidden"><div class="h-full transition-all {boostActive ? 'bg-gradient-to-r from-yellow-400 to-red-500' : 'bg-gradient-to-r from-cyan-400 to-blue-500'}" style="width: {Math.min(100, (velocity.length() / maxSpeed) * 100)}%"></div></div>{#if boostActive}<div class="text-yellow-400 text-xs animate-pulse mt-1">BOOST ACTIVE!</div>{/if}</div>
+    <div class="absolute bottom-4 left-4 text-white font-bold z-10 bg-black/70 p-4 rounded-lg border-2 border-cyan-500 {boostCharges > 0 && !boostActive ? 'animate-pulse' : ''}">
+      <div class="text-sm">SPEED</div>
+      <div class="w-32 bg-gray-700 h-3 rounded-full overflow-hidden">
+        <div class="h-full transition-all {boostActive ? 'bg-gradient-to-r from-yellow-400 to-red-500' : 'bg-gradient-to-r from-cyan-400 to-blue-500'}" 
+             style="width: {Math.min(100, (currentSpeed / maxSpeed) * 100)}%">
+        </div>
+      </div>
+      {#if boostActive}
+        <div class="text-yellow-400 text-xs animate-pulse mt-1">BOOST ACTIVE!</div>
+      {:else if boostCharges > 0}
+        <div class="text-blue-400 text-xs font-bold animate-pulse mt-1">BOOST AVAILABLE</div>
+      {/if}
+    </div>
     <!-- Power-up/Weapon Status -->
     <div class="absolute bottom-4 right-4 text-white font-bold z-10 bg-black/70 p-4 rounded-lg border-2 border-yellow-500">
       <div class="text-sm text-yellow-400 mb-2">POWER-UPS</div>
@@ -2598,6 +2703,19 @@
       </div>
       <div class="text-sm text-gray-400">{loadingStatus}</div>
     </div>
+  {/if}
+
+
+  <!-- Full Screen Low Health Warning Overlay -->
+  {#if isPlaying && !isGameOver && health <= 30}
+    <div 
+      class="fixed inset-0 z-[100] pointer-events-none transition-colors duration-100"
+      style="
+        {health <= 10 ? `background-color: rgba(255, 0, 0, ${Math.min(lowHealthOpacity * 0.3, 0.3)});` : ''}
+        box-shadow: inset 0 0 {100 + lowHealthOpacity * 50}px rgba(255, 0, 0, {0.5 + Math.min(lowHealthOpacity * 0.5, 0.5)});
+        border: {16 * (health <= 10 ? 1 : Math.min(lowHealthOpacity, 1))}px solid rgba(220, 38, 38, {health <= 10 ? 1 : Math.min(lowHealthOpacity, 1)});
+      "
+    ></div>
   {/if}
 </div>
 

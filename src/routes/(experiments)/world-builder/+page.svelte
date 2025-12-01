@@ -25,7 +25,7 @@
     scale?: number
   }
 
-  let modelCatalog: ModelInfo[] = modelCatalogData
+  let modelCatalog = $state<ModelInfo[]>(modelCatalogData)
   let selectedModel = $state<ModelInfo | null>(null)
   let previewMesh: THREE.Group | null = null
   let placedObjects = $state<Array<{ mesh: THREE.Group, modelPath: string }>>([])
@@ -46,6 +46,7 @@
   let isRotatingCamera = $state(false)
   let isOptionKeyHeld = $state(false)
   let isCommandKeyHeld = $state(false)
+  let isShiftKeyHeld = $state(false)
   let hoveredObject = $state<{ mesh: THREE.Group, modelPath: string } | null>(null)
   let animationsEnabled = $state(false)
   let hasMouseMoved = $state(false) // Track if mouse moved during click
@@ -96,6 +97,9 @@
   let autoGenBuildings = $state(16)
   let autoGenVehicles = $state(8)
   let autoGenAnimals = $state(8)
+  let autoGenCity = $state(8)
+  let autoGenSpace = $state(8)
+  let quickStartPreset = $state<'town' | 'city' | 'nature' | 'space' | 'random'>('town')
 
   // First-person mode (POV Mode)
   let isFirstPersonMode = $state(false)
@@ -145,7 +149,7 @@
   let thumbnailsLoading = $state(true)
   const THUMBNAIL_CACHE_KEY = 'worldBuilder_thumbnailCache'
   const THUMBNAIL_VERSION_KEY = 'worldBuilder_thumbnailVersion'
-  const CURRENT_THUMBNAIL_VERSION = '1.0' // Increment to invalidate cache
+  const CURRENT_THUMBNAIL_VERSION = '1.2' // Increment to invalidate cache
 
 
 
@@ -161,7 +165,7 @@
   let history = $state<HistoryState[]>([])
   let historyIndex = $state(-1)
 
-  const categories = ["All", "Animals", "Blocks", "Buildings", "Characters", "Creatures", "Decor", "Fences", "Furniture", "Items", "Nature", "Roads", "Urban", "Vehicles"]
+  const categories = ["All", ...Array.from(new Set(modelCatalog.map(m => m.category))).sort()]
 
   // Randomize model catalog on load
   function shuffleArray<T>(array: T[]): T[] {
@@ -501,26 +505,46 @@
 
     if (isDraggingObject && selectedPlacedObjects.length > 0) {
       // Drag selected objects
-      raycaster.setFromCamera(mouse, camera)
-      const intersects = raycaster.intersectObject(ground)
-
-      if (intersects.length > 0) {
-        const point = intersects[0].point
-
-        // Snap to grid if enabled
-        if (showGrid) {
-          const gridSize = 0.5
-          point.x = Math.round(point.x / gridSize) * gridSize
-          point.z = Math.round(point.z / gridSize) * gridSize
-        }
-
-        // Move all selected objects maintaining their relative positions
+      if (isShiftKeyHeld) {
+        // Vertical movement - sensitivity scales with distance from camera to target
+        const distance = camera.position.distanceTo(controls.target)
+        // Base sensitivity 0.001 per pixel, scaled by distance
+        // At distance 50 (default), sensitivity is ~0.05
+        const sensitivity = distance * 0.001
+        const dy = -event.movementY * sensitivity
+        
         selectedPlacedObjects.forEach(obj => {
+          obj.mesh.position.y += dy
+          
+          // Update offset so returning to horizontal drag preserves height
           const offset = dragObjectOffsets.get(obj.mesh)
           if (offset) {
-            obj.mesh.position.copy(point).add(offset)
+            offset.y += dy
           }
         })
+      } else {
+        // Horizontal movement (Raycast to ground)
+        raycaster.setFromCamera(mouse, camera)
+        const intersects = raycaster.intersectObject(ground)
+
+        if (intersects.length > 0) {
+          const point = intersects[0].point
+
+          // Snap to grid if enabled
+          if (showGrid) {
+            const gridSize = 0.5
+            point.x = Math.round(point.x / gridSize) * gridSize
+            point.z = Math.round(point.z / gridSize) * gridSize
+          }
+
+          // Move all selected objects maintaining their relative positions
+          selectedPlacedObjects.forEach(obj => {
+            const offset = dragObjectOffsets.get(obj.mesh)
+            if (offset) {
+              obj.mesh.position.copy(point).add(offset)
+            }
+          })
+        }
       }
     } else if (selectedModel && previewMesh && !isPanning && !isRotatingCamera && selectedPlacedObjects.length === 0) {
       // Only update preview if no object is selected
@@ -890,6 +914,7 @@
   function toggleGrid() {
     showGrid = !showGrid
     gridHelper.visible = showGrid
+    ground.visible = showGrid
   }
 
   function toggleAnimations() {
@@ -1286,7 +1311,7 @@
   }
 
   // Auto generate map with smart object placement
-  async function autoGenerateMap() {
+  async function autoGenerateMap(usePreset = false) {
     if (!confirm('This will clear the current map and generate a new one. Continue?')) {
       return
     }
@@ -1294,6 +1319,46 @@
     if (modelCatalog.length === 0) {
       alert('No models available in the catalog!')
       return
+    }
+
+    // Apply preset counts if requested
+    if (usePreset) {
+      if (quickStartPreset === 'town') {
+        autoGenTrees = 16
+        autoGenBuildings = 16
+        autoGenVehicles = 8
+        autoGenAnimals = 8
+        autoGenCity = 0
+        autoGenSpace = 0
+      } else if (quickStartPreset === 'city') {
+        autoGenTrees = 4
+        autoGenBuildings = 0
+        autoGenVehicles = 16
+        autoGenAnimals = 0
+        autoGenCity = 30
+        autoGenSpace = 0
+      } else if (quickStartPreset === 'nature') {
+        autoGenTrees = 40
+        autoGenBuildings = 0
+        autoGenVehicles = 0
+        autoGenAnimals = 20
+        autoGenCity = 0
+        autoGenSpace = 0
+      } else if (quickStartPreset === 'space') {
+        autoGenTrees = 0
+        autoGenBuildings = 0
+        autoGenVehicles = 0
+        autoGenAnimals = 0
+        autoGenCity = 0
+        autoGenSpace = 40
+      } else if (quickStartPreset === 'random') {
+        autoGenTrees = Math.floor(Math.random() * 20)
+        autoGenBuildings = Math.floor(Math.random() * 10)
+        autoGenVehicles = Math.floor(Math.random() * 10)
+        autoGenAnimals = Math.floor(Math.random() * 10)
+        autoGenCity = Math.floor(Math.random() * 10)
+        autoGenSpace = Math.floor(Math.random() * 10)
+      }
     }
 
     // Clear existing objects
@@ -1330,9 +1395,12 @@
       m.name.toLowerCase().includes('cat') ||
       m.name.toLowerCase().includes('bird')
     )
+    const city = modelCatalog.filter(m => m.category === 'City Scape')
+    const space = modelCatalog.filter(m => m.category === 'Space')
     const other = modelCatalog.filter(m =>
       !trees.includes(m) && !buildings.includes(m) &&
-      !vehicles.includes(m) && !animals.includes(m)
+      !vehicles.includes(m) && !animals.includes(m) &&
+      !city.includes(m) && !space.includes(m)
     )
 
     const newObjects: Array<{ mesh: THREE.Group, modelPath: string, rotation: number, scale: number, mixer: THREE.AnimationMixer | null }> = []
@@ -1412,9 +1480,10 @@
     }
 
     // Helper to try placing with retries
-    const tryPlace = async (model: any, safeSize: number, scale: number) => {
+    const tryPlace = async (model: any, safeSize: number, scale: number, allowVertical = false) => {
       // Initial placement
-      const pos = new THREE.Vector3((Math.random() - 0.5) * safeSize, 0, (Math.random() - 0.5) * safeSize)
+      const y = allowVertical ? (Math.random() * 50 + 10) : 0 // Random height between 10 and 60 if vertical allowed
+      const pos = new THREE.Vector3((Math.random() - 0.5) * safeSize, y, (Math.random() - 0.5) * safeSize)
       const wrapper = await placeModel(model, pos, scale)
       
       if (!wrapper) return
@@ -1425,7 +1494,8 @@
       
       while (collided && retries > 0) {
         // Move to new random position
-        const newPos = new THREE.Vector3((Math.random() - 0.5) * safeSize, 0, (Math.random() - 0.5) * safeSize)
+        const newY = allowVertical ? (Math.random() * 50 + 10) : 0
+        const newPos = new THREE.Vector3((Math.random() - 0.5) * safeSize, newY, (Math.random() - 0.5) * safeSize)
         wrapper.position.copy(newPos)
         wrapper.updateMatrixWorld(true) // Update transforms for box calculation
         
@@ -1469,6 +1539,18 @@
     for (let i = 0; i < autoGenAnimals && animals.length > 0; i++) {
       const model = animals[Math.floor(Math.random() * animals.length)]
       await tryPlace(model, SAFE_SIZE, 1.0 + Math.random() * 0.5)
+    }
+
+    // Place City Scape objects
+    for (let i = 0; i < autoGenCity && city.length > 0; i++) {
+      const model = city[Math.floor(Math.random() * city.length)]
+      await tryPlace(model, SAFE_SIZE, 2.0 + Math.random() * 2.0)
+    }
+
+    // Place Space objects
+    for (let i = 0; i < autoGenSpace && space.length > 0; i++) {
+      const model = space[Math.floor(Math.random() * space.length)]
+      await tryPlace(model, SAFE_SIZE, 2.0 + Math.random() * 2.0, true) // Allow vertical placement
     }
 
     // Sprinkle 15-20 random other objects
@@ -1960,7 +2042,9 @@
       if (selectedCategory === 'All') {
         return modelCatalog
       }
-      return modelCatalog.filter(m => m.category === selectedCategory)
+      return modelCatalog
+        .filter(m => m.category === selectedCategory)
+        .sort((a, b) => a.name.localeCompare(b.name))
     }
     
     // Fuzzy search
@@ -2332,6 +2416,12 @@
         previewMesh.visible = false
       }
     }
+    // Track Shift key press - enables vertical movement
+    if (e.key === "Shift") {
+      // Don't prevent default as it might be needed for other things (like selection)
+      isShiftKeyHeld = true
+      controls.enablePan = false // Disable panning while moving vertically
+    }
   }}
   onkeyup={(e) => {
     // Don't capture keyboard events when typing in input fields
@@ -2395,6 +2485,11 @@
       if (previewMesh && selectedPlacedObjects.length === 0) {
         previewMesh.visible = true
       }
+    }
+    // Reset Shift key state
+    if (e.key === "Shift") {
+      isShiftKeyHeld = false
+      controls.enablePan = true
     }
   }}
 />
@@ -2630,6 +2725,14 @@
               <label class="label label-text text-xs">Animals</label>
               <input type="number" bind:value={autoGenAnimals} min="0" max="20" class="input input-xs input-bordered w-full" />
             </div>
+            <div>
+              <label class="label label-text text-xs">City Scape</label>
+              <input type="number" bind:value={autoGenCity} min="0" max="20" class="input input-xs input-bordered w-full" />
+            </div>
+            <div>
+              <label class="label label-text text-xs">Space</label>
+              <input type="number" bind:value={autoGenSpace} min="0" max="20" class="input input-xs input-bordered w-full" />
+            </div>
           </div>
           <button
             class="btn btn-sm btn-accent w-full"
@@ -2697,6 +2800,19 @@
 
       {:else if activeTab === 'options'}
         <!-- Options Tab -->
+        <h2 class="text-2xl font-bold mb-4" style="color: #660460;">Controls</h2>
+        <div class="bg-base-100 p-4 rounded-lg shadow-sm mb-6 text-xs space-y-2">
+          <p><strong>Select:</strong> Click object</p>
+          <p><strong>Move:</strong> Drag object</p>
+          <p><strong>Vertical Move:</strong> Hold <kbd class="kbd kbd-xs">Shift</kbd> + Drag</p>
+          <p><strong>Rotate:</strong> Arrow keys</p>
+          <p><strong>Scale:</strong> +/- keys</p>
+          <p><strong>Delete:</strong> Delete/Backspace</p>
+          <div class="divider my-2"></div>
+          <p><strong>Camera Rotate:</strong> Drag background</p>
+          <p><strong>Camera Pan:</strong> Hold <kbd class="kbd kbd-xs">Space</kbd> + Drag</p>
+        </div>
+
         <h2 class="text-2xl font-bold mb-4" style="color: #660460;">Environment</h2>
 
         <!-- Time of Day -->
@@ -2800,11 +2916,32 @@
             <!-- Auto Generate Quick Start -->
             <div class="bg-base-200 p-4 rounded-lg text-black max-w-md pointer-events-auto">
               <h4 class="font-bold mb-2 text-center text-[#660460]">🚀 Quick Start</h4>
-              <div class="flex gap-2 items-center justify-center">
-                <span class="text-xs">Don't want to start from scratch?</span>
+              <div class="flex flex-col gap-3 items-center justify-center">
+                <div class="flex flex-wrap gap-2 justify-center text-xs">
+                  <label class="cursor-pointer flex items-center gap-1">
+                    <input type="radio" name="preset" class="radio radio-xs radio-primary" value="town" bind:group={quickStartPreset} />
+                    <span>Town</span>
+                  </label>
+                  <label class="cursor-pointer flex items-center gap-1">
+                    <input type="radio" name="preset" class="radio radio-xs radio-secondary" value="city" bind:group={quickStartPreset} />
+                    <span>City</span>
+                  </label>
+                  <label class="cursor-pointer flex items-center gap-1">
+                    <input type="radio" name="preset" class="radio radio-xs radio-accent" value="nature" bind:group={quickStartPreset} />
+                    <span>Nature</span>
+                  </label>
+                  <label class="cursor-pointer flex items-center gap-1">
+                    <input type="radio" name="preset" class="radio radio-xs radio-info" value="space" bind:group={quickStartPreset} />
+                    <span>Space</span>
+                  </label>
+                  <label class="cursor-pointer flex items-center gap-1">
+                    <input type="radio" name="preset" class="radio radio-xs" value="random" bind:group={quickStartPreset} />
+                    <span>Random</span>
+                  </label>
+                </div>
                 <button 
-                  class="btn btn-xs btn-accent"
-                  onclick={autoGenerateMap}
+                  class="btn btn-sm btn-accent w-full"
+                  onclick={() => autoGenerateMap(true)}
                 >
                   🎲 Auto Generate World
                 </button>
@@ -2824,7 +2961,8 @@
                 5. Click placed objects to select them<br/>
                 6. Use <kbd class="kbd kbd-xs bg-base-300 text-base-content">Arrow Keys</kbd> to rotate selection<br/>
                 7. Use <kbd class="kbd kbd-xs bg-base-300 text-base-content">+</kbd>/<kbd class="kbd kbd-xs bg-base-300 text-base-content">-</kbd> to resize<br/>
-                8. Press <kbd class="kbd kbd-xs bg-base-300 text-base-content">Delete</kbd> to remove<br/><br/>
+                8. Hold <kbd class="kbd kbd-xs bg-base-300 text-base-content">Shift</kbd> + drag to move vertically<br/>
+                9. Press <kbd class="kbd kbd-xs bg-base-300 text-base-content">Delete</kbd> to remove<br/><br/>
 
                 <strong>Camera:</strong><br/>
                 9. Drag to rotate camera<br/>
@@ -2886,7 +3024,7 @@
       <div class="divider divider-horizontal m-0"></div>
       <button class="btn btn-sm btn-secondary" onclick={clearScene}>🗑️ Clear</button>
       <button class="btn btn-sm {showGrid ? 'btn-success' : 'btn-ghost'}" onclick={toggleGrid}>
-        📐 Grid: {showGrid ? 'ON' : 'OFF'}
+        📐 Plane: {showGrid ? 'ON' : 'OFF'}
       </button>
       <button
         class="btn btn-sm {isFirstPersonMode ? 'btn-error' : 'btn-accent'}"
