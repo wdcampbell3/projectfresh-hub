@@ -1,8 +1,10 @@
+
 <script lang="ts">
   import { onMount } from "svelte"
   import * as THREE from "three"
   import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
   import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
+  import Fuse from 'fuse.js'
   import modelCatalogData from "./modelCatalog.json"
 
   let container: HTMLDivElement
@@ -20,6 +22,7 @@
     name: string
     path: string
     category: string
+    scale?: number
   }
 
   let modelCatalog: ModelInfo[] = modelCatalogData
@@ -31,8 +34,13 @@
   let gridHelper: THREE.GridHelper
   let showGrid = $state(true)
   let selectedCategory = $state("All")
-  let searchQuery = $state("")
-  let selectedPlacedObject = $state<{ mesh: THREE.Group, modelPath: string } | null>(null)
+  let selectedPlacedObjects = $state<Array<{ mesh: THREE.Group, modelPath: string }>>([])
+  // Keep selectedPlacedObject as a derived getter for backward compatibility/ease of use
+  let selectedPlacedObject = $derived(selectedPlacedObjects.length > 0 ? selectedPlacedObjects[selectedPlacedObjects.length - 1] : null)
+  
+  let recentModels = $state<ModelInfo[]>([])
+  let clipboard = $state<Array<{ modelPath: string, rotation: {x:number, y:number, z:number}, scale: {x:number, y:number, z:number} }>>([])
+
   let isPanning = $state(false)
   let isDraggingObject = $state(false)
   let isRotatingCamera = $state(false)
@@ -43,6 +51,10 @@
   let hasMouseMoved = $state(false) // Track if mouse moved during click
   let mouseDownPosition = { x: 0, y: 0 } // Track mouse position on down
   let previewHasBeenPositioned = $state(false) // Track if preview mesh has been positioned by mouse
+  
+  // Dragging multiple objects
+  let dragStartPoint = new THREE.Vector3()
+  let dragObjectOffsets = new Map<THREE.Group, THREE.Vector3>()
 
   // Maps Management
   interface MapData {
@@ -76,11 +88,12 @@
   let timeOfDay = $state<'dawn' | 'day' | 'sunset' | 'night'>('sunset')
   let weather = $state<'clear' | 'rain' | 'snow' | 'fog'>('clear')
   let polygonCount = $state(0)
-  const MAX_POLYGON_WARNING = 100000
+
+  const MAX_POLYGON_WARNING = 250000
 
   // Auto-generate settings
-  let autoGenTrees = $state(8)
-  let autoGenBuildings = $state(8)
+  let autoGenTrees = $state(16)
+  let autoGenBuildings = $state(16)
   let autoGenVehicles = $state(8)
   let autoGenAnimals = $state(8)
 
@@ -116,8 +129,12 @@
   let animatedObjects: AnimatedObject[] = []
 
   // Selection outline
-  let selectionHelper: THREE.BoxHelper | null = null
+  let selectionHelpers: THREE.BoxHelper[] = []
   let hoverHelper: THREE.BoxHelper | null = null
+
+  // Weather Systems
+  let rainSystem: THREE.Points | null = null
+  let snowSystem: THREE.Points | null = null
 
   // Thumbnail previews
   interface ModelThumbnail {
@@ -129,6 +146,8 @@
   const THUMBNAIL_CACHE_KEY = 'worldBuilder_thumbnailCache'
   const THUMBNAIL_VERSION_KEY = 'worldBuilder_thumbnailVersion'
   const CURRENT_THUMBNAIL_VERSION = '1.0' // Increment to invalidate cache
+
+
 
   // Undo/Redo history
   interface HistoryState {
@@ -154,7 +173,7 @@
     return shuffled
   }
 
-  onMount(() => {
+  onMount(async () => {
     // Randomize the catalog order
     modelCatalog = shuffleArray(modelCatalog)
 
@@ -164,7 +183,7 @@
     initScene()
     animate()
     generateThumbnails()
-
+    
     return () => {
       if (animationId) {
         cancelAnimationFrame(animationId)
@@ -174,6 +193,8 @@
       }
     }
   })
+
+
 
   function loadMapsFromStorage() {
     const stored = localStorage.getItem('worldBuilder_maps')
@@ -203,6 +224,7 @@
       0.1,
       1000,
     )
+
     camera.position.set(20, 20, 20)
     camera.lookAt(0, 0, 0)
 
@@ -217,12 +239,13 @@
     // Orbit Controls
     controls = new OrbitControls(camera, renderer.domElement)
     controls.enableDamping = true
-    controls.dampingFactor = 0.05
+    controls.dampingFactor = 0.1 // Snappier damping (was 0.05)
     controls.maxPolarAngle = Math.PI / 2 - 0.1 // Prevent going below ground
-    controls.minDistance = 5
+    controls.minDistance = 0.5 // Allow zooming much closer (was 5)
     controls.maxDistance = 1000
     controls.enablePan = true
-    controls.panSpeed = 1.0
+    controls.screenSpacePanning = false // Pan parallel to ground plane
+    controls.panSpeed = 2.0 // Faster panning (was 1.0)
     controls.zoomSpeed = 2.0 // Increased zoom sensitivity
     controls.mouseButtons = {
       LEFT: THREE.MOUSE.ROTATE,
@@ -275,67 +298,174 @@
     renderer.domElement.addEventListener("contextmenu", onRightClick)
   }
 
+  function createStarfield() {
+    const starCount = 10000 // Increased from 5000
+    const starVertices: number[] = []
+    for (let i = 0; i < starCount; i++) {
+      const x = THREE.MathUtils.randFloatSpread(1000)
+      const y = THREE.MathUtils.randFloatSpread(1000)
+      const z = THREE.MathUtils.randFloatSpread(1000)
+      // Keep stars away from center to avoid clipping with ground
+      if (new THREE.Vector3(x, y, z).length() < 200) continue
+      starVertices.push(x, y, z)
+    }
+
+    const starGeometry = new THREE.BufferGeometry()
+    starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3))
+
+    // Bright, slightly larger stars
+    const primaryStars = new THREE.Points(
+      starGeometry,
+      new THREE.PointsMaterial({ color: 0xe8f3ff, size: 1.5, transparent: true, opacity: 0.9 })
+    )
+    primaryStars.name = 'starfield'
+    scene.add(primaryStars)
+
+    // Soft tinted layer
+    const secondaryStars = new THREE.Points(
+      starGeometry.clone(),
+      new THREE.PointsMaterial({ color: 0x9fc7ff, size: 1.0, transparent: true, opacity: 0.6 })
+    )
+    secondaryStars.scale.setScalar(1.2)
+    secondaryStars.name = 'starfield'
+    scene.add(secondaryStars)
+  }
+
   function updateEnvironment() {
     if (!scene) return
 
     // Sky gradients for different times of day
     const skyGradients = {
       dawn: {
-        colors: ['#1a1a3e', '#6B4E71', '#D4738F', '#FFB56A'],
-        fogColor: 0xFFB56A,
-        ambientIntensity: 0.5,
-        directionalIntensity: 0.7
+        colors: ['#001f3f', '#0074D9', '#FFDC00', '#FFD700'], // Deep blue to yellow/gold
+        fogColor: 0xFFDC00,
+        ambientIntensity: 0.6,
+        directionalIntensity: 0.8
       },
       day: {
-        colors: ['#87CEEB', '#87CEEB', '#B0E0E6', '#F0F8FF'],
+        colors: ['#39CCCC', '#7FDBFF', '#0074D9', '#001f3f'], // Inversed: Light/Medium to Deep blues
         fogColor: 0xB0E0E6,
-        ambientIntensity: 0.7,
+        ambientIntensity: 0.8,
         directionalIntensity: 1.0
       },
       sunset: {
-        colors: ['#1a1a3e', '#6B4E71', '#D4738F', '#FF9A56'],
-        fogColor: 0xff9a56,
+        colors: ['#2c0b4a', '#85144b', '#FF4136', '#FFDC00'], // Purple/Red to Orange/Yellow
+        fogColor: 0xFF851B,
         ambientIntensity: 0.6,
         directionalIntensity: 0.8
       },
       night: {
-        colors: ['#000033', '#000033', '#1a1a3e', '#2d2d5e'],
-        fogColor: 0x1a1a3e,
-        ambientIntensity: 0.3,
-        directionalIntensity: 0.4
+        colors: ['#000000', '#000000', '#000000', '#000000'], // Pure black for stars
+        fogColor: 0x000000,
+        ambientIntensity: 0.7, // Brighter night (was 0.2)
+        directionalIntensity: 0.8 // Brighter night (was 0.2)
       }
     }
 
     const gradient = skyGradients[timeOfDay]
 
-    // Create sky gradient
-    const canvas = document.createElement("canvas")
-    canvas.width = 512
-    canvas.height = 512
-    const context = canvas.getContext("2d")!
-    const canvasGradient = context.createLinearGradient(0, 0, 0, canvas.height)
-    canvasGradient.addColorStop(0, gradient.colors[0])
-    canvasGradient.addColorStop(0.4, gradient.colors[1])
-    canvasGradient.addColorStop(0.7, gradient.colors[2])
-    canvasGradient.addColorStop(1, gradient.colors[3])
-    context.fillStyle = canvasGradient
-    context.fillRect(0, 0, canvas.width, canvas.height)
+    // Create sky gradient or starscape
+    // Remove existing background texture if any
+    scene.background = null
+    
+    // Clear any existing stars
+    const existingStars = scene.children.filter(c => c.name === 'starfield')
+    existingStars.forEach(s => scene.remove(s))
 
-    const texture = new THREE.CanvasTexture(canvas)
-    scene.background = texture
+    // Handle weather overrides for sky
+    if (weather === 'fog') {
+      scene.background = new THREE.Color(0xffffff) // Flat white
+    } else if (weather === 'rain') {
+      // Dark gray gradient for rain
+      const canvas = document.createElement("canvas")
+      canvas.width = 512
+      canvas.height = 512
+      const context = canvas.getContext("2d")!
+      
+      const canvasGradient = context.createLinearGradient(0, 0, 0, canvas.height)
+      canvasGradient.addColorStop(0, '#1a1a1a') // Dark gray
+      canvasGradient.addColorStop(1, '#4a4a4a') // Lighter gray
+      context.fillStyle = canvasGradient
+      context.fillRect(0, 0, canvas.width, canvas.height)
+      
+      const texture = new THREE.CanvasTexture(canvas)
+
+      scene.background = texture
+    } else if (weather === 'snow') {
+      // Dark gray gradient for snow (same as rain)
+      const canvas = document.createElement("canvas")
+      canvas.width = 512
+      canvas.height = 512
+      const context = canvas.getContext("2d")!
+      
+      const canvasGradient = context.createLinearGradient(0, 0, 0, canvas.height)
+      canvasGradient.addColorStop(0, '#1a1a1a') // Dark gray
+      canvasGradient.addColorStop(1, '#4a4a4a') // Lighter gray
+      context.fillStyle = canvasGradient
+      context.fillRect(0, 0, canvas.width, canvas.height)
+      
+      const texture = new THREE.CanvasTexture(canvas)
+      scene.background = texture
+    } else if (timeOfDay === 'night') {
+      scene.background = new THREE.Color(0x1a1a1a) // Dark gray instead of black/blue
+      createStarfield()
+    } else {
+      const canvas = document.createElement("canvas")
+      canvas.width = 512
+      canvas.height = 512
+      const context = canvas.getContext("2d")!
+      
+      const canvasGradient = context.createLinearGradient(0, 0, 0, canvas.height)
+      canvasGradient.addColorStop(0, gradient.colors[0])
+      canvasGradient.addColorStop(0.4, gradient.colors[1])
+      canvasGradient.addColorStop(0.7, gradient.colors[2])
+      canvasGradient.addColorStop(1, gradient.colors[3])
+      context.fillStyle = canvasGradient
+      context.fillRect(0, 0, canvas.width, canvas.height)
+      
+      const texture = new THREE.CanvasTexture(canvas)
+      scene.background = texture
+    }
 
     // Update fog based on weather
-    let fogDensity = weather === 'fog' ? 100 : 200
-    if (weather === 'rain') fogDensity = 150
-    if (weather === 'snow') fogDensity = 120
+    // Fog should be dense enough to limit visibility to half the grid (approx 100 units)
+    let fogNear = 20
+    let fogFar = 120 // Half grid size (200/2) + buffer
+    
+    if (weather === 'fog') {
+      fogNear = 10
+      fogFar = 160 // Less dense fog (was 80)
+    } else if (weather === 'rain') {
+      fogFar = 100
+    } else if (weather === 'snow') {
+      fogFar = 90
+    } else if (weather === 'clear') {
+      fogFar = 300 // See everything
+    }
 
-    scene.fog = new THREE.Fog(gradient.fogColor, 50, fogDensity)
+    // Use white fog for 'fog' weather, otherwise use sky color
+    // For rain and snow, use a lighter, whiter fog
+    let fogColor = gradient.fogColor
+    if (weather === 'fog') {
+      fogColor = 0xffffff
+    } else if (weather === 'rain') {
+      fogColor = 0xcccccc // Light grey/white for rain
+    } else if (weather === 'snow') {
+      fogColor = 0xeeffff // Very light blue/white for snow
+    }
+    
+    scene.fog = new THREE.Fog(fogColor, fogNear, fogFar)
+
+    // Update weather particles
+    updateWeatherParticles()
 
     // Update lighting
     const ambientLight = scene.getObjectByName('ambientLight') as THREE.AmbientLight
     const directionalLight = scene.getObjectByName('directionalLight') as THREE.DirectionalLight
 
     if (ambientLight) {
+      // Keep ambient light relatively neutral to allow sky color to set the mood, 
+      // but ensure models are visible.
       ambientLight.intensity = gradient.ambientIntensity
     }
     if (directionalLight) {
@@ -364,13 +494,13 @@
     if (distanceMoved > 5) {
       hasMouseMoved = true
       // Hide preview when dragging starts (for any operation including panning/rotating)
-      if (previewMesh && !selectedPlacedObject) {
+      if (previewMesh && selectedPlacedObjects.length === 0) {
         previewMesh.visible = false
       }
     }
 
-    if (isDraggingObject && selectedPlacedObject) {
-      // Drag selected object
+    if (isDraggingObject && selectedPlacedObjects.length > 0) {
+      // Drag selected objects
       raycaster.setFromCamera(mouse, camera)
       const intersects = raycaster.intersectObject(ground)
 
@@ -384,9 +514,15 @@
           point.z = Math.round(point.z / gridSize) * gridSize
         }
 
-        selectedPlacedObject.mesh.position.set(point.x, selectedPlacedObject.mesh.position.y, point.z)
+        // Move all selected objects maintaining their relative positions
+        selectedPlacedObjects.forEach(obj => {
+          const offset = dragObjectOffsets.get(obj.mesh)
+          if (offset) {
+            obj.mesh.position.copy(point).add(offset)
+          }
+        })
       }
-    } else if (selectedModel && previewMesh && !isPanning && !isRotatingCamera && !selectedPlacedObject) {
+    } else if (selectedModel && previewMesh && !isPanning && !isRotatingCamera && selectedPlacedObjects.length === 0) {
       // Only update preview if no object is selected
       updatePreviewPosition()
 
@@ -413,7 +549,7 @@
       } else {
         hoveredObject = null
         // Show preview when not hovering over existing object (only if no object selected)
-        if (previewMesh && !selectedPlacedObject) {
+        if (previewMesh && selectedPlacedObjects.length === 0) {
           previewMesh.visible = true
         }
       }
@@ -448,6 +584,13 @@
   async function selectModel(model: ModelInfo) {
     selectedModel = model
 
+    // Add to recent models
+    const existingIndex = recentModels.findIndex(m => m.path === model.path)
+    if (existingIndex > -1) {
+      recentModels.splice(existingIndex, 1)
+    }
+    recentModels = [model, ...recentModels].slice(0, 6)
+
     // Reset preview positioning flag
     previewHasBeenPositioned = false
 
@@ -468,6 +611,12 @@
           child.material.opacity = 0.6
         }
       })
+      // Apply default scale from model catalog
+      const defaultScale = model.scale || 1
+      currentScale = defaultScale
+      previewMesh.scale.set(defaultScale, defaultScale, defaultScale)
+      
+      // Add to scene
       scene.add(previewMesh)
     } catch (error) {
       console.error("Failed to load model:", error)
@@ -486,15 +635,35 @@
     if (isPanning || isRotatingCamera) return
 
     // Check if clicking on selected object to start dragging
-    if (selectedPlacedObject && !isOptionKeyHeld && !isCommandKeyHeld) {
+    if (selectedPlacedObjects.length > 0 && !isOptionKeyHeld && !isCommandKeyHeld) {
       raycaster.setFromCamera(mouse, camera)
-      const intersects = raycaster.intersectObject(selectedPlacedObject.mesh, true)
+      // Check intersection with any selected object
+      const selectedMeshes = selectedPlacedObjects.map(obj => obj.mesh)
+      const intersects = raycaster.intersectObjects(selectedMeshes, true)
 
       if (intersects.length > 0) {
         isDraggingObject = true
         controls.enabled = false // Disable orbit controls while dragging
         if (renderer?.domElement) {
           renderer.domElement.style.cursor = 'move'
+        }
+        
+        // Calculate offsets for all selected objects relative to the click point on ground
+        const groundIntersects = raycaster.intersectObject(ground)
+        if (groundIntersects.length > 0) {
+          const clickPoint = groundIntersects[0].point
+          // Snap click point to grid if enabled to avoid jumping
+          if (showGrid) {
+            const gridSize = 0.5
+            clickPoint.x = Math.round(clickPoint.x / gridSize) * gridSize
+            clickPoint.z = Math.round(clickPoint.z / gridSize) * gridSize
+          }
+          
+          dragObjectOffsets.clear()
+          selectedPlacedObjects.forEach(obj => {
+            const offset = obj.mesh.position.clone().sub(clickPoint)
+            dragObjectOffsets.set(obj.mesh, offset)
+          })
         }
       }
     }
@@ -522,7 +691,7 @@
     }
 
     // Show preview again after any drag operation (if not holding modifier keys)
-    if (hasMouseMoved && previewMesh && !selectedPlacedObject && !isPanning && !isRotatingCamera) {
+    if (hasMouseMoved && previewMesh && selectedPlacedObjects.length === 0 && !isPanning && !isRotatingCamera) {
       previewMesh.visible = true
     }
   }
@@ -551,13 +720,28 @@
 
       const obj = placedObjects.find(obj => obj.mesh === clickedObject)
       if (obj) {
-        selectedPlacedObject = obj
+        if (event.shiftKey) {
+          // Toggle selection
+          const index = selectedPlacedObjects.indexOf(obj)
+          if (index > -1) {
+            selectedPlacedObjects.splice(index, 1)
+            selectedPlacedObjects = [...selectedPlacedObjects] // Trigger reactivity
+          } else {
+            selectedPlacedObjects = [...selectedPlacedObjects, obj]
+          }
+        } else {
+          // Single selection (replace)
+          // Only replace if not already selected (to allow dragging without deselecting others)
+          if (!selectedPlacedObjects.includes(obj)) {
+            selectedPlacedObjects = [obj]
+          }
+        }
         return
       }
     } else {
       // Clicking empty space - deselect object
-      if (selectedPlacedObject) {
-        selectedPlacedObject = null
+      if (selectedPlacedObjects.length > 0) {
+        selectedPlacedObjects = []
         // Preview will be shown by $effect
         return
       }
@@ -643,50 +827,58 @@
     const rotationAmount = (Math.PI / 6) * direction
 
     // Only rotate if no object is selected (preview mode only)
-    if (!selectedPlacedObject) {
+    if (selectedPlacedObjects.length === 0) {
       currentRotation += rotationAmount
       if (previewMesh) {
         previewMesh.rotation.y = currentRotation
       }
     }
 
-    // Rotate selected object
-    if (selectedPlacedObject) {
-      selectedPlacedObject.mesh.rotation.y += rotationAmount
+    // Rotate selected objects
+    if (selectedPlacedObjects.length > 0) {
+      selectedPlacedObjects.forEach(obj => {
+        obj.mesh.rotation.y += rotationAmount
+      })
       saveHistory()
     }
   }
 
   function scaleUp() {
     // Only scale selected object, not preview
-    if (selectedPlacedObject) {
-      const newScale = selectedPlacedObject.mesh.scale.x * 1.2
-      selectedPlacedObject.mesh.scale.set(newScale, newScale, newScale)
+    if (selectedPlacedObjects.length > 0) {
+      selectedPlacedObjects.forEach(obj => {
+        const newScale = obj.mesh.scale.x * 1.2
+        obj.mesh.scale.set(newScale, newScale, newScale)
+      })
       saveHistory()
     } else if (previewMesh) {
       // Only scale preview if no object is selected
-      currentScale = Math.min(currentScale * 1.2, 10)
+      currentScale = currentScale * 1.2
       previewMesh.scale.set(currentScale, currentScale, currentScale)
     }
   }
 
   function scaleDown() {
     // Only scale selected object, not preview
-    if (selectedPlacedObject) {
-      const newScale = selectedPlacedObject.mesh.scale.x * 0.8
-      selectedPlacedObject.mesh.scale.set(newScale, newScale, newScale)
+    if (selectedPlacedObjects.length > 0) {
+      selectedPlacedObjects.forEach(obj => {
+        const newScale = obj.mesh.scale.x * 0.8
+        obj.mesh.scale.set(newScale, newScale, newScale)
+      })
       saveHistory()
     } else if (previewMesh) {
       // Only scale preview if no object is selected
-      currentScale = Math.max(currentScale * 0.8, 0.1)
+      currentScale = currentScale * 0.8
       previewMesh.scale.set(currentScale, currentScale, currentScale)
     }
   }
 
   function resetScale() {
     // Only reset selected object, not preview
-    if (selectedPlacedObject) {
-      selectedPlacedObject.mesh.scale.set(1, 1, 1)
+    if (selectedPlacedObjects.length > 0) {
+      selectedPlacedObjects.forEach(obj => {
+        obj.mesh.scale.set(1, 1, 1)
+      })
       saveHistory()
     } else if (previewMesh) {
       // Only reset preview if no object is selected
@@ -716,23 +908,99 @@
   }
 
   function deleteSelected() {
-    if (!selectedPlacedObject) return
+    if (selectedPlacedObjects.length === 0) return
 
-    const index = placedObjects.findIndex(obj => obj === selectedPlacedObject)
-    if (index > -1) {
-      const meshToDelete = selectedPlacedObject.mesh
-      scene.remove(meshToDelete)
+    selectedPlacedObjects.forEach(selectedObj => {
+      const index = placedObjects.findIndex(obj => obj === selectedObj)
+      if (index > -1) {
+        const meshToDelete = selectedObj.mesh
+        scene.remove(meshToDelete)
 
-      // Remove from animated objects if it exists
-      const animIndex = animatedObjects.findIndex(obj => obj.mesh === meshToDelete)
-      if (animIndex > -1) {
-        animatedObjects.splice(animIndex, 1)
+        // Remove from animated objects if it exists
+        const animIndex = animatedObjects.findIndex(obj => obj.mesh === meshToDelete)
+        if (animIndex > -1) {
+          animatedObjects.splice(animIndex, 1)
+        }
+
+        placedObjects.splice(index, 1)
       }
+    })
+    selectedPlacedObjects = []
+    saveHistory()
+  }
 
-      placedObjects.splice(index, 1)
-      selectedPlacedObject = null
-      saveHistory()
+  function copySelected() {
+    if (selectedPlacedObjects.length === 0) return
+    
+    clipboard = selectedPlacedObjects.map(obj => ({
+      modelPath: obj.modelPath,
+      position: { x: obj.mesh.position.x, y: obj.mesh.position.y, z: obj.mesh.position.z },
+      rotation: { x: obj.mesh.rotation.x, y: obj.mesh.rotation.y, z: obj.mesh.rotation.z },
+      scale: { x: obj.mesh.scale.x, y: obj.mesh.scale.y, z: obj.mesh.scale.z }
+    }))
+  }
+
+  async function pasteClipboard() {
+    if (clipboard.length === 0) return
+
+    // Calculate center of clipboard objects
+    const center = new THREE.Vector3()
+    clipboard.forEach(item => {
+      center.add(new THREE.Vector3(item.position.x, item.position.y, item.position.z))
+    })
+    center.divideScalar(clipboard.length)
+
+    // Offset for paste (2 units right and down)
+    const pasteOffset = new THREE.Vector3(2, 0, 2)
+    
+    const newSelection: Array<{ mesh: THREE.Group, modelPath: string }> = []
+    const loader = new GLTFLoader()
+
+    for (const item of clipboard) {
+      try {
+        const gltf = await loader.loadAsync(item.modelPath)
+        const newObject = gltf.scene
+        
+        // Calculate relative position from center and apply offset
+        const originalPos = new THREE.Vector3(item.position.x, item.position.y, item.position.z)
+        const relativePos = originalPos.sub(center)
+        const newPos = center.clone().add(pasteOffset).add(relativePos)
+        
+        newObject.position.copy(newPos)
+        newObject.rotation.set(item.rotation.x, item.rotation.y, item.rotation.z)
+        newObject.scale.set(item.scale.x, item.scale.y, item.scale.z)
+
+        newObject.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.castShadow = true
+            child.receiveShadow = true
+          }
+        })
+
+        scene.add(newObject)
+        const newObj = { mesh: newObject, modelPath: item.modelPath }
+        placedObjects.push(newObj)
+        newSelection.push(newObj)
+
+        // Check if animated
+        if (gltf.animations && gltf.animations.length > 0) {
+          const mixer = new THREE.AnimationMixer(newObject)
+          gltf.animations.forEach((clip) => {
+            const action = mixer.clipAction(clip)
+            if (animationsEnabled) {
+              action.play()
+            }
+          })
+          animatedObjects.push({ mesh: newObject, mixer, clips: gltf.animations })
+        }
+      } catch (error) {
+        console.error("Failed to paste object:", error)
+      }
     }
+    
+    // Select the newly pasted objects
+    selectedPlacedObjects = newSelection
+    saveHistory()
   }
 
   function clearScene() {
@@ -875,7 +1143,7 @@
     placedObjects.forEach(obj => scene.remove(obj.mesh))
     placedObjects = []
     animatedObjects = []
-    selectedPlacedObject = null
+    selectedPlacedObjects = []
 
     // Load environment settings
     timeOfDay = map.environment.timeOfDay
@@ -1077,69 +1345,137 @@
           loader.load(model.path, (gltf) => resolve(gltf), undefined, (error) => reject(error))
         })
 
-        const mesh = gltf.scene
-        mesh.position.copy(position)
-        mesh.rotation.y = Math.random() * Math.PI * 2
-        mesh.scale.setScalar(scale)
-        mesh.traverse((child) => {
+        const modelMesh = gltf.scene
+        
+        // Enable shadows
+        modelMesh.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             child.castShadow = true
             child.receiveShadow = true
           }
         })
 
-        scene.add(mesh)
+        // Calculate bounding box to center the model and place on ground
+        const box = new THREE.Box3().setFromObject(modelMesh)
+        const center = box.getCenter(new THREE.Vector3())
+        const size = box.getSize(new THREE.Vector3())
+        const min = box.min
+
+        // Center the modelMesh relative to its parent
+        modelMesh.position.x = -center.x
+        modelMesh.position.z = -center.z
+        modelMesh.position.y = -min.y // Align bottom to 0
+
+        // Create a wrapper group for correct pivoting and scaling
+        const wrapper = new THREE.Group()
+        wrapper.add(modelMesh)
+        
+        // Apply transforms to wrapper
+        wrapper.position.copy(position)
+        wrapper.rotation.y = Math.random() * Math.PI * 2
+        wrapper.scale.setScalar(scale)
+
+        scene.add(wrapper)
 
         let mixer: THREE.AnimationMixer | null = null
         if (gltf.animations && gltf.animations.length > 0 && animationsEnabled) {
-          mixer = new THREE.AnimationMixer(mesh)
+          mixer = new THREE.AnimationMixer(modelMesh)
           const action = mixer.clipAction(gltf.animations[0])
           action.play()
-          animatedObjects = [...animatedObjects, { mesh, mixer }]
+          animatedObjects = [...animatedObjects, { mesh: wrapper, mixer, clips: gltf.animations }]
         }
 
-        newObjects.push({ mesh, modelPath: model.path, rotation: mesh.rotation.y, scale, mixer })
+        newObjects.push({ mesh: wrapper, modelPath: model.path, rotation: wrapper.rotation.y, scale, mixer })
+        return wrapper
       } catch (error) {
         console.error('Failed to load model:', model.path, error)
+        return undefined
+      }
+    }
+
+    // Safe area within the 200x200 grid (leaving 30 units margin)
+    const SAFE_SIZE = 140
+    const HALF_SAFE = SAFE_SIZE / 2
+
+    // Helper to check collisions
+    const checkCollision = (wrapper: THREE.Group, others: Array<{ mesh: THREE.Group }>) => {
+      const box1 = new THREE.Box3().setFromObject(wrapper)
+      // Shrink box slightly to allow touching but not deep overlap
+      box1.expandByScalar(-0.5)
+      
+      for (const other of others) {
+        const box2 = new THREE.Box3().setFromObject(other.mesh)
+        box2.expandByScalar(-0.5)
+        if (box1.intersectsBox(box2)) return true
+      }
+      return false
+    }
+
+    // Helper to try placing with retries
+    const tryPlace = async (model: any, safeSize: number, scale: number) => {
+      // Initial placement
+      const pos = new THREE.Vector3((Math.random() - 0.5) * safeSize, 0, (Math.random() - 0.5) * safeSize)
+      const wrapper = await placeModel(model, pos, scale)
+      
+      if (!wrapper) return
+
+      // Check collision and retry position if needed
+      let retries = 10
+      let collided = checkCollision(wrapper, newObjects.filter(o => o.mesh !== wrapper))
+      
+      while (collided && retries > 0) {
+        // Move to new random position
+        const newPos = new THREE.Vector3((Math.random() - 0.5) * safeSize, 0, (Math.random() - 0.5) * safeSize)
+        wrapper.position.copy(newPos)
+        wrapper.updateMatrixWorld(true) // Update transforms for box calculation
+        
+        collided = checkCollision(wrapper, newObjects.filter(o => o.mesh !== wrapper))
+        retries--
+      }
+
+      // If still colliding after retries, remove it
+      if (collided) {
+        scene.remove(wrapper)
+        // Remove from newObjects
+        const idx = newObjects.findIndex(o => o.mesh === wrapper)
+        if (idx !== -1) newObjects.splice(idx, 1)
+        // Also remove from animatedObjects if present
+        const animIdx = animatedObjects.findIndex(a => a.mesh === wrapper)
+        if (animIdx !== -1) animatedObjects.splice(animIdx, 1)
       }
     }
 
     // Place trees
     for (let i = 0; i < autoGenTrees && trees.length > 0; i++) {
       const model = trees[Math.floor(Math.random() * trees.length)]
-      const pos = new THREE.Vector3((Math.random() - 0.5) * 150, 0, (Math.random() - 0.5) * 150)
-      await placeModel(model, pos, 2.0 + Math.random() * 2.0)
+      await tryPlace(model, SAFE_SIZE, 2.0 + Math.random() * 2.0)
     }
 
-    // Place buildings (larger, in a circle)
+    // Place buildings (larger, in a circle or scattered but within bounds)
     for (let i = 0; i < autoGenBuildings && buildings.length > 0; i++) {
       const model = buildings[Math.floor(Math.random() * buildings.length)]
-      const angle = (i / autoGenBuildings) * Math.PI * 2
-      const radius = 40 + Math.random() * 30
-      const pos = new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius)
-      await placeModel(model, pos, 3.0 + Math.random() * 2.0)
+      // Keep buildings slightly more central to avoid edge clipping
+      const BUILDING_SAFE = 120
+      await tryPlace(model, BUILDING_SAFE, 3.0 + Math.random() * 2.0)
     }
 
     // Place vehicles
     for (let i = 0; i < autoGenVehicles && vehicles.length > 0; i++) {
       const model = vehicles[Math.floor(Math.random() * vehicles.length)]
-      const pos = new THREE.Vector3((Math.random() - 0.5) * 100, 0, (Math.random() - 0.5) * 100)
-      await placeModel(model, pos, 1.5 + Math.random())
+      await tryPlace(model, SAFE_SIZE, 1.5 + Math.random())
     }
 
     // Place animals
     for (let i = 0; i < autoGenAnimals && animals.length > 0; i++) {
       const model = animals[Math.floor(Math.random() * animals.length)]
-      const pos = new THREE.Vector3((Math.random() - 0.5) * 120, 0, (Math.random() - 0.5) * 120)
-      await placeModel(model, pos, 1.0 + Math.random() * 0.5)
+      await tryPlace(model, SAFE_SIZE, 1.0 + Math.random() * 0.5)
     }
 
     // Sprinkle 15-20 random other objects
     const otherCount = 15 + Math.floor(Math.random() * 6)
     for (let i = 0; i < otherCount && other.length > 0; i++) {
       const model = other[Math.floor(Math.random() * other.length)]
-      const pos = new THREE.Vector3((Math.random() - 0.5) * 130, 0, (Math.random() - 0.5) * 130)
-      await placeModel(model, pos, 0.8 + Math.random() * 1.5)
+      await tryPlace(model, SAFE_SIZE, 0.8 + Math.random() * 1.5)
     }
 
     // Update placedObjects all at once
@@ -1173,6 +1509,102 @@
     polygonCount = Math.round(count)
   }
 
+  function createRain() {
+    const particleCount = 20000 // Increased count
+    const geometry = new THREE.BufferGeometry()
+    const positions = []
+    
+    for (let i = 0; i < particleCount; i++) {
+      const x = Math.random() * 400 - 200
+      const y = Math.random() * 200
+      const z = Math.random() * 400 - 200
+      positions.push(x, y, z)
+    }
+    
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    
+    const material = new THREE.PointsMaterial({
+      color: 0xdddddd, // Lighter rain
+      size: 0.3, // Slightly larger
+      transparent: true,
+      opacity: 0.8 // More visible
+    })
+    
+    rainSystem = new THREE.Points(geometry, material)
+    scene.add(rainSystem)
+  }
+
+  function createSnow() {
+    const particleCount = 20000 // Increased count
+    const geometry = new THREE.BufferGeometry()
+    const positions = []
+    
+    for (let i = 0; i < particleCount; i++) {
+      const x = Math.random() * 400 - 200
+      const y = Math.random() * 200
+      const z = Math.random() * 400 - 200
+      positions.push(x, y, z)
+    }
+    
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    
+    const material = new THREE.PointsMaterial({
+      color: 0xffffff, // Pure white
+      size: 0.5,
+      transparent: true,
+      opacity: 0.9 // More visible
+    })
+    
+    snowSystem = new THREE.Points(geometry, material)
+    scene.add(snowSystem)
+  }
+
+  function updateWeatherParticles() {
+    // Remove existing systems
+    if (rainSystem) {
+      scene.remove(rainSystem)
+      rainSystem = null
+    }
+    if (snowSystem) {
+      scene.remove(snowSystem)
+      snowSystem = null
+    }
+
+    // Create new system based on weather
+    if (weather === 'rain') {
+      createRain()
+    } else if (weather === 'snow') {
+      createSnow()
+    }
+  }
+
+  function animateWeather(delta: number) {
+    if (rainSystem) {
+      const positions = rainSystem.geometry.attributes.position.array as Float32Array
+      for (let i = 1; i < positions.length; i += 3) {
+        positions[i] -= 50 * delta // Rain falls fast
+        if (positions[i] < 0) {
+          positions[i] += 200 // Wrap around to preserve relative spacing
+        }
+      }
+      rainSystem.geometry.attributes.position.needsUpdate = true
+    }
+
+    if (snowSystem) {
+      const positions = snowSystem.geometry.attributes.position.array as Float32Array
+      for (let i = 0; i < positions.length; i += 3) {
+        positions[i+1] -= 5 * delta // Snow falls slower (was 10)
+        // Add some horizontal drift
+        positions[i] += Math.sin(Date.now() * 0.001 + positions[i+1]) * 0.1
+        
+        if (positions[i+1] < 0) {
+          positions[i+1] = 200
+        }
+      }
+      snowSystem.geometry.attributes.position.needsUpdate = true
+    }
+  }
+
   const clock = new THREE.Clock()
 
   function animate() {
@@ -1183,6 +1615,9 @@
     // Update first-person mode
     updateFirstPersonMode(delta)
 
+    // Animate weather
+    animateWeather(delta)
+
     // Update animation mixers only if animations are enabled
     if (animationsEnabled) {
       animatedObjects.forEach(({ mixer }) => {
@@ -1190,9 +1625,9 @@
       })
     }
 
-    // Update selection helper
-    if (selectedPlacedObject && selectionHelper) {
-      selectionHelper.update()
+    // Update selection helpers
+    if (selectedPlacedObjects.length > 0 && selectionHelpers.length > 0) {
+      selectionHelpers.forEach(helper => helper.update())
     }
 
     // Update hover helper
@@ -1228,14 +1663,17 @@
 
   $effect(() => {
     // Update selection outline when selection changes
-    if (selectionHelper) {
-      scene.remove(selectionHelper)
-      selectionHelper = null
+    if (selectionHelpers.length > 0) {
+      selectionHelpers.forEach(helper => scene.remove(helper))
+      selectionHelpers = []
     }
 
-    if (selectedPlacedObject) {
-      selectionHelper = new THREE.BoxHelper(selectedPlacedObject.mesh, 0x00ff00)
-      scene.add(selectionHelper)
+    if (selectedPlacedObjects.length > 0) {
+      selectedPlacedObjects.forEach(obj => {
+        const helper = new THREE.BoxHelper(obj.mesh, 0x00ff00)
+        scene.add(helper)
+        selectionHelpers.push(helper)
+      })
 
       // Hide preview when object is selected
       if (previewMesh) {
@@ -1300,7 +1738,7 @@
 
     // Hide preview and deselect objects
     if (previewMesh) previewMesh.visible = false
-    selectedPlacedObject = null
+    selectedPlacedObjects = []
   }
 
   function pausePOVMode() {
@@ -1505,24 +1943,37 @@
     camera.position.copy(fpPosition)
   }
 
+  // Search
+  let searchQuery = $state('')
+  let fuse: Fuse<ModelInfo> | null = null
+
+  $effect(() => {
+    fuse = new Fuse(modelCatalog, {
+      keys: ['name', 'category'],
+      threshold: 0.3,
+      distance: 100
+    })
+  })
+
   function getFilteredModels() {
-    let filtered = modelCatalog
-
-    // Filter by category
-    if (selectedCategory !== "All") {
-      filtered = filtered.filter(m => m.category === selectedCategory)
-    } else {
-      // For "All" category, show a randomized selection
-      filtered = shuffleArray(modelCatalog)
+    if (!searchQuery) {
+      if (selectedCategory === 'All') {
+        return modelCatalog
+      }
+      return modelCatalog.filter(m => m.category === selectedCategory)
     }
-
-    // Filter by search
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(m => m.name.toLowerCase().includes(query))
+    
+    // Fuzzy search
+    if (fuse) {
+      const results = fuse.search(searchQuery)
+      return results.map(r => r.item)
     }
-
-    return filtered
+    
+    // Fallback
+    return modelCatalog.filter(m => 
+      m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.category.toLowerCase().includes(searchQuery.toLowerCase())
+    )
   }
 
   function clearSelection() {
@@ -1751,7 +2202,7 @@
         pausePOVMode()
       } else if (!isFirstPersonMode) {
         // Clear any selected placed object
-        selectedPlacedObject = null
+        selectedPlacedObjects = []
         // Clear selected model from menu and remove preview
         selectedModel = null
         if (previewMesh) {
@@ -1819,6 +2270,14 @@
         undo()
       }
     }
+    if (e.key === "c" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault()
+      copySelected()
+    }
+    if (e.key === "v" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault()
+      pasteClipboard()
+    }
     if (e.key === "y" && (e.ctrlKey || e.metaKey)) {
       e.preventDefault()
       redo()
@@ -1831,7 +2290,7 @@
         renderer.domElement.style.cursor = 'grab'
       }
       // Hide preview mesh while panning
-      if (previewMesh && !selectedPlacedObject) {
+      if (previewMesh && selectedPlacedObjects.length === 0) {
         previewMesh.visible = false
       }
     }
@@ -1851,7 +2310,7 @@
         renderer.domElement.style.cursor = 'grab'
       }
       // Hide preview mesh while rotating
-      if (previewMesh && !selectedPlacedObject) {
+      if (previewMesh && selectedPlacedObjects.length === 0) {
         previewMesh.visible = false
       }
     }
@@ -1869,7 +2328,7 @@
         renderer.domElement.style.cursor = 'grab'
       }
       // Hide preview mesh while rotating
-      if (previewMesh && !selectedPlacedObject) {
+      if (previewMesh && selectedPlacedObjects.length === 0) {
         previewMesh.visible = false
       }
     }
@@ -1901,7 +2360,7 @@
         renderer.domElement.style.cursor = 'default'
       }
       // Show preview mesh again when done panning
-      if (previewMesh && !selectedPlacedObject) {
+      if (previewMesh && selectedPlacedObjects.length === 0) {
         previewMesh.visible = true
       }
     }
@@ -1917,7 +2376,7 @@
         renderer.domElement.style.cursor = 'default'
       }
       // Show preview mesh again when done rotating
-      if (previewMesh && !selectedPlacedObject) {
+      if (previewMesh && selectedPlacedObjects.length === 0) {
         previewMesh.visible = true
       }
     }
@@ -1933,7 +2392,7 @@
         renderer.domElement.style.cursor = 'default'
       }
       // Show preview mesh again when done rotating
-      if (previewMesh && !selectedPlacedObject) {
+      if (previewMesh && selectedPlacedObjects.length === 0) {
         previewMesh.visible = true
       }
     }
@@ -1941,64 +2400,7 @@
 />
 
 <div class="flex flex-col md:flex-row h-screen overflow-hidden">
-  <!-- Toolbar - bottom right -->
-  <div class="absolute bottom-8 right-6 z-20 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow-lg flex flex-nowrap gap-2 items-center whitespace-nowrap">
-    <button
-      class="btn btn-sm {!selectedModel ? 'btn-accent' : 'btn-ghost'}"
-      onclick={clearSelection}
-      title="Select Mode (clear current model)"
-    >
-      ↖️
-    </button>
-    <div class="divider divider-horizontal m-0"></div>
-    <button
-      class="btn btn-sm btn-warning text-lg font-bold"
-      onclick={undo}
-      disabled={historyIndex <= 0}
-      title="Undo (Ctrl+Z)"
-    >
-      ↶
-    </button>
-    <button
-      class="btn btn-sm btn-warning text-lg font-bold"
-      onclick={redo}
-      disabled={historyIndex >= history.length - 1}
-      title="Redo (Ctrl+Y)"
-    >
-      ↷
-    </button>
-    <div class="divider divider-horizontal m-0"></div>
-    <button class="btn btn-sm btn-secondary" onclick={clearScene}>🗑️ Clear</button>
-    <button class="btn btn-sm {showGrid ? 'btn-accent' : 'btn-ghost'}" onclick={toggleGrid}>
-      📐 Grid: {showGrid ? 'ON' : 'OFF'}
-    </button>
-    <button class="btn btn-sm {animationsEnabled ? 'btn-accent' : 'btn-ghost'}" onclick={toggleAnimations}>
-      🎬 Animate: {animationsEnabled ? 'ON' : 'OFF'}
-    </button>
-    <button
-      class="btn btn-sm {isFirstPersonMode ? 'btn-error' : 'btn-accent'}"
-      onclick={isFirstPersonMode ? exitFirstPersonMode : enterPOVMode}
-      title={isFirstPersonMode ? 'Exit POV mode and return to build mode (ESC)' : 'Enter first-person POV mode - drop from the sky and explore your world!'}
-    >
-      {isFirstPersonMode ? '🚪 Build Mode' : '👁️ POV Mode'}
-    </button>
-    <div class="divider divider-horizontal m-0"></div>
-    <button class="btn btn-sm btn-info text-lg font-bold" onclick={scaleDown}>−</button>
-    <button class="btn btn-sm btn-ghost" onclick={resetScale}>1:1</button>
-    <button class="btn btn-sm btn-info text-lg font-bold" onclick={scaleUp}>+</button>
-    <div class="divider divider-horizontal m-0"></div>
-    <div class="badge badge-info">{placedObjects.length} objects</div>
-    <div class="badge badge-primary">{polygonCount.toLocaleString()} polys</div>
-    {#if polygonCount > MAX_POLYGON_WARNING}
-      <div class="badge badge-error">⚠️ High Poly Count!</div>
-    {/if}
-    {#if selectedPlacedObject}
-      <div class="badge badge-success">Object Selected</div>
-    {/if}
-    {#if isFirstPersonMode}
-      <div class="badge badge-error">POV Mode - WASD to move, Mouse to look, Space to jump, ESC to exit</div>
-    {/if}
-  </div>
+
 
   <!-- Sidebar with Tabs -->
   <div class="w-full md:w-96 h-64 md:h-screen bg-base-200 overflow-hidden flex flex-col order-last md:order-first relative z-50">
@@ -2047,6 +2449,35 @@
       {#if activeTab === 'models'}
         <!-- Models Tab -->
         <h2 class="text-2xl font-bold mb-4" style="color: #660460;">Object Palette</h2>
+
+        <!-- Recent Models -->
+        {#if recentModels.length > 0}
+          <div class="mb-4">
+            <h3 class="text-xs font-bold text-gray-500 uppercase mb-2">Recent</h3>
+            <div class="grid grid-cols-6 gap-1">
+              {#each recentModels as model}
+                <button
+                  class="btn btn-ghost btn-xs p-0 h-auto aspect-square {selectedModel?.path === model.path ? 'ring-2 ring-primary' : ''}"
+                  onclick={() => selectModel(model)}
+                  title={model.name}
+                >
+                  {#if thumbnails.has(model.path) && thumbnails.get(model.path)}
+                    <img
+                      src={thumbnails.get(model.path)}
+                      alt={model.name}
+                      class="w-full h-full object-cover rounded"
+                    />
+                  {:else}
+                    <div class="w-full h-full bg-base-300 rounded flex items-center justify-center text-xs">
+                      {model.name.substring(0, 2)}
+                    </div>
+                  {/if}
+                </button>
+              {/each}
+            </div>
+            <div class="divider my-2"></div>
+          </div>
+        {/if}
 
         <!-- Search Bar -->
         <div class="form-control mb-2">
@@ -2365,29 +2796,119 @@
       <!-- Instructions overlay -->
       {#if placedObjects.length === 0}
         <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-          <div class="bg-black/70 p-8 rounded-lg text-white text-center max-w-md">
-            <h3 class="text-2xl font-bold mb-4" style="color: #660460;">🏗️ Start Building!</h3>
-            <p class="text-sm text-left">
-              <strong>Placing Objects:</strong><br/>
-              1. Select an object from the sidebar<br/>
-              2. Press <kbd class="kbd kbd-xs bg-base-300 text-base-content">Arrow Keys</kbd> to rotate<br/>
-              3. Press <kbd class="kbd kbd-xs bg-base-300 text-base-content">+</kbd>/<kbd class="kbd kbd-xs bg-base-300 text-base-content">-</kbd> to scale<br/>
-              4. Click to place in the world<br/><br/>
+          <div class="flex flex-col gap-4 items-center">
+            <!-- Auto Generate Quick Start -->
+            <div class="bg-base-200 p-4 rounded-lg text-black max-w-md pointer-events-auto">
+              <h4 class="font-bold mb-2 text-center text-[#660460]">🚀 Quick Start</h4>
+              <div class="flex gap-2 items-center justify-center">
+                <span class="text-xs">Don't want to start from scratch?</span>
+                <button 
+                  class="btn btn-xs btn-accent"
+                  onclick={autoGenerateMap}
+                >
+                  🎲 Auto Generate World
+                </button>
+              </div>
+            </div>
 
-              <strong>Editing Objects:</strong><br/>
-              5. Click placed objects to select them<br/>
-              6. Use <kbd class="kbd kbd-xs bg-base-300 text-base-content">Arrow Keys</kbd> to rotate selection<br/>
-              7. Use <kbd class="kbd kbd-xs bg-base-300 text-base-content">+</kbd>/<kbd class="kbd kbd-xs bg-base-300 text-base-content">-</kbd> to resize<br/>
-              8. Press <kbd class="kbd kbd-xs bg-base-300 text-base-content">Delete</kbd> to remove<br/><br/>
+            <div class="bg-base-200 p-8 rounded-lg text-black text-center max-w-md">
+              <h3 class="text-2xl font-bold mb-4 text-[#660460]">🏗️ Building Instructions</h3>
+              <p class="text-sm text-left">
+                <strong>Placing Objects:</strong><br/>
+                1. Select an object from the sidebar<br/>
+                2. Press <kbd class="kbd kbd-xs bg-base-300 text-base-content">Arrow Keys</kbd> to rotate<br/>
+                3. Press <kbd class="kbd kbd-xs bg-base-300 text-base-content">+</kbd>/<kbd class="kbd kbd-xs bg-base-300 text-base-content">-</kbd> to scale<br/>
+                4. Click to place in the world<br/><br/>
 
-              <strong>Camera:</strong><br/>
-              9. Drag to rotate camera<br/>
-              10. Hold <kbd class="kbd kbd-xs bg-base-300 text-base-content">Space</kbd> + drag to pan<br/>
-              11. Scroll to zoom in/out
-            </p>
+                <strong>Editing Objects:</strong><br/>
+                5. Click placed objects to select them<br/>
+                6. Use <kbd class="kbd kbd-xs bg-base-300 text-base-content">Arrow Keys</kbd> to rotate selection<br/>
+                7. Use <kbd class="kbd kbd-xs bg-base-300 text-base-content">+</kbd>/<kbd class="kbd kbd-xs bg-base-300 text-base-content">-</kbd> to resize<br/>
+                8. Press <kbd class="kbd kbd-xs bg-base-300 text-base-content">Delete</kbd> to remove<br/><br/>
+
+                <strong>Camera:</strong><br/>
+                9. Drag to rotate camera<br/>
+                10. Hold <kbd class="kbd kbd-xs bg-base-300 text-base-content">Space</kbd> + drag to pan<br/>
+                11. Scroll to zoom in/out
+              </p>
+            </div>
           </div>
         </div>
       {/if}
+    </div>
+
+    <!-- Toolbar - centered bottom relative to viewport -->
+    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2">
+      
+      <!-- Selected Object Info -->
+      {#if selectedPlacedObjects.length > 0}
+        <div class="badge badge-lg badge-success shadow-lg mb-2">
+          {#if selectedPlacedObjects.length === 1}
+            {selectedPlacedObjects[0].modelPath.split('/').pop()?.replace('.glb', '')}
+          {:else}
+            {selectedPlacedObjects.length} items selected
+          {/if}
+        </div>
+      {/if}
+
+      <div class="bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow-lg flex flex-nowrap gap-2 items-center whitespace-nowrap">
+      <button
+        class="btn btn-sm {!selectedModel ? 'btn-accent' : 'btn-ghost'}"
+        onclick={clearSelection}
+        title="Select Mode (clear current model)"
+      >
+        ↖️
+      </button>
+      <button
+        class="btn btn-sm btn-ghost"
+        onclick={() => activeTab = 'maps'}
+        title="Save Map"
+      >
+        💾
+      </button>
+      <div class="divider divider-horizontal m-0"></div>
+      <button
+        class="btn btn-sm btn-warning text-lg font-bold"
+        onclick={undo}
+        disabled={historyIndex <= 0}
+        title="Undo (Ctrl+Z)"
+      >
+        ↶
+      </button>
+      <button
+        class="btn btn-sm btn-warning text-lg font-bold"
+        onclick={redo}
+        disabled={historyIndex >= history.length - 1}
+        title="Redo (Ctrl+Y)"
+      >
+        ↷
+      </button>
+      <div class="divider divider-horizontal m-0"></div>
+      <button class="btn btn-sm btn-secondary" onclick={clearScene}>🗑️ Clear</button>
+      <button class="btn btn-sm {showGrid ? 'btn-success' : 'btn-ghost'}" onclick={toggleGrid}>
+        📐 Grid: {showGrid ? 'ON' : 'OFF'}
+      </button>
+      <button
+        class="btn btn-sm {isFirstPersonMode ? 'btn-error' : 'btn-accent'}"
+        onclick={isFirstPersonMode ? exitFirstPersonMode : enterPOVMode}
+        title={isFirstPersonMode ? 'Exit POV mode and return to build mode (ESC)' : 'Enter first-person POV mode - drop from the sky and explore your world!'}
+      >
+        {isFirstPersonMode ? '🚪 Build Mode' : '👁️ POV Mode'}
+      </button>
+      <div class="divider divider-horizontal m-0"></div>
+      <button class="btn btn-sm btn-info text-lg font-bold" onclick={scaleDown}>−</button>
+      <button class="btn btn-sm btn-ghost" onclick={resetScale}>1:1</button>
+      <button class="btn btn-sm btn-info text-lg font-bold" onclick={scaleUp}>+</button>
+      <div class="divider divider-horizontal m-0"></div>
+      <div class="badge badge-info">{placedObjects.length} objects</div>
+      <div class="badge badge-primary">{polygonCount.toLocaleString()} polys</div>
+      {#if polygonCount > MAX_POLYGON_WARNING}
+        <div class="badge badge-error">⚠️ High Poly Count!</div>
+      {/if}
+      {#if isFirstPersonMode}
+        <div class="badge badge-error">POV Mode - WASD to move, Mouse to look, Space to jump, ESC to exit</div>
+      {/if}
+      </div>
     </div>
   </div>
 
@@ -2412,5 +2933,7 @@
         </div>
       </div>
     </div>
+
   {/if}
+
 </div>

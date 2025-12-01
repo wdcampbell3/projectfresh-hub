@@ -101,8 +101,9 @@
     enemyFireRate: number
     mouseSensitivity: number
     autoMoveSpeed: AutoMoveSpeed
-    mouseInput: MouseInputType
+    mouseInput: 'auto' | 'mouse' | 'trackpad'
     powerUpFrequency: PowerUpFrequency
+    initialPowerUps: number
   }
 
   const autoMoveSpeeds: Record<AutoMoveSpeed, number> = {
@@ -114,9 +115,9 @@
 
   // Power-up drop rates: how many kills before guaranteed drop
   const powerUpDropRates: Record<PowerUpFrequency, number> = {
-    sparse: 3,    // Every 3rd kill
-    normal: 2,    // Every 2nd kill
-    carnage: 1    // Every kill
+    sparse: 3,    // Every 3 kills
+    normal: 2,    // Every 2 kills
+    carnage: 1    // Every 1 kill
   }
   let killsSinceLastDrop = 0
 
@@ -148,7 +149,8 @@
     mouseSensitivity: 1.0,  // Default to 1.0 (comfortable), range 0.5-2.0
     autoMoveSpeed: 'medium',  // Default to medium auto-move
     mouseInput: 'auto',  // Auto-detect trackpad vs external mouse
-    powerUpFrequency: 'normal'  // Every 2nd kill drops a power-up
+    powerUpFrequency: 'normal',  // Default to normal drops
+    initialPowerUps: 4 // Default number of weapon drops at start/level up
   }
 
   const difficultyPresets: Record<GameConfig['difficulty'], Partial<GameConfig>> = {
@@ -180,7 +182,13 @@
   // Player ship
   let playerShip: THREE.Group | null = null
   const shipScale = 0.3  // Smaller ships
+
   let isSpawning = false  // Loading screen state
+  
+  // Loading state
+  let isLoading = true
+  let loadingProgress = 0
+  let loadingStatus = "Initializing..."
 
   // Flight controls
   let velocity = new THREE.Vector3()
@@ -462,6 +470,9 @@
     document.addEventListener('pointerlockchange', handlePointerLockChange)
 
     animate()
+    
+    // No preloading on mount - wait for game start
+    isLoading = false
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
@@ -476,6 +487,41 @@
       renderer?.dispose()
     }
   })
+
+  async function preloadModels(paths: string[]) {
+    const loader = new GLTFLoader()
+    const uniquePaths = Array.from(new Set(paths))
+    const totalModels = uniquePaths.length
+    
+    if (totalModels === 0) {
+      loadingStatus = "Ready!"
+      loadingProgress = 100
+      return
+    }
+
+    let loadedCount = 0
+    loadingStatus = `Loading models (0/${totalModels})...`
+
+    // Load models in batches
+    const batchSize = 5
+    for (let i = 0; i < totalModels; i += batchSize) {
+      const batch = uniquePaths.slice(i, i + batchSize)
+      await Promise.all(batch.map(async (path) => {
+        try {
+          await loader.loadAsync(path)
+        } catch (e) {
+          console.warn(`Failed to preload ${path}:`, e)
+        } finally {
+          loadedCount++
+          loadingProgress = (loadedCount / totalModels) * 100
+          loadingStatus = `Loading models (${loadedCount}/${totalModels})...`
+        }
+      }))
+    }
+    
+    loadingStatus = "Ready!"
+    loadingProgress = 100
+  }
 
   function createStarfield() {
     const starCount = 8500
@@ -543,11 +589,20 @@
       playerShip.add(model)
       playerShip.add(new THREE.PointLight(0x00ffff, 2, 10))
       scene.add(playerShip)
-      playerShip.position.set(0, 15, 0)  // Start at reasonable height
+      scene.add(playerShip)
+      // Spawn high up and away from center, looking down
+      playerShip.position.set(0, 100, 200)
+      playerShip.lookAt(0, 0, 0)
 
       // Reset camera state for new game
       cameraInitialized = false
-      smoothedCameraPos.set(0, 18, 8)  // Initial camera position behind ship
+      smoothedCameraPos.set(0, 105, 210)  // Initial camera position behind ship
+      camera.position.copy(smoothedCameraPos)
+      camera.lookAt(playerShip.position)
+
+      // Reset camera state for new game
+      cameraInitialized = false
+      smoothedCameraPos.set(0, 105, 210)  // Initial camera position behind ship
       camera.position.copy(smoothedCameraPos)
       camera.lookAt(playerShip.position)
     } catch (error) {
@@ -563,11 +618,11 @@
     body.scale.setScalar(shipScale * 3)
     playerShip.add(body)
     scene.add(playerShip)
-    playerShip.position.set(0, 15, 0)
+    playerShip.position.set(0, 100, 200)
 
     // Reset camera state for new game
     cameraInitialized = false
-    smoothedCameraPos.set(0, 18, 8)
+    smoothedCameraPos.set(0, 105, 210)
     camera.position.copy(smoothedCameraPos)
     camera.lookAt(playerShip.position)
   }
@@ -616,20 +671,30 @@
     scene.fog = env.fogDensity > 0 ? new THREE.FogExp2(c.fog, env.fogDensity * 0.00002) : null
   }
 
-  async function createDefaultMap() {
-    // Try to load the same default map as Blocky Shooter
+  async function getDefaultMapData(): Promise<MapData | null> {
     try {
       const response = await fetch('/3d-maps/default_map.json')
-      const defaultMapData: MapData = await response.json()
+      return await response.json()
+    } catch (error) {
+      console.error('Failed to load default map data:', error)
+      return null
+    }
+  }
+
+  async function createDefaultMap(data?: MapData) {
+    // If data is provided, use it directly. Otherwise try to fetch it.
+    let defaultMapData = data
+    if (!defaultMapData) {
+      defaultMapData = await getDefaultMapData() || undefined
+    }
+
+    if (defaultMapData) {
       // We still want space background, so don't apply environment from map directly.
       // Instead, we just load the objects.
       isLoadingMap = true
       const loader = new GLTFLoader()
       solidObjects.forEach(obj => scene.remove(obj))
       solidObjects = []
-
-      // Don't apply environment, we want space!
-      // applyEnvironment(defaultMapData.environment)
 
       for (const obj of defaultMapData.objects) {
         try {
@@ -645,10 +710,8 @@
       }
       isLoadingMap = false
       return
-    } catch (error) {
-      console.error('Failed to load default map, creating procedural space environment:', error)
     }
-
+    
     // Fallback: create procedural asteroid field
     for (let i = 0; i < 50; i++) {
       const size = 2 + Math.random() * 8;
@@ -819,8 +882,8 @@
       }
 
     } else if (type === 'tank') {
-      // Tank Enemy - Dark Orange Box with Armor and Turret (matching Blocky Shooter)
-      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x884400, emissive: 0x441100, emissiveIntensity: 0.4, metalness: 0.6, roughness: 0.9 })
+      // Tank Enemy - Bright Orange Box with Armor and Turret
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0xff8800, emissive: 0xff4400, emissiveIntensity: 0.4, metalness: 0.6, roughness: 0.9 })
       const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 1.5), bodyMat)
       body.castShadow = true
       g.add(body)
@@ -918,9 +981,9 @@
     }
   }
 
-  function spawnPowerUpAt(position: THREE.Vector3) {
+  function spawnPowerUpAt(position: THREE.Vector3, specificType?: PowerUpType) {
     const types: PowerUpType[] = ['health', 'ammo', 'boost', 'weapon-missile', 'weapon-plasma', 'weapon-chain', 'weapon-drone', 'weapon-scatter']
-    const type = types[Math.floor(Math.random() * types.length)]
+    const type = specificType || types[Math.floor(Math.random() * types.length)]
     const g = new THREE.Group()
     const color = powerUpColors[type]
 
@@ -1000,6 +1063,22 @@
     g.position.copy(position)
     scene.add(g)
     powerUps.push({ mesh: g, type })
+  }
+
+  function spawnInitialWeaponDrops(count: number) {
+    const weaponTypes: PowerUpType[] = ['weapon-missile', 'weapon-plasma', 'weapon-chain', 'weapon-drone', 'weapon-scatter']
+    for (let i = 0; i < count; i++) {
+      // Spawn in a circle around the center, slightly elevated
+      const angle = (i / count) * Math.PI * 2
+      const radius = 20 + Math.random() * 20
+      const pos = new THREE.Vector3(
+        Math.cos(angle) * radius,
+        10 + Math.random() * 10,
+        Math.sin(angle) * radius
+      )
+      const type = weaponTypes[Math.floor(Math.random() * weaponTypes.length)]
+      spawnPowerUpAt(pos, type)
+    }
   }
 
   function handleKeyDown(e: KeyboardEvent) {
@@ -1324,26 +1403,34 @@
       }
 
     } else if (weapon.type === 'scatter') {
-      // Scatter Shot - Fires a denser, tighter cone of pellets
-      const numPellets = 9
-      const spreadAngle = 0.12 // radians (tighter for more hits)
+      // Scatter Shot - Fires a massive wall of high-velocity shards
+      const numPellets = 15
+      const spreadAngle = 0.18 // Wider spread for the "wall" effect
       for (let i = 0; i < numPellets; i++) {
-        const scatterMat = new THREE.MeshStandardMaterial({ color: 0xff8800, emissive: 0xff6600, emissiveIntensity: 0.9 })
-        mesh = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), scatterMat)
+        // Brighter, hotter material
+        const scatterMat = new THREE.MeshStandardMaterial({ color: 0xffdd88, emissive: 0xff6600, emissiveIntensity: 2.0, metalness: 0.8, roughness: 0.2 })
+        // Elongated "shard" shape
+        mesh = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), scatterMat)
+        mesh.scale.set(0.6, 0.6, 3.0) // Stretch into a streak/shard
+        
         // Calculate spread direction
         const angleOffset = (i - (numPellets - 1) / 2) * spreadAngle / (numPellets - 1) * 2
         const spreadDir = dir.clone()
         // Rotate around up vector for horizontal spread
         const upAxis = new THREE.Vector3(0, 1, 0)
         spreadDir.applyAxisAngle(upAxis, angleOffset)
-        // Add slight vertical spread
+        // Add random vertical spread
         const rightAxis = new THREE.Vector3().crossVectors(dir, upAxis).normalize()
-        spreadDir.applyAxisAngle(rightAxis, (Math.random() - 0.5) * spreadAngle * 0.5)
+        spreadDir.applyAxisAngle(rightAxis, (Math.random() - 0.5) * spreadAngle * 0.8)
 
-        vel = spreadDir.multiplyScalar(85)
+        vel = spreadDir.multiplyScalar(95) // Faster velocity
+        
         mesh.position.copy(playerShip.position).add(dir.clone().multiplyScalar(1.5))
+        mesh.lookAt(mesh.position.clone().add(vel)) // Face velocity
+        
         scene.add(mesh)
-        projectiles.push({ mesh, velocity: vel, damage: gameConfig.playerDamage * 0.8, type: 'scatter', lifetime: 1.8 })
+        // Increased damage (was 0.8)
+        projectiles.push({ mesh, velocity: vel, damage: gameConfig.playerDamage * 1.0, type: 'scatter', lifetime: 1.5 })
       }
     }
   }
@@ -1521,12 +1608,14 @@
     let barrelRollStrafe = new THREE.Vector3()
     if (keys['q']) {
       rollAngularVelocity = rollSpeed * 6  // Continuous roll left while held
-      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(playerShip.quaternion)
-      barrelRollStrafe.add(right.clone().multiplyScalar(-25))  // Strafe left while rolling left
+      // Strafe relative to ground plane (using Yaw only), ignoring roll/pitch
+      const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), shipYaw)
+      barrelRollStrafe.add(right.clone().multiplyScalar(-60))  // Stronger strafe left while rolling left
     } else if (keys['e']) {
       rollAngularVelocity = -rollSpeed * 6  // Continuous roll right while held
-      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(playerShip.quaternion)
-      barrelRollStrafe.add(right.clone().multiplyScalar(25))  // Strafe right while rolling right
+      // Strafe relative to ground plane (using Yaw only), ignoring roll/pitch
+      const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), shipYaw)
+      barrelRollStrafe.add(right.clone().multiplyScalar(60))  // Stronger strafe right while rolling right
     } else {
       rollAngularVelocity = 0  // Stop adding spin when key released
     }
@@ -1897,6 +1986,10 @@
     }
 
     spawnWave()
+    
+    // Spawn initial weapon power-ups based on settings
+    spawnInitialWeaponDrops(gameConfig.initialPowerUps)
+
     isLoadingLevel = false
   }
 
@@ -1949,7 +2042,7 @@
     bankAngle = 0
     barrelRollAngle = 0
     shipYaw = 0
-    shipPitch = 0
+    shipPitch = -Math.PI / 4  // Face down towards center from (0,100,100)
 
     // Clean up old game objects
     enemies.forEach(e => scene.remove(e.mesh)); enemies = []
@@ -1959,12 +2052,39 @@
     if (playerShip) { scene.remove(playerShip); playerShip = null }
     solidObjects.forEach(o => scene.remove(o)); solidObjects = []
 
-    // Load map
-    if (selectedMap) await loadMap(selectedMap)
-    else await createDefaultMap()
+    // Load map data first to determine assets
+    let mapData: MapData | null = null
+    if (selectedMap) {
+      mapData = selectedMap
+    } else {
+      mapData = await getDefaultMapData()
+    }
 
-    // Find safe spawn position
-    const spawnPos = findSafeSpawnPosition()
+    // Identify required models
+    const requiredModels = new Set<string>()
+    // Always include player ship
+    requiredModels.add(selectedSpaceship.path)
+    
+    if (mapData) {
+      mapData.objects.forEach(obj => requiredModels.add(obj.modelPath))
+    }
+
+    // Preload only the required models
+    await preloadModels(Array.from(requiredModels))
+
+    // Load the map into the scene
+    if (mapData) {
+      // If it's the default map, use createDefaultMap with the data
+      // If it's a selected map, use loadMap
+      if (selectedMap) await loadMap(mapData)
+      else await createDefaultMap(mapData)
+    } else {
+      // Fallback if no map data found
+      await createDefaultMap()
+    }
+
+    // Find safe spawn position - Force specific start position: 1 grid away (Z=100), high up (Y=100), looking at center
+    const spawnPos = new THREE.Vector3(0, 100, 100)
 
     // Load player ship at safe position
     await loadPlayerShipAtPosition(spawnPos)
@@ -1975,6 +2095,10 @@
     isSpawning = false
     isPlaying = true
     spawnWave()
+    
+    // Spawn initial weapon power-ups based on settings
+    spawnInitialWeaponDrops(gameConfig.initialPowerUps)
+
     // Power-ups only drop from enemies
     renderer.domElement.requestPointerLock()
   }
@@ -2286,6 +2410,10 @@
               <label class="label text-xs">Mouse Sensitivity: {gameConfig.mouseSensitivity.toFixed(1)}</label>
               <input type="range" min="0.5" max="2.0" step="0.1" bind:value={gameConfig.mouseSensitivity} class="range range-xs range-warning" />
             </div>
+            <div>
+              <label class="label text-xs">Initial Power Ups: {gameConfig.initialPowerUps}</label>
+              <input type="range" min="0" max="10" step="1" bind:value={gameConfig.initialPowerUps} class="range range-xs range-accent" />
+            </div>
           </div>
         </div>
           </div>
@@ -2379,8 +2507,10 @@
     <div class="absolute inset-0 z-30 flex items-center justify-center bg-black/90">
       <div class="text-center text-white space-y-4">
         <div class="text-4xl font-bold animate-pulse">LAUNCHING...</div>
-        <div class="loading loading-spinner loading-lg text-cyan-400"></div>
-        <div class="text-xl text-cyan-400">Preparing spawn location</div>
+        <div class="w-64 h-4 bg-gray-800 rounded-full overflow-hidden mb-2">
+          <div class="h-full bg-cyan-400 transition-all duration-200" style="width: {loadingProgress}%"></div>
+        </div>
+        <div class="text-xl text-cyan-400">{loadingStatus}</div>
       </div>
     </div>
   {/if}
@@ -2459,6 +2589,16 @@
   {/if}
 </div>
 
+  <!-- Loading Overlay -->
+  {#if isLoading}
+    <div class="absolute inset-0 bg-black z-50 flex flex-col items-center justify-center text-white">
+      <div class="mb-4 text-2xl font-bold text-primary">Starship Flyer</div>
+      <div class="w-64 h-4 bg-gray-800 rounded-full overflow-hidden mb-2">
+        <div class="h-full bg-accent transition-all duration-200" style="width: {loadingProgress}%"></div>
+      </div>
+      <div class="text-sm text-gray-400">{loadingStatus}</div>
+    </div>
+  {/if}
 </div>
 
 <style>
