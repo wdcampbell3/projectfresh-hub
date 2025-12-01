@@ -303,32 +303,32 @@
   }
 
   function createStarfield() {
-    const starCount = 10000 // Increased from 5000
+    const starCount = 8500
     const starVertices: number[] = []
     for (let i = 0; i < starCount; i++) {
-      const x = THREE.MathUtils.randFloatSpread(1000)
-      const y = THREE.MathUtils.randFloatSpread(1000)
-      const z = THREE.MathUtils.randFloatSpread(1000)
+      const x = THREE.MathUtils.randFloatSpread(1500)
+      const y = THREE.MathUtils.randFloatSpread(1500)
+      const z = THREE.MathUtils.randFloatSpread(1500)
       // Keep stars away from center to avoid clipping with ground
-      if (new THREE.Vector3(x, y, z).length() < 200) continue
+      if (new THREE.Vector3(x, y, z).length() < 100) continue
       starVertices.push(x, y, z)
     }
 
     const starGeometry = new THREE.BufferGeometry()
     starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3))
 
-    // Bright, slightly larger stars
+    // Bright, slightly larger stars for readability
     const primaryStars = new THREE.Points(
       starGeometry,
-      new THREE.PointsMaterial({ color: 0xe8f3ff, size: 1.5, transparent: true, opacity: 0.9 })
+      new THREE.PointsMaterial({ color: 0xe8f3ff, size: 0.9, transparent: true, opacity: 0.9 })
     )
     primaryStars.name = 'starfield'
     scene.add(primaryStars)
 
-    // Soft tinted layer
+    // Soft tinted layer for depth and extra sparkle
     const secondaryStars = new THREE.Points(
       starGeometry.clone(),
-      new THREE.PointsMaterial({ color: 0x9fc7ff, size: 1.0, transparent: true, opacity: 0.6 })
+      new THREE.PointsMaterial({ color: 0x9fc7ff, size: 0.6, transparent: true, opacity: 0.6 })
     )
     secondaryStars.scale.setScalar(1.2)
     secondaryStars.name = 'starfield'
@@ -359,8 +359,8 @@
         directionalIntensity: 0.8
       },
       night: {
-        colors: ['#000000', '#000000', '#000000', '#000000'], // Pure black for stars
-        fogColor: 0x000000,
+        colors: ['#0a1326', '#0a1326', '#0a1326', '#0a1326'], // Deep blue-black for stars
+        fogColor: 0x0a1326,
         ambientIntensity: 0.7, // Brighter night (was 0.2)
         directionalIntensity: 0.8 // Brighter night (was 0.2)
       }
@@ -411,7 +411,7 @@
       const texture = new THREE.CanvasTexture(canvas)
       scene.background = texture
     } else if (timeOfDay === 'night') {
-      scene.background = new THREE.Color(0x1a1a1a) // Dark gray instead of black/blue
+      scene.background = new THREE.Color(0x0a1326) // Deep blue-black
       createStarfield()
     } else {
       const canvas = document.createElement("canvas")
@@ -1550,14 +1550,18 @@
     // Place Space objects
     for (let i = 0; i < autoGenSpace && space.length > 0; i++) {
       const model = space[Math.floor(Math.random() * space.length)]
-      await tryPlace(model, SAFE_SIZE, 2.0 + Math.random() * 2.0, true) // Allow vertical placement
+      // Only allow vertical placement if explicitly in Space preset
+      const allowVertical = quickStartPreset === 'space'
+      await tryPlace(model, SAFE_SIZE, 2.0 + Math.random() * 2.0, allowVertical)
     }
 
-    // Sprinkle 15-20 random other objects
-    const otherCount = 15 + Math.floor(Math.random() * 6)
-    for (let i = 0; i < otherCount && other.length > 0; i++) {
-      const model = other[Math.floor(Math.random() * other.length)]
-      await tryPlace(model, SAFE_SIZE, 0.8 + Math.random() * 1.5)
+    // Sprinkle 15-20 random other objects (unless in Space preset)
+    if (quickStartPreset !== 'space') {
+      const otherCount = 15 + Math.floor(Math.random() * 6)
+      for (let i = 0; i < otherCount && other.length > 0; i++) {
+        const model = other[Math.floor(Math.random() * other.length)]
+        await tryPlace(model, SAFE_SIZE, 0.8 + Math.random() * 1.5)
+      }
     }
 
     // Update placedObjects all at once
