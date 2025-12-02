@@ -38,13 +38,8 @@
     }
   }
 
-  const staticMapFiles = [
-    'Basic_Town.json',
-    'Burnt_Tree_Map.json',
-    'Farm_City.json',
-    'Spread_Out_Town.json',
-    'Windmills___Such_.json'
-  ]
+  // Maps fetched from API
+  let staticMapFiles: string[] = []
 
   let availableMaps: MapData[] = []
   let customMaps: MapData[] = []  // User-created maps from localStorage
@@ -565,6 +560,15 @@
   }
 
   async function loadStaticMaps() {
+    try {
+      const response = await fetch('/api/maps')
+      if (response.ok) {
+        staticMapFiles = await response.json()
+      }
+    } catch (e) {
+      console.error('Failed to fetch map list:', e)
+    }
+
     const maps: MapData[] = []
     for (const file of staticMapFiles) {
       try {
@@ -585,9 +589,15 @@
   }
 
   function updateAvailableMaps() {
-    // Merge custom and built-in maps, avoiding duplicates
+    // Merge custom and built-in maps, avoiding duplicates by ID and Name
     const existingIds = new Set(customMaps.map(m => m.id))
-    availableMaps = [...customMaps, ...builtInMaps.filter(m => !existingIds.has(m.id))]
+    const existingNames = new Set(customMaps.map(m => m.name))
+    
+    const uniqueBuiltIn = builtInMaps.filter(m => 
+      !existingIds.has(m.id) && !existingNames.has(m.name)
+    )
+    
+    availableMaps = [...customMaps, ...uniqueBuiltIn]
   }
 
   // Load default map thumbnail for menu display

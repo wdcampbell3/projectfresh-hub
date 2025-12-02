@@ -48,13 +48,8 @@
     }
   }
 
-  const staticMapFiles = [
-    'Basic_Town.json',
-    'Burnt_Tree_Map.json',
-    'Farm_City.json',
-    'Spread_Out_Town.json',
-    'Windmills___Such_.json'
-  ]
+  // Maps fetched from API
+  let staticMapFiles: string[] = []
 
   let availableMaps: MapData[] = []
   let customMaps: MapData[] = []  // User-created maps from localStorage
@@ -302,16 +297,16 @@
 
   let solidObjects: THREE.Object3D[] = []
 
-  function mergeAvailableMaps(maps: MapData[]) {
-    const existingIds = new Set(availableMaps.map(m => m.id))
-    const merged = [...availableMaps]
-    maps.forEach(map => {
-      if (!existingIds.has(map.id)) {
-        merged.push(map)
-        existingIds.add(map.id)
-      }
-    })
-    availableMaps = merged
+  function updateAvailableMaps() {
+    // Merge custom and built-in maps, avoiding duplicates by ID and Name
+    const existingIds = new Set(customMaps.map(m => m.id))
+    const existingNames = new Set(customMaps.map(m => m.name))
+    
+    const uniqueBuiltIn = builtInMaps.filter(m => 
+      !existingIds.has(m.id) && !existingNames.has(m.name)
+    )
+    
+    availableMaps = [...customMaps, ...uniqueBuiltIn]
   }
 
   function loadAvailableMaps() {
@@ -329,6 +324,15 @@
   }
 
   async function loadStaticMaps() {
+    try {
+      const response = await fetch('/api/maps')
+      if (response.ok) {
+        staticMapFiles = await response.json()
+      }
+    } catch (e) {
+      console.error('Failed to fetch map list:', e)
+    }
+
     const maps: MapData[] = []
     for (const file of staticMapFiles) {
       try {
@@ -348,16 +352,10 @@
     updateAvailableMaps()
   }
 
-  function updateAvailableMaps() {
-    // Merge custom and built-in maps, avoiding duplicates
-    const existingIds = new Set(customMaps.map(m => m.id))
-    availableMaps = [...customMaps, ...builtInMaps.filter(m => !existingIds.has(m.id))]
-  }
-
   // Load default map thumbnail for menu display
   async function loadDefaultMapThumbnail() {
     try {
-      const response = await fetch('/3d-maps/default_map.json')
+      const response = await fetch('/3d-maps/Default_Space.json')
       const data: MapData = await response.json()
       defaultMapThumbnail = data.thumbnail
     } catch (e) {
@@ -678,7 +676,7 @@
 
   async function getDefaultMapData(): Promise<MapData | null> {
     try {
-      const response = await fetch('/3d-maps/default_map.json')
+      const response = await fetch('/3d-maps/Default_Space.json')
       return await response.json()
     } catch (error) {
       console.error('Failed to load default map data:', error)
@@ -749,26 +747,11 @@
     solidObjects.forEach(obj => scene.remove(obj))
     solidObjects = []
 
-    // Categorize models (same as FPS game / World Builder)
-    const trees = modelCatalog.filter(m =>
-      m.category === 'Nature' && (
-        m.name.toLowerCase().includes('tree') ||
-        m.name.toLowerCase().includes('pine') ||
-        m.name.toLowerCase().includes('oak')
-      )
-    )
-    const buildings = modelCatalog.filter(m =>
-      m.category === 'Buildings' ||
-      m.name.toLowerCase().includes('building') ||
-      m.name.toLowerCase().includes('house') ||
-      m.name.toLowerCase().includes('tower')
-    )
-    const vehicles = modelCatalog.filter(m =>
-      m.category === 'Vehicles'
-    )
-    const other = modelCatalog.filter(m =>
-      m.category === 'Decor' || m.category === 'Urban' || m.category === 'Props'
-    )
+    // Categorize models (Space only for Starship Flyer)
+    const space = modelCatalog.filter(m => m.category === 'Space')
+    
+    // Fallback if no space models found
+    if (space.length === 0) return
 
     const loader = new GLTFLoader()
 
@@ -807,40 +790,18 @@
       }
     }
 
-    // Place trees (10-15) - target size 3-5 units tall
-    const treeCount = 10 + Math.floor(Math.random() * 6)
-    for (let i = 0; i < treeCount && trees.length > 0; i++) {
-      const model = trees[Math.floor(Math.random() * trees.length)]
-      const pos = new THREE.Vector3((Math.random() - 0.5) * 80, 0, (Math.random() - 0.5) * 80)
-      await placeModel(model, pos, 3.5 + Math.random() * 1.5)
+    // Place Space objects (20-30) - target size 5-15 units
+    const spaceCount = 20 + Math.floor(Math.random() * 10)
+    for (let i = 0; i < spaceCount && space.length > 0; i++) {
+      const model = space[Math.floor(Math.random() * space.length)]
+      // Place in 3D space (x, y, z)
+      const pos = new THREE.Vector3(
+        (Math.random() - 0.5) * 200, 
+        (Math.random() - 0.5) * 100, // Vertical range
+        (Math.random() - 0.5) * 200
+      )
+      await placeModel(model, pos, 5.0 + Math.random() * 10.0)
     }
-
-    // Place buildings (3-5 in a loose circle) - target size 8-12 units
-    const buildingCount = 3 + Math.floor(Math.random() * 3)
-    for (let i = 0; i < buildingCount && buildings.length > 0; i++) {
-      const model = buildings[Math.floor(Math.random() * buildings.length)]
-      const angle = (i / buildingCount) * Math.PI * 2
-      const radius = 30 + Math.random() * 20
-      const pos = new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius)
-      await placeModel(model, pos, 10 + Math.random() * 2)
-    }
-
-    // Place vehicles (2-4) - target size 3-4 units
-    const vehicleCount = 2 + Math.floor(Math.random() * 3)
-    for (let i = 0; i < vehicleCount && vehicles.length > 0; i++) {
-      const model = vehicles[Math.floor(Math.random() * vehicles.length)]
-      const pos = new THREE.Vector3((Math.random() - 0.5) * 60, 0, (Math.random() - 0.5) * 60)
-      await placeModel(model, pos, 3.5 + Math.random() * 0.5)
-    }
-
-    // Sprinkle other objects (5-10) - target size 1-3 units
-    const otherCount = 5 + Math.floor(Math.random() * 6)
-    for (let i = 0; i < otherCount && other.length > 0; i++) {
-      const model = other[Math.floor(Math.random() * other.length)]
-      const pos = new THREE.Vector3((Math.random() - 0.5) * 70, 0, (Math.random() - 0.5) * 70)
-      await placeModel(model, pos, 2.0 + Math.random() * 1.0)
-    }
-
     console.log(`Level ${level} auto-generated: ${solidObjects.length} objects`)
   }
 

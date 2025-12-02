@@ -274,8 +274,8 @@
     directionalLight.shadow.mapSize.height = 2048
     scene.add(directionalLight)
 
-    // Ground
-    const groundGeometry = new THREE.PlaneGeometry(200, 200)
+    // Ground - large invisible plane for raycasting (prevents objects getting stuck)
+    const groundGeometry = new THREE.PlaneGeometry(2000, 2000)
     const groundMaterial = new THREE.MeshStandardMaterial({
       color: 0x2d5016,
       roughness: 0.8,
@@ -445,6 +445,11 @@
       fogFar = 90
     } else if (weather === 'clear') {
       fogFar = 300 // See everything
+      
+      // Night mode should have very distant fog to avoid darkening objects too much
+      if (timeOfDay === 'night') {
+        fogFar = 800
+      }
     }
 
     // Use white fog for 'fog' weather, otherwise use sky color
@@ -665,12 +670,13 @@
       const selectedMeshes = selectedPlacedObjects.map(obj => obj.mesh)
       const intersects = raycaster.intersectObjects(selectedMeshes, true)
 
-      if (intersects.length > 0) {
-        isDraggingObject = true
-        controls.enabled = false // Disable orbit controls while dragging
-        if (renderer?.domElement) {
-          renderer.domElement.style.cursor = 'move'
-        }
+        if (intersects.length > 0) {
+          isDraggingObject = true
+          controls.enabled = false // Disable orbit controls while dragging
+          event.stopPropagation() // Prevent event from bubbling to controls
+          if (renderer?.domElement) {
+            renderer.domElement.style.cursor = 'move'
+          }
         
         // Calculate offsets for all selected objects relative to the click point on ground
         const groundIntersects = raycaster.intersectObject(ground)
@@ -816,34 +822,8 @@
 
   function onRightClick(event: MouseEvent) {
     event.preventDefault()
-    if (isFirstPersonMode) return // Disable right-click in POV mode
-
-    // Raycast to find object to delete
-    raycaster.setFromCamera(mouse, camera)
-    const meshes = placedObjects.map(obj => obj.mesh)
-    const intersects = raycaster.intersectObjects(meshes, true)
-
-    if (intersects.length > 0) {
-      // Find the top-level placed object
-      let objectToRemove = intersects[0].object
-      while (objectToRemove.parent && objectToRemove.parent !== scene) {
-        objectToRemove = objectToRemove.parent
-      }
-
-      const index = placedObjects.findIndex(obj => obj.mesh === objectToRemove)
-      if (index > -1) {
-        scene.remove(placedObjects[index].mesh)
-
-        // Remove from animated objects if it exists
-        const animIndex = animatedObjects.findIndex(obj => obj.mesh === objectToRemove)
-        if (animIndex > -1) {
-          animatedObjects.splice(animIndex, 1)
-        }
-
-        placedObjects.splice(index, 1)
-        saveHistory()
-      }
-    }
+    // Deletion via right-click/ctrl-click disabled per user request
+    // Use Delete/Backspace key instead
   }
 
   function rotatePreview(direction: number = 1) {
