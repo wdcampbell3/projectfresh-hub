@@ -27,6 +27,7 @@
   interface MapData {
     id: string
     name: string
+    games?: string
     description: string
     created: number
     modified: number
@@ -147,6 +148,109 @@
     powerUpFrequency: 'normal',  // Default to normal drops
     initialPowerUps: 4 // Default number of weapon drops at start/level up
   }
+
+  // Sound Manager
+  class SoundManager {
+    ctx: AudioContext | null = null
+    enabled = true
+    masterGain: GainNode | null = null
+
+    constructor() {
+      try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext
+        this.ctx = new AudioContext()
+        this.masterGain = this.ctx.createGain()
+        this.masterGain.connect(this.ctx.destination)
+        this.masterGain.gain.value = 0.3 // Default volume
+      } catch (e) {
+        console.error('Web Audio API not supported')
+      }
+    }
+
+    toggle(enabled: boolean) {
+      this.enabled = enabled
+      if (this.ctx && this.ctx.state === 'suspended' && enabled) {
+        this.ctx.resume()
+      }
+    }
+
+    playTone(freq: number, type: OscillatorType, duration: number, vol = 1, slideFreq?: number) {
+      if (!this.enabled || !this.ctx || !this.masterGain) return
+      
+      const osc = this.ctx.createOscillator()
+      const gain = this.ctx.createGain()
+      
+      osc.type = type
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime)
+      if (slideFreq) {
+        osc.frequency.exponentialRampToValueAtTime(slideFreq, this.ctx.currentTime + duration)
+      }
+      
+      gain.gain.setValueAtTime(vol, this.ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration)
+      
+      osc.connect(gain)
+      gain.connect(this.masterGain)
+      
+      osc.start()
+      osc.stop(this.ctx.currentTime + duration)
+    }
+
+    playNoise(duration: number, vol = 1) {
+      if (!this.enabled || !this.ctx || !this.masterGain) return
+      
+      const bufferSize = this.ctx.sampleRate * duration
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate)
+      const data = buffer.getChannelData(0)
+      
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1
+      }
+      
+      const noise = this.ctx.createBufferSource()
+      noise.buffer = buffer
+      
+      const gain = this.ctx.createGain()
+      gain.gain.setValueAtTime(vol, this.ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration)
+      
+      noise.connect(gain)
+      gain.connect(this.masterGain)
+      
+      noise.start()
+    }
+
+    // Game Sounds
+    playLaser() { this.playTone(880, 'square', 0.1, 0.5, 220) }
+    playMissile() { this.playNoise(0.5, 0.5); this.playTone(200, 'sawtooth', 0.5, 0.3, 50) }
+    playPlasma() { this.playTone(1200, 'sine', 0.2, 0.6, 600) }
+    playChain() { this.playTone(2000, 'sawtooth', 0.1, 0.4, 4000); setTimeout(() => this.playTone(4000, 'sawtooth', 0.1, 0.3, 2000), 50) }
+    playDrone() { this.playTone(600, 'triangle', 0.3, 0.4, 800) }
+    playScatter() { for(let i=0; i<3; i++) setTimeout(() => this.playTone(400 + Math.random()*200, 'square', 0.1, 0.3, 100), i*20) }
+    
+    playExplosion(size = 1) { 
+      this.playNoise(0.3 * size, 0.8)
+      this.playTone(100, 'sawtooth', 0.4 * size, 0.6, 10)
+    }
+    
+    playPowerUp() { 
+      this.playTone(440, 'sine', 0.1, 0.5)
+      setTimeout(() => this.playTone(880, 'sine', 0.2, 0.5), 100)
+    }
+    
+    playBoost() { 
+      this.playTone(200, 'sawtooth', 1.0, 0.6, 800)
+      this.playNoise(1.0, 0.4)
+    }
+    
+    playHit() {
+      this.playTone(150, 'sawtooth', 0.2, 0.8, 50)
+      this.playNoise(0.1, 0.5)
+    }
+  }
+
+  let soundManager: SoundManager
+  let soundEnabled = true
 
   const difficultyPresets: Record<GameConfig['difficulty'], Partial<GameConfig>> = {
     easy: { startingHealth: 150, enemyCount: 3, enemyDamage: 5, playerDamage: 35, enemySpeed: 6.0, enemyFireRate: 3000 },
@@ -272,6 +376,7 @@
   let lowHealthOpacity = 0
   let lastHealth = 100
   let flashTimer = 0
+  let hitFlashTimer = 0 // Timer for red flash when hit
   const powerUpNames: Record<string, { name: string; color: string }> = {
     health: { name: 'HEALTH +30', color: '#ff4444' },
     ammo: { name: 'AMMO +10', color: '#44ff44' },
@@ -314,7 +419,14 @@
     const stored = localStorage.getItem('worldBuilder_maps')
     if (stored) {
       try {
-        customMaps = JSON.parse(stored)
+        const allCustomMaps: MapData[] = JSON.parse(stored)
+        // Filter maps for this game
+        customMaps = allCustomMaps.filter(map => {
+          // Strict filtering: must have 'games' property and include 'starship flyer' or 'all'
+          if (!map.games) return false
+          const games = map.games.toLowerCase().split(',').map(g => g.trim())
+          return games.includes('all') || games.includes('starship flyer')
+        })
       } catch (e) {
         console.error('Failed to load maps:', e)
         customMaps = []
@@ -362,7 +474,17 @@
       }
     }
     
-    builtInMaps = uniqueMaps
+    // Filter maps for this game
+    builtInMaps = uniqueMaps.filter(map => {
+      // Filter out the default map to avoid duplication
+      if (map.id === 'map_1764639382737') return false
+      
+      // Strict filtering: must have 'games' property and include 'starship flyer' or 'all'
+      if (!map.games) return false 
+      const games = map.games.toLowerCase().split(',').map(g => g.trim())
+      return games.includes('all') || games.includes('starship flyer')
+    })
+    
     updateAvailableMaps()
   }
 
@@ -474,6 +596,10 @@
     initThree()
     loadModelCatalog()
     loadDefaultMapThumbnail()
+
+    // Init sound manager
+    soundManager = new SoundManager()
+    soundManager.toggle(soundEnabled)
 
     // Render ship previews after a short delay to ensure DOM is ready
     setTimeout(renderShipPreviews, 100)
@@ -1086,6 +1212,7 @@
       boostActive = true
       boostEndTime = Date.now() + boostDuration
       powerUpAlert = { message: 'BOOST ACTIVATED!', color: '#44ffff', timestamp: Date.now() }
+      soundManager.playBoost()
     }
     if (e.key >= '1' && e.key <= '5') { const i = parseInt(e.key) - 1; if (i < weaponInventory.length) currentWeaponIndex = i }
     // Arrow up/down to cycle weapons
@@ -1226,6 +1353,7 @@
       mesh.position.copy(playerShip.position).add(dir.clone().multiplyScalar(1.5))
       scene.add(mesh)
       projectiles.push({ mesh, velocity: vel, damage: dmg, type: weapon.type, lifetime: lt })
+      soundManager.playLaser()
 
     } else if (weapon.type === 'missile') {
       // Missile - Heat-seeking orange cone
@@ -1246,6 +1374,7 @@
       mesh.position.copy(playerShip.position).add(dir.clone().multiplyScalar(1.5))
       scene.add(mesh)
       projectiles.push({ mesh, velocity: vel, damage: dmg, type: weapon.type, lifetime: lt, target: closestEnemy })
+      soundManager.playMissile()
 
     } else if (weapon.type === 'plasma') {
       // Plasma Cannon - Forward-only with short-range homing toward enemies near crosshair
@@ -1285,6 +1414,7 @@
       mesh.position.copy(playerShip.position).add(dir.clone().multiplyScalar(1.5))
       scene.add(mesh)
       projectiles.push({ mesh, velocity: vel, damage: dmg, type: weapon.type, lifetime: lt, target: plasmaTarget })
+      soundManager.playPlasma()
 
     } else if (weapon.type === 'chain') {
       // Chain Lightning - Instant lightning bolt that hits closest enemy to crosshair and chains
@@ -1318,6 +1448,7 @@
 
         // Create lightning from ship to first target
         createLightningArc(playerShip.position.clone().add(dir.clone().multiplyScalar(1.5)), primaryTarget.mesh.position)
+        soundManager.playChain()
 
 
         // Damage first target
@@ -1372,6 +1503,7 @@
         // No target found - fire a visual-only lightning bolt forward
         const endPoint = playerShip.position.clone().add(dir.clone().multiplyScalar(50))
         createLightningArc(playerShip.position.clone().add(dir.clone().multiplyScalar(1.5)), endPoint)
+        soundManager.playChain()
       }
       // Chain lightning is instant - no projectile needed
       return
@@ -1397,6 +1529,7 @@
         vel = dir.clone().multiplyScalar(40)
         projectiles.push({ mesh: droneGroup, velocity: vel, damage: gameConfig.playerDamage * 1.5, type: 'drone', lifetime: 5, target, isDrone: true })
       }
+      soundManager.playDrone()
 
     } else if (weapon.type === 'scatter') {
       // Scatter Shot - Fires a massive wall of high-velocity shards
@@ -1428,6 +1561,7 @@
         // Increased damage (was 0.8)
         projectiles.push({ mesh, velocity: vel, damage: gameConfig.playerDamage * 1.0, type: 'scatter', lifetime: 1.5 })
       }
+      soundManager.playScatter()
     }
   }
 
@@ -1464,7 +1598,9 @@
   function handleEnemyDeath(enemy: Enemy) {
     const idx = enemies.indexOf(enemy)
     if (idx === -1) return
+
     createExplosion(enemy.mesh.position, enemy.type === 'boss' ? 3 : 1)
+    soundManager.playExplosion(enemy.type === 'boss' ? 3 : 1)
     const deathPos = enemy.mesh.position.clone()
     scene.remove(enemy.mesh); enemies.splice(idx, 1)
     score += enemy.type === 'boss' ? 500 : enemy.type === 'tank' ? 100 : enemy.type === 'fast' ? 50 : 25
@@ -1550,6 +1686,12 @@
       lowHealthOpacity = 0
       flashTimer = 0
     }
+    
+    // Update hit flash timer
+    if (hitFlashTimer > 0) {
+      hitFlashTimer -= delta
+    }
+    
     lastHealth = health
 
     // Boost animation - spawn trail particles when boosting
@@ -1812,7 +1954,10 @@
 
       // Enemy projectile hitting player
       if (p.isEnemy && playerShip && p.mesh.position.distanceTo(playerShip.position) < 1) {
-        health -= p.damage; createExplosion(p.mesh.position, 0.5); scene.remove(p.mesh)
+        health -= p.damage; 
+        hitFlashTimer = 0.2; // Quick single flash (was 0.5)
+        soundManager.playHit()
+        createExplosion(p.mesh.position, 0.5); scene.remove(p.mesh)
         if (health <= 0) gameOver()
         return false
       }
@@ -1895,6 +2040,7 @@
         // Trigger flashing alert
         const alertInfo = powerUpNames[p.type]
         powerUpAlert = { message: alertInfo.name, color: alertInfo.color, timestamp: Date.now() }
+        soundManager.playPowerUp()
 
         if (p.type === 'health') health = Math.min(health + 30, 100)
         else if (p.type === 'ammo') refillCurrentWeapon(10)
@@ -2076,6 +2222,11 @@
   }
 
   async function startGame() {
+    // Initialize audio context on user interaction
+    if (soundManager && soundManager.ctx && soundManager.ctx.state === 'suspended' && soundEnabled) {
+      soundManager.ctx.resume()
+    }
+    
     showMapSelector = false
     isSpawning = true  // Show loading screen
     hasStartedGame = true
@@ -2097,6 +2248,7 @@
     lowHealthOpacity = 0
     lastHealth = gameConfig.startingHealth
     flashTimer = 0
+    hitFlashTimer = 0
 
     // Clean up old game objects
     enemies.forEach(e => scene.remove(e.mesh)); enemies = []
@@ -2143,10 +2295,13 @@
     // Load player ship at safe position
     await loadPlayerShipAtPosition(spawnPos)
 
-    // Short delay for loading screen
+    // Ensure everything is ready before hiding loading screen
+    // Wait a frame to let renderer catch up
+    await new Promise(r => requestAnimationFrame(r))
+    
+    // Short delay for loading screen to ensure smooth transition
     await new Promise(r => setTimeout(r, 500))
 
-    isSpawning = false
     isPlaying = true
     spawnWave()
     
@@ -2155,6 +2310,8 @@
 
     // Power-ups only drop from enemies
     renderer.domElement.requestPointerLock()
+    
+    isSpawning = false // Hide loading screen last
   }
 
   async function loadPlayerShipAtPosition(position: THREE.Vector3) {
@@ -2240,8 +2397,8 @@
       <!-- Main content area with center setup and right sidebar -->
       <div class="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
         <!-- Center content - Game Setup -->
-        <div class="flex-1 flex items-center justify-center overflow-y-auto">
-          <div class="max-w-4xl w-full pb-8">
+        <div class="flex-1 flex justify-center overflow-y-auto">
+          <div class="max-w-4xl w-full pb-8 my-auto">
             <!-- Ship Selection -->
           <div class="bg-white rounded-lg p-6 mb-6 border-2 border-gray-200 shadow-lg">
           <h3 class="text-2xl font-bold text-gray-900 mb-4">Select Your Ship</h3>
@@ -2377,7 +2534,7 @@
               <div class="text-xs">More health, slower enemies</div>
             </button>
             <button
-              class="btn {gameConfig.difficulty === 'normal' ? 'btn-primary' : 'btn-outline'}"
+              class="btn {gameConfig.difficulty === 'normal' ? 'btn-warning' : 'btn-outline'}"
               on:click={() => applyDifficultyPreset('normal')}
             >
               Normal
@@ -2390,6 +2547,17 @@
               Hard
               <div class="text-xs">Faster enemies, less health</div>
             </button>
+          </div>
+
+          <!-- Sound Toggle -->
+          <div class="form-control mb-6">
+            <label class="label cursor-pointer justify-start gap-4">
+              <span class="label-text text-lg font-bold text-gray-900">Sound Effects</span>
+              <input type="checkbox" class="toggle toggle-primary" checked={soundEnabled} on:change={(e) => {
+                soundEnabled = e.currentTarget.checked
+                soundManager.toggle(soundEnabled)
+              }} />
+            </label>
           </div>
 
           <!-- Auto-Move Speed -->
@@ -2682,13 +2850,13 @@
 
 
   <!-- Full Screen Low Health Warning Overlay -->
-  {#if isPlaying && !isGameOver && health <= 30}
+  {#if isPlaying && !isGameOver && (health <= 30 || hitFlashTimer > 0)}
     <div 
       class="fixed inset-0 z-[100] pointer-events-none transition-colors duration-100"
       style="
-        {health <= 10 ? `background-color: rgba(255, 0, 0, ${Math.min(lowHealthOpacity * 0.3, 0.3)});` : ''}
-        box-shadow: inset 0 0 {100 + lowHealthOpacity * 50}px rgba(255, 0, 0, {0.5 + Math.min(lowHealthOpacity * 0.5, 0.5)});
-        border: {16 * (health <= 10 ? 1 : Math.min(lowHealthOpacity, 1))}px solid rgba(220, 38, 38, {health <= 10 ? 1 : Math.min(lowHealthOpacity, 1)});
+        {(health <= 10 || hitFlashTimer > 0) ? `background-color: rgba(255, 0, 0, ${Math.min((hitFlashTimer > 0 ? 0.4 : lowHealthOpacity * 0.3), 0.5)});` : ''}
+        box-shadow: inset 0 0 {100 + (hitFlashTimer > 0 ? 1 : lowHealthOpacity) * 50}px rgba(255, 0, 0, {0.5 + Math.min((hitFlashTimer > 0 ? 1 : lowHealthOpacity) * 0.5, 0.5)});
+        border: {16 * ((health <= 10 || hitFlashTimer > 0) ? 1 : Math.min(lowHealthOpacity, 1))}px solid rgba(220, 38, 38, {(health <= 10 || hitFlashTimer > 0) ? 1 : Math.min(lowHealthOpacity, 1)});
       "
     ></div>
   {/if}

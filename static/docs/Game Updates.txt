@@ -1,0 +1,18 @@
+Tower assault
+- the sniper bullet looks inaccurate over longer distance. the bullet should be super fast, but it stay slow to reload, but long distance and accurate
+- set game defaults: no level completion bonus, base enemy speed 2.5, fast enemy speed 4.5
+
+
+
+Space Invaders
+issues remaining:
+- pause button is restarting the game instead of pausing it.
+- let's turn laser back to 0.5 seconds
+- rocket needs to explode the alien that is adjecent to the alien that was hit on either side AND on the row above
+- add an option to set amount of lives and set default to 5
+- I'm noticing sometimes when the next level begins the player has rapid fire 
+- add an option to set how long power ups last. default all power ups  to 5 seconds.
+- add a life count option and default it to 5
+- update the power descriptions to remove any mention of time. 
+- power ups are being delivered in the same order each time. they need to be more random.
+- queued power ups need to work like this: down button uses the next power up in the queue. It is immediately removed from the user's power up inventory, it ends any currently enabled power ups and replaces it with the new power up. 

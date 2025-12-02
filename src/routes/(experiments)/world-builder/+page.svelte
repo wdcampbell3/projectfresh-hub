@@ -57,10 +57,16 @@
   let dragStartPoint = new THREE.Vector3()
   let dragObjectOffsets = new Map<THREE.Group, THREE.Vector3>()
 
+  // Box Selection
+  let isBoxSelecting = $state(false)
+  let boxSelectionStart = $state({ x: 0, y: 0 })
+  let boxSelectionEnd = $state({ x: 0, y: 0 })
+
   // Maps Management
   interface MapData {
     id: string
     name: string
+    games?: string
     description: string
     created: number
     modified: number
@@ -84,7 +90,8 @@
 
   let savedMaps = $state<MapData[]>([])
   let currentMapId = $state<string | null>(null)
-  let currentMapName = $state<string>('Untitled Map')
+  let selectedGame = $state('all')
+  let currentMapName = $state<string>('')
   let activeTab = $state<'models' | 'maps' | 'options'>('models')
   let timeOfDay = $state<'dawn' | 'day' | 'sunset' | 'night'>('sunset')
   let weather = $state<'clear' | 'rain' | 'snow' | 'fog'>('clear')
@@ -97,9 +104,12 @@
   let autoGenBuildings = $state(16)
   let autoGenVehicles = $state(8)
   let autoGenAnimals = $state(8)
-  let autoGenCity = $state(8)
-  let autoGenSpace = $state(8)
-  let quickStartPreset = $state<'town' | 'city' | 'nature' | 'space' | 'random'>('town')
+  let autoGenCity = $state(0)
+  let autoGenSpace = $state(0)
+  let quickStartPreset = $state('town')
+  let distributeVertically = $state(false)
+  let mapFilter = $state('all')
+  let hideInstructions = $state(false)
 
   // First-person mode (POV Mode)
   let isFirstPersonMode = $state(false)
@@ -359,10 +369,10 @@
         directionalIntensity: 0.8
       },
       night: {
-        colors: ['#0a1326', '#0a1326', '#0a1326', '#0a1326'], // Deep blue-black for stars
-        fogColor: 0x0a1326,
-        ambientIntensity: 0.7, // Brighter night (was 0.2)
-        directionalIntensity: 0.8 // Brighter night (was 0.2)
+        colors: ['#151515', '#151515', '#151515', '#151515'], // Dark gray for better visibility
+        fogColor: 0x151515,
+        ambientIntensity: 0.9, // Even brighter for building visibility
+        directionalIntensity: 1.0
       }
     }
 
@@ -411,7 +421,7 @@
       const texture = new THREE.CanvasTexture(canvas)
       scene.background = texture
     } else if (timeOfDay === 'night') {
-      scene.background = new THREE.Color(0x0a1326) // Deep blue-black
+      scene.background = new THREE.Color(0x151515) // Dark gray
       createStarfield()
     } else {
       const canvas = document.createElement("canvas")
@@ -496,6 +506,15 @@
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
 
+    // Handle Box Selection
+    if (isBoxSelecting) {
+      boxSelectionEnd = { 
+        x: event.clientX - rect.left, 
+        y: event.clientY - rect.top 
+      }
+      return // Stop other interactions while box selecting
+    }
+
     // Track if mouse has moved significantly (more than 5 pixels from down position)
     const dx = event.clientX - mouseDownPosition.x
     const dy = event.clientY - mouseDownPosition.y
@@ -506,6 +525,11 @@
       if (previewMesh && selectedPlacedObjects.length === 0) {
         previewMesh.visible = false
       }
+    }
+
+    // Show preview if it was hidden (e.g. newly selected model) and we are not dragging/box selecting
+    if (previewMesh && !previewMesh.visible && !isBoxSelecting && !isPanning && !isRotatingCamera && !isShiftKeyHeld && selectedPlacedObjects.length === 0) {
+      previewMesh.visible = true
     }
 
     if (isDraggingObject && selectedPlacedObjects.length > 0) {
@@ -644,11 +668,31 @@
       const defaultScale = model.scale || 1
       currentScale = defaultScale
       previewMesh.scale.set(defaultScale, defaultScale, defaultScale)
+
+      // Check size and auto-scale if too small
+      const box = new THREE.Box3().setFromObject(previewMesh)
+      const size = new THREE.Vector3()
+      box.getSize(size)
+      const maxDim = Math.max(size.x, size.y, size.z)
       
-      // Add to scene
+      // Calculate minimum size based on 1/10th of viewport height at current camera distance
+      // Use distance from camera to center (0,0,0) as a reference
+      const distance = camera.position.distanceTo(new THREE.Vector3(0, 0, 0))
+      const vFOV = THREE.MathUtils.degToRad(camera.fov)
+      const visibleHeight = 2 * Math.tan(vFOV / 2) * distance
+      const minSize = visibleHeight / 10
+
+      if (maxDim < minSize && maxDim > 0) {
+        const scaleFactor = minSize / maxDim
+        currentScale = defaultScale * scaleFactor
+        previewMesh.scale.set(currentScale, currentScale, currentScale)
+      }
+      
+      // Add to scene but keep invisible until mouse moves over map
+      previewMesh.visible = false
       scene.add(previewMesh)
     } catch (error) {
-      console.error("Failed to load model:", error)
+      console.error("Failed to load model preview:", error)
     }
   }
 
@@ -660,8 +704,32 @@
     mouseDownPosition = { x: event.clientX, y: event.clientY }
     hasMouseMoved = false
 
-    // Don't process clicks if any modifier key is held
+    // Don't process clicks if any modifier key is held (except Shift for selection)
     if (isPanning || isRotatingCamera) return
+
+    // Check for Box Selection Start (Shift held + Not clicking a selected object)
+    if (event.shiftKey) {
+      // Check if we are clicking on a selected object (to allow vertical drag)
+      raycaster.setFromCamera(mouse, camera)
+      const selectedMeshes = selectedPlacedObjects.map(obj => obj.mesh)
+      const intersects = raycaster.intersectObjects(selectedMeshes, true)
+      
+      if (intersects.length === 0) {
+        // Not clicking a selected object -> Start Box Selection
+        const rect = renderer.domElement.getBoundingClientRect()
+        isBoxSelecting = true
+        boxSelectionStart = { 
+          x: event.clientX - rect.left, 
+          y: event.clientY - rect.top 
+        }
+        boxSelectionEnd = { 
+          x: event.clientX - rect.left, 
+          y: event.clientY - rect.top 
+        }
+        controls.enabled = false // Disable orbit controls
+        return
+      }
+    }
 
     // Check if clicking on selected object to start dragging
     if (selectedPlacedObjects.length > 0 && !isOptionKeyHeld && !isCommandKeyHeld) {
@@ -720,6 +788,51 @@
       saveHistory()
     }
 
+    if (isBoxSelecting) {
+      // Finalize box selection
+      const rect = renderer.domElement.getBoundingClientRect()
+      
+      // Calculate selection bounds
+      const minX = Math.min(boxSelectionStart.x, boxSelectionEnd.x)
+      const maxX = Math.max(boxSelectionStart.x, boxSelectionEnd.x)
+      const minY = Math.min(boxSelectionStart.y, boxSelectionEnd.y)
+      const maxY = Math.max(boxSelectionStart.y, boxSelectionEnd.y)
+
+      // Select objects within bounds
+      const newSelection: typeof selectedPlacedObjects = []
+      
+      placedObjects.forEach(obj => {
+        // Get object's world position
+        const worldPos = new THREE.Vector3()
+        obj.mesh.getWorldPosition(worldPos)
+        
+        // Project to screen space
+        const projected = worldPos.clone()
+        projected.project(camera)
+        
+        // Skip objects behind the camera
+        if (projected.z < -1 || projected.z > 1) return
+        
+        // Convert to screen coordinates (relative to container)
+        const screenX = (projected.x * 0.5 + 0.5) * rect.width
+        const screenY = (-(projected.y * 0.5) + 0.5) * rect.height
+        
+        // Check if position is inside selection box
+        if (screenX >= minX && screenX <= maxX && screenY >= minY && screenY <= maxY) {
+          newSelection.push(obj)
+        }
+      })
+
+      // Add to existing selection if Shift is held (which it is for box select)
+      // But since Shift is the trigger, maybe we should just add unique ones?
+      // Let's merge with existing selection
+      const uniqueSelection = new Set([...selectedPlacedObjects, ...newSelection])
+      selectedPlacedObjects = Array.from(uniqueSelection)
+
+      isBoxSelecting = false
+      controls.enabled = true
+    }
+
     // Show preview again after any drag operation (if not holding modifier keys)
     if (hasMouseMoved && previewMesh && selectedPlacedObjects.length === 0 && !isPanning && !isRotatingCamera) {
       previewMesh.visible = true
@@ -734,7 +847,9 @@
     if (isRotatingCamera) return // Don't place objects when rotating camera
     if (isOptionKeyHeld) return // Don't place objects while Option is held
     if (isCommandKeyHeld) return // Don't place objects while Command is held
+    if (isCommandKeyHeld) return // Don't place objects while Command is held
     if (hasMouseMoved) return // Don't place objects if mouse was dragged
+    if (event.shiftKey) return // Don't place objects if Shift is held (used for box selection)
 
     // Check if clicking on an existing object to select it
     raycaster.setFromCamera(mouse, camera)
@@ -770,7 +885,8 @@
       }
     } else {
       // Clicking empty space - deselect object
-      if (selectedPlacedObjects.length > 0) {
+      // Don't deselect if Shift is held (box selection mode) or if mouse was dragged
+      if (selectedPlacedObjects.length > 0 && !event.shiftKey) {
         selectedPlacedObjects = []
         // Preview will be shown by $effect
         return
@@ -974,6 +1090,9 @@
         newObject.position.copy(newPos)
         newObject.rotation.set(item.rotation.x, item.rotation.y, item.rotation.z)
         newObject.scale.set(item.scale.x, item.scale.y, item.scale.z)
+        
+        // Force matrix update to ensure bounding boxes are correct immediately
+        newObject.updateMatrixWorld(true)
 
         newObject.traverse((child) => {
           if (child instanceof THREE.Mesh) {
@@ -1058,6 +1177,7 @@
     const mapData: MapData = {
       id: currentMapId || `map_${now}`,
       name: name.trim(),
+      games: selectedGame,
       description: description.trim(),
       created: currentMapId ? savedMaps.find(m => m.id === currentMapId)?.created || now : now,
       modified: now,
@@ -1302,7 +1422,7 @@
     }
 
     // Apply preset counts if requested
-    if (usePreset) {
+    if (usePreset === true) {
       if (quickStartPreset === 'town') {
         autoGenTrees = 16
         autoGenBuildings = 16
@@ -1354,30 +1474,33 @@
     placedObjects = []
 
     // Categorize models
-    const trees = modelCatalog.filter(m =>
+    // Filter out models with "street" in the name
+    const validModels = modelCatalog.filter(m => !m.name.toLowerCase().includes('street'))
+
+    const trees = validModels.filter(m =>
       m.name.toLowerCase().includes('tree') ||
       m.name.toLowerCase().includes('pine') ||
       m.name.toLowerCase().includes('oak')
     )
-    const buildings = modelCatalog.filter(m =>
+    const buildings = validModels.filter(m =>
       m.name.toLowerCase().includes('building') ||
       m.name.toLowerCase().includes('house') ||
       m.name.toLowerCase().includes('tower')
     )
-    const vehicles = modelCatalog.filter(m =>
+    const vehicles = validModels.filter(m =>
       m.name.toLowerCase().includes('car') ||
       m.name.toLowerCase().includes('truck') ||
       m.name.toLowerCase().includes('vehicle')
     )
-    const animals = modelCatalog.filter(m =>
+    const animals = validModels.filter(m =>
       m.name.toLowerCase().includes('animal') ||
       m.name.toLowerCase().includes('dog') ||
       m.name.toLowerCase().includes('cat') ||
       m.name.toLowerCase().includes('bird')
     )
-    const city = modelCatalog.filter(m => m.category === 'City Scape')
-    const space = modelCatalog.filter(m => m.category === 'Space')
-    const other = modelCatalog.filter(m =>
+    const city = validModels.filter(m => m.category === 'City Scape')
+    const space = validModels.filter(m => m.category === 'Space')
+    const other = validModels.filter(m =>
       !trees.includes(m) && !buildings.includes(m) &&
       !vehicles.includes(m) && !animals.includes(m) &&
       !city.includes(m) && !space.includes(m)
@@ -1462,7 +1585,11 @@
     // Helper to try placing with retries
     const tryPlace = async (model: any, safeSize: number, scale: number, allowVertical = false) => {
       // Initial placement
-      const y = allowVertical ? (Math.random() * 50 + 10) : 0 // Random height between 10 and 60 if vertical allowed
+      let y = 0
+      if (allowVertical) {
+        // Distribute above and below ground (-50 to +50)
+        y = (Math.random() - 0.5) * 100
+      }
       const pos = new THREE.Vector3((Math.random() - 0.5) * safeSize, y, (Math.random() - 0.5) * safeSize)
       const wrapper = await placeModel(model, pos, scale)
       
@@ -1474,7 +1601,7 @@
       
       while (collided && retries > 0) {
         // Move to new random position
-        const newY = allowVertical ? (Math.random() * 50 + 10) : 0
+        const newY = allowVertical ? ((Math.random() - 0.5) * 100) : 0
         const newPos = new THREE.Vector3((Math.random() - 0.5) * safeSize, newY, (Math.random() - 0.5) * safeSize)
         wrapper.position.copy(newPos)
         wrapper.updateMatrixWorld(true) // Update transforms for box calculation
@@ -1498,7 +1625,7 @@
     // Place trees
     for (let i = 0; i < autoGenTrees && trees.length > 0; i++) {
       const model = trees[Math.floor(Math.random() * trees.length)]
-      await tryPlace(model, SAFE_SIZE, 2.0 + Math.random() * 2.0)
+      await tryPlace(model, SAFE_SIZE, 2.0 + Math.random() * 2.0, distributeVertically)
     }
 
     // Place buildings (larger, in a circle or scattered but within bounds)
@@ -1506,46 +1633,46 @@
       const model = buildings[Math.floor(Math.random() * buildings.length)]
       // Keep buildings slightly more central to avoid edge clipping
       const BUILDING_SAFE = 120
-      await tryPlace(model, BUILDING_SAFE, 3.0 + Math.random() * 2.0)
+      await tryPlace(model, BUILDING_SAFE, 3.0 + Math.random() * 2.0, distributeVertically)
     }
 
     // Place vehicles
     for (let i = 0; i < autoGenVehicles && vehicles.length > 0; i++) {
       const model = vehicles[Math.floor(Math.random() * vehicles.length)]
-      await tryPlace(model, SAFE_SIZE, 1.5 + Math.random())
+      await tryPlace(model, SAFE_SIZE, 1.5 + Math.random(), distributeVertically)
     }
 
     // Place animals
     for (let i = 0; i < autoGenAnimals && animals.length > 0; i++) {
       const model = animals[Math.floor(Math.random() * animals.length)]
-      await tryPlace(model, SAFE_SIZE, 1.0 + Math.random() * 0.5)
+      await tryPlace(model, SAFE_SIZE, 1.0 + Math.random() * 0.5, distributeVertically)
     }
 
     // Place City Scape objects
     for (let i = 0; i < autoGenCity && city.length > 0; i++) {
       const model = city[Math.floor(Math.random() * city.length)]
-      await tryPlace(model, SAFE_SIZE, 2.0 + Math.random() * 2.0)
+      await tryPlace(model, SAFE_SIZE, 2.0 + Math.random() * 2.0, distributeVertically)
     }
 
     // Place Space objects
     for (let i = 0; i < autoGenSpace && space.length > 0; i++) {
       const model = space[Math.floor(Math.random() * space.length)]
-      // Only allow vertical placement if explicitly in Space preset
-      const allowVertical = quickStartPreset === 'space'
-      await tryPlace(model, SAFE_SIZE, 2.0 + Math.random() * 2.0, allowVertical)
-    }
-
-    // Sprinkle 15-20 random other objects (unless in Space preset)
-    if (quickStartPreset !== 'space') {
-      const otherCount = 15 + Math.floor(Math.random() * 6)
-      for (let i = 0; i < otherCount && other.length > 0; i++) {
-        const model = other[Math.floor(Math.random() * other.length)]
-        await tryPlace(model, SAFE_SIZE, 0.8 + Math.random() * 1.5)
-      }
+      await tryPlace(model, SAFE_SIZE, 2.0 + Math.random() * 2.0, distributeVertically)
     }
 
     // Update placedObjects all at once
     placedObjects = newObjects
+
+    // Hide ground if distributing vertically (space mode)
+    if (distributeVertically) {
+      showGrid = false
+      if (gridHelper) gridHelper.visible = false
+      if (ground) ground.visible = false
+    } else {
+      showGrid = true
+      if (gridHelper) gridHelper.visible = true
+      if (ground) ground.visible = true
+    }
 
     // Reset camera to good overview position
     camera.position.set(50, 50, 50)
@@ -2395,15 +2522,19 @@
       if (renderer?.domElement) {
         renderer.domElement.style.cursor = 'grab'
       }
-      // Hide preview mesh while rotating
+          // Hide preview mesh while rotating
       if (previewMesh && selectedPlacedObjects.length === 0) {
         previewMesh.visible = false
       }
     }
-    // Track Shift key press - enables vertical movement
+    // Track Shift key press - enables box selection
     if (e.key === "Shift") {
-      // Don't prevent default as it might be needed for other things (like selection)
+      // Don't prevent default to allow standard shortcuts if needed, but here we use it for selection
       isShiftKeyHeld = true
+      // Hide preview mesh when Shift is held (for box selection)
+      if (previewMesh) {
+        previewMesh.visible = false
+      }
       controls.enablePan = false // Disable panning while moving vertically
     }
   }}
@@ -2473,6 +2604,10 @@
     // Reset Shift key state
     if (e.key === "Shift") {
       isShiftKeyHeld = false
+      // Show preview mesh again if we have one and aren't doing something else
+      if (previewMesh && selectedPlacedObjects.length === 0 && !isPanning && !isRotatingCamera) {
+        previewMesh.visible = true
+      }
       controls.enablePan = true
     }
   }}
@@ -2634,6 +2769,22 @@
             bind:value={currentMapName}
             placeholder="Map name..."
           />
+
+          <div class="text-sm font-semibold mb-1">Game Visibility:</div>
+          <div class="flex flex-col gap-1 mb-2">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="game-select" class="radio radio-xs" value="all" bind:group={selectedGame} />
+              <span class="text-xs">All Games</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="game-select" class="radio radio-xs" value="blocky shooter" bind:group={selectedGame} />
+              <span class="text-xs">Blocky Shooter</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="game-select" class="radio radio-xs" value="starship flyer" bind:group={selectedGame} />
+              <span class="text-xs">Starship Flyer</span>
+            </label>
+          </div>
           {#if currentMapId}
             <!-- Editing existing map -->
             <div class="flex gap-2 mb-2">
@@ -2718,9 +2869,33 @@
               <input type="number" bind:value={autoGenSpace} min="0" max="20" class="input input-xs input-bordered w-full" />
             </div>
           </div>
+          <div class="flex gap-2 mb-3">
+             <button
+              class="btn btn-xs btn-outline btn-error flex-1"
+              onclick={() => {
+                autoGenTrees = 0
+                autoGenBuildings = 0
+                autoGenVehicles = 0
+                autoGenAnimals = 0
+                autoGenCity = 0
+                autoGenSpace = 0
+              }}
+            >
+              🗑️ Clear All
+            </button>
+          </div>
+          <div class="form-control mb-3">
+            <label class="label cursor-pointer justify-start gap-2">
+              <span class="label-text text-xs font-semibold">Distribute Vertically:</span> 
+              <input type="radio" name="distribute" class="radio radio-xs" value={false} bind:group={distributeVertically} />
+              <span class="label-text text-xs">Off</span>
+              <input type="radio" name="distribute" class="radio radio-xs" value={true} bind:group={distributeVertically} />
+              <span class="label-text text-xs">On</span>
+            </label>
+          </div>
           <button
             class="btn btn-sm btn-accent w-full"
-            onclick={autoGenerateMap}
+            onclick={() => autoGenerateMap(false)}
           >
             🎲 Auto Generate Map
           </button>
@@ -2732,13 +2907,37 @@
         <!-- Saved Maps List -->
         <h3 class="text-lg font-bold mb-2" style="color: #660460;">Saved Maps ({savedMaps.length})</h3>
 
+        <!-- Map Filter Tabs -->
+        <div class="tabs tabs-boxed tabs-xs mb-4 bg-base-200">
+          <button 
+            class="tab {mapFilter === 'all' ? 'tab-active' : ''}" 
+            onclick={() => mapFilter = 'all'}
+          >All Games</button>
+          <button 
+            class="tab {mapFilter === 'blocky shooter' ? 'tab-active' : ''}" 
+            onclick={() => mapFilter = 'blocky shooter'}
+          >Blocky Shooter</button>
+          <button 
+            class="tab {mapFilter === 'starship flyer' ? 'tab-active' : ''}" 
+            onclick={() => mapFilter = 'starship flyer'}
+          >Starship Flyer</button>
+        </div>
+
         {#if savedMaps.length === 0}
           <div class="text-sm text-gray-500 text-center py-8">
             No saved maps yet.<br/>Create and save your first map!
           </div>
         {:else}
           <div class="space-y-2">
-            {#each [...savedMaps].sort((a, b) => b.modified - a.modified) as map}
+            {#each [...savedMaps]
+              .filter(map => {
+                if (mapFilter === 'all') return true
+                // If map has no games property, show it in all tabs (legacy support)
+                if (!map.games) return true 
+                const games = map.games.toLowerCase().split(',').map(g => g.trim())
+                return games.includes('all') || games.includes(mapFilter)
+              })
+              .sort((a, b) => b.modified - a.modified) as map}
               <div class="card bg-base-300 shadow-sm">
                 <div class="card-body p-3">
                   {#if map.thumbnail}
@@ -2891,10 +3090,22 @@
   <div class="flex-1 relative min-w-0">
     <div
       bind:this={container}
-      class="w-full h-full bg-black"
+      class="w-full h-full bg-black relative"
     >
+      <!-- Selection Box -->
+      {#if isBoxSelecting}
+        <div
+          class="absolute border-2 border-green-500 bg-green-500/20 pointer-events-none z-50"
+          style="
+            left: {Math.min(boxSelectionStart.x, boxSelectionEnd.x)}px;
+            top: {Math.min(boxSelectionStart.y, boxSelectionEnd.y)}px;
+            width: {Math.abs(boxSelectionEnd.x - boxSelectionStart.x)}px;
+            height: {Math.abs(boxSelectionEnd.y - boxSelectionStart.y)}px;
+          "
+        ></div>
+      {/if}
       <!-- Instructions overlay -->
-      {#if placedObjects.length === 0}
+      {#if placedObjects.length === 0 && !hideInstructions}
         <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
           <div class="flex flex-col gap-4 items-center">
             <!-- Auto Generate Quick Start -->
@@ -2928,6 +3139,16 @@
                   onclick={() => autoGenerateMap(true)}
                 >
                   🎲 Auto Generate World
+                </button>
+                <button 
+                  class="btn btn-xs btn-link text-[#660460] no-underline hover:underline mt-2"
+                  onclick={() => {
+                    // Hide the overlay and switch to models tab
+                    hideInstructions = true
+                    activeTab = 'models'
+                  }}
+                >
+                  ...Or Build Your Own Map!
                 </button>
               </div>
             </div>

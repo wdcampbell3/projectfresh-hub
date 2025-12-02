@@ -17,6 +17,7 @@
   interface MapData {
     id: string
     name: string
+    games?: string
     description: string
     created: number
     modified: number
@@ -550,7 +551,15 @@
     const stored = localStorage.getItem('worldBuilder_maps')
     if (stored) {
       try {
-        customMaps = JSON.parse(stored)
+        const allCustomMaps: MapData[] = JSON.parse(stored)
+        // Filter maps for this game
+        const filteredCustomMaps = allCustomMaps.filter(map => {
+          // Strict filtering: must have 'games' property and include 'blocky shooter' or 'all'
+          if (!map.games) return false
+          const games = map.games.toLowerCase().split(',').map(g => g.trim())
+          return games.includes('all') || games.includes('blocky shooter')
+        })
+        customMaps = filteredCustomMaps
       } catch (e) {
         console.error('Failed to load maps:', e)
         customMaps = []
@@ -598,7 +607,17 @@
       }
     }
     
-    builtInMaps = uniqueMaps
+    // Filter maps for this game
+    builtInMaps = uniqueMaps.filter(map => {
+      // Filter out the default map to avoid duplication
+      if (map.id === 'map_1763953751831') return false
+
+      // Strict filtering: must have 'games' property and include 'blocky shooter' or 'all'
+      if (!map.games) return false
+      const games = map.games.toLowerCase().split(',').map(g => g.trim())
+      return games.includes('all') || games.includes('blocky shooter')
+    })
+    
     updateAvailableMaps()
   }
 
