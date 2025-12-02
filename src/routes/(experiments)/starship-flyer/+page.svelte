@@ -348,7 +348,21 @@
         console.error('Failed to load static map:', file, e)
       }
     }
-    builtInMaps = maps
+    
+    // Deduplicate built-in maps by ID and Name
+    const uniqueMaps: MapData[] = []
+    const seenIds = new Set<string>()
+    const seenNames = new Set<string>()
+    
+    for (const map of maps) {
+      if (!seenIds.has(map.id) && !seenNames.has(map.name)) {
+        uniqueMaps.push(map)
+        seenIds.add(map.id)
+        seenNames.add(map.name)
+      }
+    }
+    
+    builtInMaps = uniqueMaps
     updateAvailableMaps()
   }
 
