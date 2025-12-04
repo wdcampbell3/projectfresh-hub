@@ -5,6 +5,7 @@
   import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
   import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js"
   import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
+  import { createRain, createSnow, animateWeather as animateWeatherShared } from '$lib/weatherSystem'
 
   let container: HTMLDivElement
   let scene: THREE.Scene
@@ -466,6 +467,11 @@
   }
   let enemies: Enemy[] = []
   let enemyBullets: Projectile[] = []
+
+  // Weather particle systems
+  let rainSystem: THREE.Points | null = null
+  let snowSystem: THREE.Points | null = null
+
 
   // Collidable objects (trees, boxes, etc.)
   let collidableObjects: THREE.Mesh[] = []
@@ -1213,6 +1219,16 @@
     if (environment.weather === 'snow') fogDensity = 120
 
     scene.fog = new THREE.Fog(gradient.fogColor, 20, fogDensity)
+
+    // Create weather particles based on environment
+    if (rainSystem) { scene.remove(rainSystem); rainSystem = null }
+    if (snowSystem) { scene.remove(snowSystem); snowSystem = null }
+    
+    if (environment.weather === 'rain') {
+      rainSystem = createRain(scene)
+    } else if (environment.weather === 'snow') {
+      snowSystem = createSnow(scene)
+    }
 
     // Update lighting
     const ambientLight = scene.children.find(child => child instanceof THREE.AmbientLight) as THREE.AmbientLight
@@ -2984,6 +3000,11 @@
       updateEnemies(delta)
       updateEnemyBullets(delta)
       updatePowerUps(delta)
+      
+      // Animate weather particles
+      if (rainSystem || snowSystem) {
+        animateWeatherShared(delta, rainSystem, snowSystem, camera.position)
+      }
     }
 
     renderer.render(scene, camera)

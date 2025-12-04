@@ -41,7 +41,7 @@ The project uses the following tables:
 - **`profiles`**: User profiles linked to Supabase Auth users (avatar, full name, company, website).
 - **`stripe_customers`**: Maps Supabase user IDs to Stripe customer IDs.
 
-## Key Experiments
+## Key Experiments & Games
 Located in `src/routes/(experiments)`:
 - **`world-builder`**: 3D world building tool.
 - **`fps-game`**: First-person shooter.

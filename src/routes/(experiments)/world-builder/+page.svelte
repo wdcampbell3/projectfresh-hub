@@ -6,6 +6,7 @@
   import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
   import Fuse from 'fuse.js'
   import modelCatalogData from "./modelCatalog.json"
+  import { createRain, createSnow, animateWeather as animateWeatherShared } from '$lib/weatherSystem'
 
   let container: HTMLDivElement
   let scene: THREE.Scene
@@ -86,6 +87,7 @@
       objectCount: number
       polygonCount: number
     }
+    planeVisible?: boolean
   }
 
   let savedMaps = $state<MapData[]>([])
@@ -108,7 +110,7 @@
   let autoGenSpace = $state(0)
   let quickStartPreset = $state('town')
   let distributeVertically = $state(false)
-  let mapFilter = $state('all')
+  let mapFilter = $state('all_levels')
   let hideInstructions = $state(false)
 
   // First-person mode (POV Mode)
@@ -289,6 +291,8 @@
     const groundMaterial = new THREE.MeshStandardMaterial({
       color: 0x2d5016,
       roughness: 0.8,
+      transparent: true,
+      opacity: 0.8
     })
     ground = new THREE.Mesh(groundGeometry, groundMaterial)
     ground.rotation.x = -Math.PI / 2
@@ -386,9 +390,33 @@
     const existingStars = scene.children.filter(c => c.name === 'starfield')
     existingStars.forEach(s => scene.remove(s))
 
+    // Helper to adjust color brightness
+    const adjustBrightness = (hex: string, factor: number) => {
+      const r = parseInt(hex.slice(1, 3), 16)
+      const g = parseInt(hex.slice(3, 5), 16)
+      const b = parseInt(hex.slice(5, 7), 16)
+      
+      const newR = Math.min(255, Math.max(0, Math.round(r * factor)))
+      const newG = Math.min(255, Math.max(0, Math.round(g * factor)))
+      const newB = Math.min(255, Math.max(0, Math.round(b * factor)))
+      
+      return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`
+    }
+
+    // Determine brightness multiplier based on time of day
+    let brightnessMultiplier = 1.0
+    if (weather !== 'clear') {
+      if (timeOfDay === 'dawn') brightnessMultiplier = 0.6
+      else if (timeOfDay === 'day') brightnessMultiplier = 1.0
+      else if (timeOfDay === 'sunset') brightnessMultiplier = 0.5
+      else if (timeOfDay === 'night') brightnessMultiplier = 0.2
+    }
+
     // Handle weather overrides for sky
     if (weather === 'fog') {
-      scene.background = new THREE.Color(0xffffff) // Flat white
+      const baseColor = '#ffffff'
+      const color = adjustBrightness(baseColor, brightnessMultiplier)
+      scene.background = new THREE.Color(color)
     } else if (weather === 'rain') {
       // Dark gray gradient for rain
       const canvas = document.createElement("canvas")
@@ -396,25 +424,30 @@
       canvas.height = 512
       const context = canvas.getContext("2d")!
       
+      const col1 = adjustBrightness('#1a1a1a', brightnessMultiplier)
+      const col2 = adjustBrightness('#4a4a4a', brightnessMultiplier)
+
       const canvasGradient = context.createLinearGradient(0, 0, 0, canvas.height)
-      canvasGradient.addColorStop(0, '#1a1a1a') // Dark gray
-      canvasGradient.addColorStop(1, '#4a4a4a') // Lighter gray
+      canvasGradient.addColorStop(0, col1) // Dark gray
+      canvasGradient.addColorStop(1, col2) // Lighter gray
       context.fillStyle = canvasGradient
       context.fillRect(0, 0, canvas.width, canvas.height)
       
       const texture = new THREE.CanvasTexture(canvas)
-
       scene.background = texture
     } else if (weather === 'snow') {
-      // Dark gray gradient for snow (same as rain)
+      // Dark gray gradient for snow (slightly lighter than rain)
       const canvas = document.createElement("canvas")
       canvas.width = 512
       canvas.height = 512
       const context = canvas.getContext("2d")!
       
+      const col1 = adjustBrightness('#2a2a2a', brightnessMultiplier)
+      const col2 = adjustBrightness('#5a5a5a', brightnessMultiplier)
+
       const canvasGradient = context.createLinearGradient(0, 0, 0, canvas.height)
-      canvasGradient.addColorStop(0, '#1a1a1a') // Dark gray
-      canvasGradient.addColorStop(1, '#4a4a4a') // Lighter gray
+      canvasGradient.addColorStop(0, col1) // Slightly lighter dark gray
+      canvasGradient.addColorStop(1, col2) // Slightly lighter gray
       context.fillStyle = canvasGradient
       context.fillRect(0, 0, canvas.width, canvas.height)
       
@@ -448,11 +481,11 @@
     
     if (weather === 'fog') {
       fogNear = 10
-      fogFar = 160 // Less dense fog (was 80)
+      fogFar = 215 // Less dense fog (was 160)
     } else if (weather === 'rain') {
-      fogFar = 100
+      fogFar = 200
     } else if (weather === 'snow') {
-      fogFar = 90
+      fogFar = 200
     } else if (weather === 'clear') {
       fogFar = 300 // See everything
       
@@ -464,16 +497,31 @@
 
     // Use white fog for 'fog' weather, otherwise use sky color
     // For rain and snow, use a lighter, whiter fog
-    let fogColor = gradient.fogColor
+    let fogColorHex = 0x000000
     if (weather === 'fog') {
-      fogColor = 0xffffff
+      fogColorHex = 0xffffff
     } else if (weather === 'rain') {
-      fogColor = 0xcccccc // Light grey/white for rain
+      fogColorHex = 0x888888 // Medium grey for rain
     } else if (weather === 'snow') {
-      fogColor = 0xeeffff // Very light blue/white for snow
+      fogColorHex = 0xaaaaaa // Light grey for snow
+    } else {
+      fogColorHex = gradient.fogColor
+    }
+
+    // Apply brightness multiplier to fog color if weather is active
+    if (weather !== 'clear') {
+      const r = (fogColorHex >> 16) & 255
+      const g = (fogColorHex >> 8) & 255
+      const b = fogColorHex & 255
+      
+      const newR = Math.min(255, Math.max(0, Math.round(r * brightnessMultiplier)))
+      const newG = Math.min(255, Math.max(0, Math.round(g * brightnessMultiplier)))
+      const newB = Math.min(255, Math.max(0, Math.round(b * brightnessMultiplier)))
+      
+      fogColorHex = (newR << 16) | (newG << 8) | newB
     }
     
-    scene.fog = new THREE.Fog(fogColor, fogNear, fogFar)
+    scene.fog = new THREE.Fog(fogColorHex, fogNear, fogFar)
 
     // Update weather particles
     updateWeatherParticles()
@@ -485,10 +533,30 @@
     if (ambientLight) {
       // Keep ambient light relatively neutral to allow sky color to set the mood, 
       // but ensure models are visible.
-      ambientLight.intensity = gradient.ambientIntensity
+      let intensity = gradient.ambientIntensity
+      
+      // Weather overrides for brightness
+      if (weather !== 'clear') {
+        if (timeOfDay === 'dawn') intensity = 0.5
+        else if (timeOfDay === 'day') intensity = 0.7
+        else if (timeOfDay === 'sunset') intensity = 0.4
+        else if (timeOfDay === 'night') intensity = 0.2
+      }
+      
+      ambientLight.intensity = intensity
     }
     if (directionalLight) {
-      directionalLight.intensity = gradient.directionalIntensity
+      let intensity = gradient.directionalIntensity
+      
+      // Weather overrides for brightness
+      if (weather !== 'clear') {
+        if (timeOfDay === 'dawn') intensity = 0.6
+        else if (timeOfDay === 'day') intensity = 0.8
+        else if (timeOfDay === 'sunset') intensity = 0.5
+        else if (timeOfDay === 'night') intensity = 0.3
+      }
+      
+      directionalLight.intensity = intensity
     }
   }
 
@@ -525,6 +593,18 @@
       if (previewMesh && selectedPlacedObjects.length === 0) {
         previewMesh.visible = false
       }
+    }
+
+    // Start box selection if Shift is held, we have a start position, and mouse moves
+    if (event.shiftKey && boxSelectionStart && !isBoxSelecting && !isDraggingObject) {
+      isBoxSelecting = true
+      controls.enabled = false
+      const rect = renderer.domElement.getBoundingClientRect()
+      boxSelectionEnd = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      }
+      return
     }
 
     // Show preview if it was hidden (e.g. newly selected model) and we are not dragging/box selecting
@@ -637,6 +717,9 @@
   async function selectModel(model: ModelInfo) {
     selectedModel = model
 
+    // Deselect any selected objects on the map
+    selectedPlacedObjects = []
+
     // Add to recent models
     const existingIndex = recentModels.findIndex(m => m.path === model.path)
     if (existingIndex > -1) {
@@ -715,19 +798,15 @@
       const intersects = raycaster.intersectObjects(selectedMeshes, true)
       
       if (intersects.length === 0) {
-        // Not clicking a selected object -> Start Box Selection
+        // Not clicking a selected object -> Prepare for box selection
+        // Don't start box selection yet - wait for mouse movement
+        // This allows Shift+click to add objects to selection
         const rect = renderer.domElement.getBoundingClientRect()
-        isBoxSelecting = true
         boxSelectionStart = { 
           x: event.clientX - rect.left, 
           y: event.clientY - rect.top 
         }
-        boxSelectionEnd = { 
-          x: event.clientX - rect.left, 
-          y: event.clientY - rect.top 
-        }
-        controls.enabled = false // Disable orbit controls
-        return
+        // Don't return early - let normal click handling continue
       }
     }
 
@@ -833,6 +912,11 @@
       controls.enabled = true
     }
 
+    // Clear box selection start position if it was never used
+    if (boxSelectionStart && !isBoxSelecting) {
+      boxSelectionStart = null
+    }
+
     // Show preview again after any drag operation (if not holding modifier keys)
     if (hasMouseMoved && previewMesh && selectedPlacedObjects.length === 0 && !isPanning && !isRotatingCamera) {
       previewMesh.visible = true
@@ -849,7 +933,6 @@
     if (isCommandKeyHeld) return // Don't place objects while Command is held
     if (isCommandKeyHeld) return // Don't place objects while Command is held
     if (hasMouseMoved) return // Don't place objects if mouse was dragged
-    if (event.shiftKey) return // Don't place objects if Shift is held (used for box selection)
 
     // Check if clicking on an existing object to select it
     raycaster.setFromCamera(mouse, camera)
@@ -892,6 +975,9 @@
         return
       }
     }
+
+    // Don't place objects if Shift is held (used for box selection)
+    if (event.shiftKey) return
 
     // Place new object if a model is selected
     if (!selectedModel || !previewMesh) return
@@ -1196,7 +1282,8 @@
       stats: {
         objectCount: placedObjects.length,
         polygonCount
-      }
+      },
+      planeVisible: showGrid
     }
 
     // Update or add map
@@ -1246,7 +1333,9 @@
       stats: {
         objectCount: placedObjects.length,
         polygonCount
-      }
+      },
+      planeVisible: showGrid,
+      games: selectedGame // Save current game visibility setting
     }
 
     savedMaps = [...savedMaps, mapData]
@@ -1274,6 +1363,24 @@
     timeOfDay = map.environment.timeOfDay
     weather = map.environment.weather
     updateEnvironment()
+
+    // Load plane visibility
+    if (map.planeVisible !== undefined) {
+      showGrid = map.planeVisible
+      if (gridHelper) gridHelper.visible = showGrid
+      if (ground) ground.visible = showGrid
+    }
+
+    // Load game selection
+    if (map.games) {
+      // If multiple games, just pick the first one that isn't 'all' if possible, or default to 'all'
+      const games = map.games.toLowerCase().split(',').map(g => g.trim())
+      if (games.includes('starship flyer')) selectedGame = 'starship flyer'
+      else if (games.includes('blocky shooter')) selectedGame = 'blocky shooter'
+      else selectedGame = 'all'
+    } else {
+      selectedGame = 'all'
+    }
 
     // Load objects
     const loader = new GLTFLoader()
@@ -1314,7 +1421,7 @@
     currentMapId = map.id
     currentMapName = map.name
     updatePolygonCount()
-    activeTab = 'models'
+    // activeTab = 'models' // Stay on maps tab
 
     alert(`Map "${map.name}" loaded! (${placedObjects.length} objects)`)
   }
@@ -1702,55 +1809,7 @@
     polygonCount = Math.round(count)
   }
 
-  function createRain() {
-    const particleCount = 20000 // Increased count
-    const geometry = new THREE.BufferGeometry()
-    const positions = []
-    
-    for (let i = 0; i < particleCount; i++) {
-      const x = Math.random() * 400 - 200
-      const y = Math.random() * 200
-      const z = Math.random() * 400 - 200
-      positions.push(x, y, z)
-    }
-    
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-    
-    const material = new THREE.PointsMaterial({
-      color: 0xdddddd, // Lighter rain
-      size: 0.3, // Slightly larger
-      transparent: true,
-      opacity: 0.8 // More visible
-    })
-    
-    rainSystem = new THREE.Points(geometry, material)
-    scene.add(rainSystem)
-  }
-
-  function createSnow() {
-    const particleCount = 20000 // Increased count
-    const geometry = new THREE.BufferGeometry()
-    const positions = []
-    
-    for (let i = 0; i < particleCount; i++) {
-      const x = Math.random() * 400 - 200
-      const y = Math.random() * 200
-      const z = Math.random() * 400 - 200
-      positions.push(x, y, z)
-    }
-    
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-    
-    const material = new THREE.PointsMaterial({
-      color: 0xffffff, // Pure white
-      size: 0.5,
-      transparent: true,
-      opacity: 0.9 // More visible
-    })
-    
-    snowSystem = new THREE.Points(geometry, material)
-    scene.add(snowSystem)
-  }
+  // Weather creation functions now use shared module
 
   function updateWeatherParticles() {
     // Remove existing systems
@@ -1763,39 +1822,18 @@
       snowSystem = null
     }
 
-    // Create new system based on weather
+    // Create new system based on weather using shared module
     if (weather === 'rain') {
-      createRain()
+      rainSystem = createRain(scene)
     } else if (weather === 'snow') {
-      createSnow()
+      snowSystem = createSnow(scene)
     }
   }
 
   function animateWeather(delta: number) {
-    if (rainSystem) {
-      const positions = rainSystem.geometry.attributes.position.array as Float32Array
-      for (let i = 1; i < positions.length; i += 3) {
-        positions[i] -= 50 * delta // Rain falls fast
-        if (positions[i] < 0) {
-          positions[i] += 200 // Wrap around to preserve relative spacing
-        }
-      }
-      rainSystem.geometry.attributes.position.needsUpdate = true
-    }
-
-    if (snowSystem) {
-      const positions = snowSystem.geometry.attributes.position.array as Float32Array
-      for (let i = 0; i < positions.length; i += 3) {
-        positions[i+1] -= 5 * delta // Snow falls slower (was 10)
-        // Add some horizontal drift
-        positions[i] += Math.sin(Date.now() * 0.001 + positions[i+1]) * 0.1
-        
-        if (positions[i+1] < 0) {
-          positions[i+1] = 200
-        }
-      }
-      snowSystem.geometry.attributes.position.needsUpdate = true
-    }
+    // Use shared weather animation function
+    const center = new THREE.Vector3(0, 0, 0) // World Builder uses fixed center
+    animateWeatherShared(delta, rainSystem, snowSystem, center)
   }
 
   const clock = new THREE.Clock()
@@ -2283,7 +2321,7 @@
 
     // Generate thumbnails
     const thumbScene = new THREE.Scene()
-    thumbScene.background = new THREE.Color(0x2a2a3e)
+    thumbScene.background = new THREE.Color(0xe0e0e0) // Lighter background
 
     const thumbCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000)
     const thumbRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
@@ -2896,6 +2934,7 @@
           <button
             class="btn btn-sm btn-accent w-full"
             onclick={() => autoGenerateMap(false)}
+            style="background-color: #660460; color: white; border: none;"
           >
             🎲 Auto Generate Map
           </button>
@@ -2905,10 +2944,22 @@
         </div>
 
         <!-- Saved Maps List -->
-        <h3 class="text-lg font-bold mb-2" style="color: #660460;">Saved Maps ({savedMaps.length})</h3>
+        <h3 class="text-lg font-bold mb-2" style="color: #660460;">
+          Saved Maps ({savedMaps.filter(map => {
+            if (mapFilter === 'all_levels') return true
+            if (mapFilter === 'all') return map.games && map.games.toLowerCase().includes('all')
+            if (!map.games) return false 
+            const games = map.games.toLowerCase().split(',').map(g => g.trim())
+            return games.includes('all') || games.includes(mapFilter)
+          }).length})
+        </h3>
 
         <!-- Map Filter Tabs -->
         <div class="tabs tabs-boxed tabs-xs mb-4 bg-base-200">
+          <button 
+            class="tab {mapFilter === 'all_levels' ? 'tab-active' : ''}" 
+            onclick={() => mapFilter = 'all_levels'}
+          >All Levels</button>
           <button 
             class="tab {mapFilter === 'all' ? 'tab-active' : ''}" 
             onclick={() => mapFilter = 'all'}
@@ -2931,9 +2982,10 @@
           <div class="space-y-2">
             {#each [...savedMaps]
               .filter(map => {
-                if (mapFilter === 'all') return true
-                // If map has no games property, show it in all tabs (legacy support)
-                if (!map.games) return true 
+                if (mapFilter === 'all_levels') return true
+                if (mapFilter === 'all') return map.games && map.games.toLowerCase().includes('all')
+                // Strict filtering: if map has no games property, only show in All Levels
+                if (!map.games) return false 
                 const games = map.games.toLowerCase().split(',').map(g => g.trim())
                 return games.includes('all') || games.includes(mapFilter)
               })
@@ -3137,6 +3189,7 @@
                 <button 
                   class="btn btn-sm btn-accent w-full"
                   onclick={() => autoGenerateMap(true)}
+                  style="background-color: #660460; color: white; border: none;"
                 >
                   🎲 Auto Generate World
                 </button>
@@ -3196,13 +3249,6 @@
 
       <div class="bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow-lg flex flex-nowrap gap-2 items-center whitespace-nowrap">
       <button
-        class="btn btn-sm {!selectedModel ? 'btn-accent' : 'btn-ghost'}"
-        onclick={clearSelection}
-        title="Select Mode (clear current model)"
-      >
-        ↖️
-      </button>
-      <button
         class="btn btn-sm btn-ghost"
         onclick={() => activeTab = 'maps'}
         title="Save Map"
@@ -3235,13 +3281,11 @@
         class="btn btn-sm {isFirstPersonMode ? 'btn-error' : 'btn-accent'}"
         onclick={isFirstPersonMode ? exitFirstPersonMode : enterPOVMode}
         title={isFirstPersonMode ? 'Exit POV mode and return to build mode (ESC)' : 'Enter first-person POV mode - drop from the sky and explore your world!'}
+        style={!isFirstPersonMode ? "background-color: #660460; color: white; border: none;" : ""}
       >
         {isFirstPersonMode ? '🚪 Build Mode' : '👁️ POV Mode'}
       </button>
       <div class="divider divider-horizontal m-0"></div>
-      <button class="btn btn-sm btn-info text-lg font-bold" onclick={scaleDown}>−</button>
-      <button class="btn btn-sm btn-ghost" onclick={resetScale}>1:1</button>
-      <button class="btn btn-sm btn-info text-lg font-bold" onclick={scaleUp}>+</button>
       <div class="divider divider-horizontal m-0"></div>
       <div class="badge badge-info">{placedObjects.length} objects</div>
       <div class="badge badge-primary">{polygonCount.toLocaleString()} polys</div>

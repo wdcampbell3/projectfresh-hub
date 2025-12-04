@@ -3,6 +3,7 @@
   import * as THREE from "three"
   import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
   import { hideSidebar } from "$lib/stores/gameState"
+  import { createRain, createSnow, animateWeather as animateWeatherShared } from '$lib/weatherSystem'
 
   // Hide sidebar when actively playing, show on menu screens
   $: hideSidebar.set(hasStartedGame && !showMapSelector)
@@ -223,9 +224,22 @@
     // Game Sounds
     playLaser() { this.playTone(880, 'square', 0.1, 0.5, 220) }
     playMissile() { this.playNoise(0.5, 0.5); this.playTone(200, 'sawtooth', 0.5, 0.3, 50) }
-    playPlasma() { this.playTone(1200, 'sine', 0.2, 0.6, 600) }
-    playChain() { this.playTone(2000, 'sawtooth', 0.1, 0.4, 4000); setTimeout(() => this.playTone(4000, 'sawtooth', 0.1, 0.3, 2000), 50) }
-    playDrone() { this.playTone(600, 'triangle', 0.3, 0.4, 800) }
+    // Plasma: Lower, more powerful shooting sound
+    playPlasma() { 
+      this.playTone(150, 'sawtooth', 0.3, 0.7, 50)
+      this.playNoise(0.2, 0.4)
+    }
+    // Chain: Lightning "zing" - fast high-pitch sweep
+    playChain() { 
+      this.playTone(800, 'sawtooth', 0.15, 0.4, 2000) 
+      setTimeout(() => this.playTone(2000, 'square', 0.1, 0.2, 500), 50) 
+    }
+    // Drone: 3 super quick mini buzzes
+    playDrone() { 
+      for(let i=0; i<3; i++) {
+        setTimeout(() => this.playTone(600, 'sawtooth', 0.05, 0.3, 400), i * 80)
+      }
+    }
     playScatter() { for(let i=0; i<3; i++) setTimeout(() => this.playTone(400 + Math.random()*200, 'square', 0.1, 0.3, 100), i*20) }
     
     playExplosion(size = 1) { 
@@ -239,8 +253,30 @@
     }
     
     playBoost() { 
-      this.playTone(200, 'sawtooth', 1.0, 0.6, 800)
-      this.playNoise(1.0, 0.4)
+      // Boost: "Wooosh" instead of "boing"
+      // Filtered noise ramp up
+      if (!this.enabled || !this.ctx || !this.masterGain) return
+      const duration = 1.5
+      const bufferSize = this.ctx.sampleRate * duration
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate)
+      const data = buffer.getChannelData(0)
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1
+      
+      const noise = this.ctx.createBufferSource()
+      noise.buffer = buffer
+      const filter = this.ctx.createBiquadFilter()
+      filter.type = 'lowpass'
+      filter.frequency.setValueAtTime(200, this.ctx.currentTime)
+      filter.frequency.exponentialRampToValueAtTime(3000, this.ctx.currentTime + duration)
+      
+      const gain = this.ctx.createGain()
+      gain.gain.setValueAtTime(0.5, this.ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration)
+      
+      noise.connect(filter)
+      filter.connect(gain)
+      gain.connect(this.masterGain)
+      noise.start()
     }
     
     playHit() {
@@ -277,6 +313,12 @@
   let bossEnemy: Enemy | null = null
   let bossHealth = 0
   let bossMaxHealth = 0
+
+  // Environment State
+  let timeOfDay: 'dawn' | 'day' | 'sunset' | 'night' = 'night'
+  let weather: 'clear' | 'rain' | 'snow' | 'fog' = 'clear'
+  let rainSystem: THREE.Points | null = null
+  let snowSystem: THREE.Points | null = null
 
   // Player ship
   let playerShip: THREE.Group | null = null
@@ -685,6 +727,7 @@
       starGeometry,
       new THREE.PointsMaterial({ color: 0xe8f3ff, size: 0.9, transparent: true, opacity: 0.9 })
     )
+    primaryStars.name = 'starfield'
     scene.add(primaryStars)
 
     // Soft tinted layer for depth and extra sparkle
@@ -693,6 +736,7 @@
       new THREE.PointsMaterial({ color: 0x9fc7ff, size: 0.6, transparent: true, opacity: 0.6 })
     )
     secondaryStars.scale.setScalar(1.2)
+    secondaryStars.name = 'starfield'
     scene.add(secondaryStars)
   }
 
@@ -700,6 +744,9 @@
     scene = new THREE.Scene()
     scene.background = new THREE.Color(0x0a1326)
 
+    scene = new THREE.Scene()
+    // Default to night/space if no map loaded yet
+    scene.background = new THREE.Color(0x0a1326)
     createStarfield();
 
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 2000)
@@ -880,6 +927,104 @@
   }
 
   // Generate scenery for the level (same as FPS game - simplified version of World Builder auto-generate)
+  async function generateInfiniteLevel(): Promise<MapData> {
+    const newMap: MapData = {
+      id: `infinite-${level}`,
+      name: `Sector ${level}`,
+      environment: {
+        skyColor: 0x000000,
+        fogColor: 0x000000,
+        fogDensity: 0,
+        timeOfDay: 'night'
+      },
+      objects: [],
+      stats: { objectCount: 0, polygonCount: 0 },
+      thumbnail: ''
+    }
+
+    if (modelCatalog.length === 0) return newMap
+
+    // Helper to get random item from array
+    const pick = <T>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)]
+    
+    // Filter models
+    const planets = modelCatalog.filter(m => m.category === 'Space' && (m.name.includes('Planet') || m.name.includes('Moon')))
+    const platforms = modelCatalog.filter(m => m.name.includes('Cyberpunk Platform'))
+    const rocks = modelCatalog.filter(m => m.name.includes('Rock') || m.name.includes('Asteroid'))
+    const misc = modelCatalog.filter(m => m.category === 'Space' && !m.name.includes('Planet') && !m.name.includes('Platform'))
+
+    // Generate ~5 Planets
+    for (let i = 0; i < 5; i++) {
+      if (planets.length === 0) break
+      const model = pick(planets)
+      newMap.objects.push({
+        id: crypto.randomUUID(),
+        modelPath: model.path,
+        position: { 
+          x: (Math.random() - 0.5) * 4000, 
+          y: (Math.random() - 0.5) * 4000, 
+          z: (Math.random() - 0.5) * 4000 
+        },
+        rotation: { x: Math.random() * Math.PI, y: Math.random() * Math.PI, z: Math.random() * Math.PI },
+        scale: { x: 50 + Math.random() * 100, y: 50 + Math.random() * 100, z: 50 + Math.random() * 100 }
+      })
+    }
+
+    // Generate ~5 Cyberpunk Platforms
+    for (let i = 0; i < 5; i++) {
+      if (platforms.length === 0) break
+      const model = pick(platforms)
+      newMap.objects.push({
+        id: crypto.randomUUID(),
+        modelPath: model.path,
+        position: { 
+          x: (Math.random() - 0.5) * 2000, 
+          y: (Math.random() - 0.5) * 2000, 
+          z: (Math.random() - 0.5) * 2000 
+        },
+        rotation: { x: 0, y: Math.random() * Math.PI * 2, z: 0 },
+        scale: { x: 5 + Math.random() * 10, y: 5 + Math.random() * 10, z: 5 + Math.random() * 10 }
+      })
+    }
+
+    // Generate ~10 Rocks
+    for (let i = 0; i < 10; i++) {
+      if (rocks.length === 0) break
+      const model = pick(rocks)
+      newMap.objects.push({
+        id: crypto.randomUUID(),
+        modelPath: model.path,
+        position: { 
+          x: (Math.random() - 0.5) * 1000, 
+          y: (Math.random() - 0.5) * 1000, 
+          z: (Math.random() - 0.5) * 1000 
+        },
+        rotation: { x: Math.random() * Math.PI, y: Math.random() * Math.PI, z: Math.random() * Math.PI },
+        scale: { x: 2 + Math.random() * 8, y: 2 + Math.random() * 8, z: 2 + Math.random() * 8 }
+      })
+    }
+
+    // Generate ~20 Misc models
+    for (let i = 0; i < 20; i++) {
+      if (misc.length === 0) break
+      const model = pick(misc)
+      newMap.objects.push({
+        id: crypto.randomUUID(),
+        modelPath: model.path,
+        position: { 
+          x: (Math.random() - 0.5) * 1500, 
+          y: (Math.random() - 0.5) * 1500, 
+          z: (Math.random() - 0.5) * 1500 
+        },
+        rotation: { x: Math.random() * Math.PI, y: Math.random() * Math.PI, z: Math.random() * Math.PI },
+        scale: { x: 1 + Math.random() * 5, y: 1 + Math.random() * 5, z: 1 + Math.random() * 5 }
+      })
+    }
+
+    newMap.stats.objectCount = newMap.objects.length
+    return newMap
+  }
+
   async function generateLevelScenery() {
     if (modelCatalog.length === 0) return
 
@@ -1991,24 +2136,37 @@
   // Visual effect for chain lightning
   function createLightningArc(from: THREE.Vector3, to: THREE.Vector3) {
     const points: THREE.Vector3[] = []
-    const segments = 8
+    const segments = 12 // More segments for smoother look
+    const mainColor = 0x00ffff
+    const coreColor = 0xffffff
+
+    // Create main bolt
     for (let i = 0; i <= segments; i++) {
       const t = i / segments
       const point = from.clone().lerp(to, t)
       // Add random offset for zigzag effect (except endpoints)
       if (i > 0 && i < segments) {
-        point.x += (Math.random() - 0.5) * 1.5
-        point.y += (Math.random() - 0.5) * 1.5
-        point.z += (Math.random() - 0.5) * 1.5
+        point.x += (Math.random() - 0.5) * 2.5
+        point.y += (Math.random() - 0.5) * 2.5
+        point.z += (Math.random() - 0.5) * 2.5
       }
       points.push(point)
     }
     const geometry = new THREE.BufferGeometry().setFromPoints(points)
-    const material = new THREE.LineBasicMaterial({ color: 0x00aaff, transparent: true, opacity: 1 })
+    const material = new THREE.LineBasicMaterial({ color: mainColor, linewidth: 3 })
     const line = new THREE.Line(geometry, material)
     scene.add(line)
+
+    // Create inner core (brighter, thinner)
+    const coreMat = new THREE.LineBasicMaterial({ color: coreColor, linewidth: 1, opacity: 0.8, transparent: true })
+    const coreLine = new THREE.Line(geometry.clone(), coreMat)
+    scene.add(coreLine)
+
     // Remove after short time
-    setTimeout(() => { scene.remove(line); geometry.dispose(); material.dispose() }, 150)
+    setTimeout(() => { 
+      scene.remove(line); geometry.dispose(); material.dispose() 
+      scene.remove(coreLine); coreMat.dispose()
+    }, 150)
   }
 
   function updateParticles(delta: number) {
@@ -2141,8 +2299,8 @@
     if (availableMaps.length > 0 && nextMapIndex < availableMaps.length) {
       mapData = availableMaps[nextMapIndex]
     } else {
-      // No more saved maps, will use default/procedural
-      mapData = await getDefaultMapData()
+      // No more saved maps, use procedural generation
+      mapData = await generateInfiniteLevel()
     }
 
     // Identify required models for the new level
@@ -2167,9 +2325,11 @@
       if (availableMaps.length > 0 && nextMapIndex < availableMaps.length) {
          await loadMap(mapData)
       } else {
-         await createDefaultMap(mapData)
+         // Use our new infinite generator if we are past the defined maps
+         await loadMap(mapData)
       }
     } else {
+      // Should not happen with new logic, but fallback
       await createDefaultMap()
     }
 
@@ -2289,6 +2449,18 @@
       await createDefaultMap()
     }
 
+    // Apply environment settings from map
+    if (mapData && mapData.environment) {
+      timeOfDay = mapData.environment.timeOfDay
+      weather = mapData.environment.weather
+      updateEnvironment()
+    } else {
+      // Default for fallback map
+      timeOfDay = 'night'
+      weather = 'clear'
+      updateEnvironment()
+    }
+
     // Find safe spawn position - Force specific start position: 1 grid away (Z=100), high up (Y=100), looking at center
     const spawnPos = new THREE.Vector3(0, 100, 100)
 
@@ -2302,6 +2474,10 @@
     // Short delay for loading screen to ensure smooth transition
     await new Promise(r => setTimeout(r, 500))
 
+    // Hide loading screen BEFORE starting gameplay
+    isSpawning = false
+    
+    // Now start the game
     isPlaying = true
     spawnWave()
     
@@ -2310,8 +2486,6 @@
 
     // Power-ups only drop from enemies
     renderer.domElement.requestPointerLock()
-    
-    isSpawning = false // Hide loading screen last
   }
 
   async function loadPlayerShipAtPosition(position: THREE.Vector3) {
@@ -2372,9 +2546,245 @@
     const delta = Math.min(clock.getDelta(), 0.1)
     if (isPlaying) {
       updatePlayer(delta); updateEnemies(delta); updateProjectiles(delta); updateParticles(delta); updatePowerUps(delta)
+      animateWeather(delta)
       if (enemies.length === 0 && !isLoadingLevel && !showLevelComplete) { if (score >= nextLevelScore) levelUp(); else spawnWave() }
     }
     renderer?.render(scene, camera)
+  }
+
+  function updateEnvironment() {
+    console.log('updateEnvironment called', { timeOfDay, weather })
+    if (!scene) {
+      console.log('Scene not ready')
+      return
+    }
+
+    try {
+      // Sky gradients for different times of day
+      const skyGradients = {
+        dawn: {
+          colors: ['#001f3f', '#0074D9', '#FFDC00', '#FFD700'], // Deep blue to yellow/gold
+          fogColor: 0xFFDC00,
+          ambientIntensity: 0.6,
+          directionalIntensity: 0.8
+        },
+        day: {
+          colors: ['#39CCCC', '#7FDBFF', '#0074D9', '#001f3f'], // Inversed: Light/Medium to Deep blues
+          fogColor: 0xB0E0E6,
+          ambientIntensity: 0.8,
+          directionalIntensity: 1.0
+        },
+        sunset: {
+          colors: ['#2c0b4a', '#85144b', '#FF4136', '#FFDC00'], // Purple/Red to Orange/Yellow
+          fogColor: 0xFF851B,
+          ambientIntensity: 0.6,
+          directionalIntensity: 0.8
+        },
+        night: {
+          colors: ['#151515', '#151515', '#151515', '#151515'], // Dark gray for better visibility
+          fogColor: 0x151515,
+          ambientIntensity: 0.9, // Even brighter for building visibility
+          directionalIntensity: 1.0
+        }
+      }
+
+      const gradient = skyGradients[timeOfDay]
+      if (!gradient) {
+        console.error('Invalid timeOfDay:', timeOfDay)
+        return
+      }
+
+      // Create sky gradient or starscape
+      // Remove existing background texture if any
+      scene.background = null
+      
+      // Clear any existing stars
+      const existingStars = scene.children.filter(c => c.name === 'starfield')
+      existingStars.forEach(s => scene.remove(s))
+
+      // Helper to adjust color brightness
+      const adjustBrightness = (hex: string, factor: number) => {
+        const r = parseInt(hex.slice(1, 3), 16)
+        const g = parseInt(hex.slice(3, 5), 16)
+        const b = parseInt(hex.slice(5, 7), 16)
+        
+        const newR = Math.min(255, Math.max(0, Math.round(r * factor)))
+        const newG = Math.min(255, Math.max(0, Math.round(g * factor)))
+        const newB = Math.min(255, Math.max(0, Math.round(b * factor)))
+        
+        return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`
+      }
+
+      // Determine brightness multiplier based on time of day
+      let brightnessMultiplier = 1.0
+      if (weather !== 'clear') {
+        if (timeOfDay === 'dawn') brightnessMultiplier = 0.6
+        else if (timeOfDay === 'day') brightnessMultiplier = 1.0
+        else if (timeOfDay === 'sunset') brightnessMultiplier = 0.5
+        else if (timeOfDay === 'night') brightnessMultiplier = 0.2
+      }
+
+      // Handle weather overrides for sky
+      if (weather === 'fog') {
+        const baseColor = '#ffffff'
+        const color = adjustBrightness(baseColor, brightnessMultiplier)
+        scene.background = new THREE.Color(color)
+      } else if (weather === 'rain') {
+        // Dark gray gradient for rain
+        const canvas = document.createElement("canvas")
+        canvas.width = 512
+        canvas.height = 512
+        const context = canvas.getContext("2d")!
+        
+        const col1 = adjustBrightness('#1a1a1a', brightnessMultiplier)
+        const col2 = adjustBrightness('#4a4a4a', brightnessMultiplier)
+
+        const canvasGradient = context.createLinearGradient(0, 0, 0, canvas.height)
+        canvasGradient.addColorStop(0, col1) // Dark gray
+        canvasGradient.addColorStop(1, col2) // Lighter gray
+        context.fillStyle = canvasGradient
+        context.fillRect(0, 0, canvas.width, canvas.height)
+        
+        const texture = new THREE.CanvasTexture(canvas)
+        scene.background = texture
+      } else if (weather === 'snow') {
+        // Dark gray gradient for snow (slightly lighter than rain)
+        const canvas = document.createElement("canvas")
+        canvas.width = 512
+        canvas.height = 512
+        const context = canvas.getContext("2d")!
+        
+        const col1 = adjustBrightness('#2a2a2a', brightnessMultiplier)
+        const col2 = adjustBrightness('#5a5a5a', brightnessMultiplier)
+
+        const canvasGradient = context.createLinearGradient(0, 0, 0, canvas.height)
+        canvasGradient.addColorStop(0, col1) // Slightly lighter dark gray
+        canvasGradient.addColorStop(1, col2) // Slightly lighter gray
+        context.fillStyle = canvasGradient
+        context.fillRect(0, 0, canvas.width, canvas.height)
+        
+        const texture = new THREE.CanvasTexture(canvas)
+        scene.background = texture
+      } else if (timeOfDay === 'night') {
+        scene.background = new THREE.Color(0x151515) // Dark gray
+        console.log('Creating starfield...')
+        createStarfield()
+        console.log('Starfield created.')
+      } else {
+        const canvas = document.createElement("canvas")
+        canvas.width = 512
+        canvas.height = 512
+        const context = canvas.getContext("2d")!
+        
+        const canvasGradient = context.createLinearGradient(0, 0, 0, canvas.height)
+        canvasGradient.addColorStop(0, gradient.colors[0])
+        canvasGradient.addColorStop(0.4, gradient.colors[1])
+        canvasGradient.addColorStop(0.7, gradient.colors[2])
+        canvasGradient.addColorStop(1, gradient.colors[3])
+        context.fillStyle = canvasGradient
+        context.fillRect(0, 0, canvas.width, canvas.height)
+        
+        const texture = new THREE.CanvasTexture(canvas)
+        scene.background = texture
+      }
+
+      // Update fog based on weather
+      // Fog should be dense enough to limit visibility to half the grid (approx 100 units)
+      let fogNear = 20
+      let fogFar = 120 // Half grid size (200/2) + buffer
+      
+      if (weather === 'fog') {
+        fogNear = 10
+        fogFar = 215 // Less dense fog (was 160)
+      } else if (weather === 'rain') {
+        fogFar = 200
+      } else if (weather === 'snow') {
+        fogFar = 200
+      } else if (weather === 'clear') {
+        fogFar = 300 // See everything
+        
+        // Night mode should have very distant fog to avoid darkening objects too much
+        if (timeOfDay === 'night') {
+          fogFar = 800
+        }
+      }
+
+      // Use white fog for 'fog' weather, otherwise use sky color
+      // For rain and snow, use a lighter, whiter fog
+      let fogColorHex = 0x000000
+      if (weather === 'fog') {
+        fogColorHex = 0xffffff
+      } else if (weather === 'rain') {
+        fogColorHex = 0x888888 // Medium grey for rain
+      } else if (weather === 'snow') {
+        fogColorHex = 0xaaaaaa // Light grey for snow
+      } else {
+        fogColorHex = gradient.fogColor
+      }
+
+      // Apply brightness multiplier to fog color if weather is active
+      if (weather !== 'clear') {
+        const r = (fogColorHex >> 16) & 255
+        const g = (fogColorHex >> 8) & 255
+        const b = fogColorHex & 255
+        
+        const newR = Math.min(255, Math.max(0, Math.round(r * brightnessMultiplier)))
+        const newG = Math.min(255, Math.max(0, Math.round(g * brightnessMultiplier)))
+        const newB = Math.min(255, Math.max(0, Math.round(b * brightnessMultiplier)))
+        
+        fogColorHex = (newR << 16) | (newG << 8) | newB
+      }
+      
+      scene.fog = new THREE.Fog(fogColorHex, fogNear, fogFar)
+
+      // Update weather particles
+      updateWeatherParticles()
+
+      // Update lighting
+      const ambientLight = scene.children.find(c => c instanceof THREE.AmbientLight) as THREE.AmbientLight
+      const directionalLight = scene.children.find(c => c instanceof THREE.DirectionalLight) as THREE.DirectionalLight
+
+      if (ambientLight) {
+        let intensity = gradient.ambientIntensity
+        // Weather overrides for brightness
+        if (weather !== 'clear') {
+          if (timeOfDay === 'dawn') intensity = 0.5
+          else if (timeOfDay === 'day') intensity = 0.7
+          else if (timeOfDay === 'sunset') intensity = 0.4
+          else if (timeOfDay === 'night') intensity = 0.2
+        }
+        ambientLight.intensity = intensity
+      }
+      if (directionalLight) {
+        let intensity = gradient.directionalIntensity
+        // Weather overrides for brightness
+        if (weather !== 'clear') {
+          if (timeOfDay === 'dawn') intensity = 0.6
+          else if (timeOfDay === 'day') intensity = 0.8
+          else if (timeOfDay === 'sunset') intensity = 0.5
+          else if (timeOfDay === 'night') intensity = 0.3
+        }
+        directionalLight.intensity = intensity
+      }
+    } catch (e) {
+      console.error('Error in updateEnvironment:', e)
+    }
+  }
+
+  // Weather creation functions now use shared module
+
+  function updateWeatherParticles() {
+    if (rainSystem) { scene.remove(rainSystem); rainSystem = null }
+    if (snowSystem) { scene.remove(snowSystem); snowSystem = null }
+
+    if (weather === 'rain') rainSystem = createRain(scene)
+    else if (weather === 'snow') snowSystem = createSnow(scene)
+  }
+
+  function animateWeather(delta: number) {
+    // Use shared weather animation function
+    const center = playerShip ? playerShip.position : new THREE.Vector3(0, 0, 0)
+    animateWeatherShared(delta, rainSystem, snowSystem, center)
   }
 </script>
 
@@ -2724,7 +3134,7 @@
   {#if showLevelComplete}
     <div class="absolute inset-0 z-20 flex items-center justify-center bg-black/70">
       <div class="text-center text-white animate-bounce">
-        <div class="text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500">LEVEL {level}</div>
+        <div class="text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500">LEVEL {level - 1}</div>
         <div class="text-6xl font-bold text-green-400 mt-4">COMPLETE!</div>
         <div class="text-3xl mt-4">Score: {score}</div>
       </div>
@@ -2806,7 +3216,12 @@
             {:else if w.type === 'plasma'}
               <div class="w-8 h-8 rounded-full bg-fuchsia-500 flex items-center justify-center text-xs font-bold">P</div>
             {:else if w.type === 'chain'}
-              <div class="w-8 h-8 rounded-full bg-blue-400 flex items-center justify-center text-xs font-bold">C</div>
+              <div class="w-8 h-8 rounded-full bg-blue-400 flex items-center justify-center text-xs font-bold">
+                <!-- Chain Link Icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-white">
+                  <path fill-rule="evenodd" d="M19.902 4.098a3.75 3.75 0 00-5.304 0l-4.5 4.5a3.75 3.75 0 001.035 6.037.75.75 0 01-.646 1.353 5.25 5.25 0 01-1.449-8.45l4.5-4.5a5.25 5.25 0 117.424 7.424l-1.757 1.757a.75.75 0 11-1.06-1.06l1.757-1.757a3.75 3.75 0 000-5.304zm-7.389 4.267a.75.75 0 011-.353 5.25 5.25 0 011.449 8.45l-4.5 4.5a5.25 5.25 0 11-7.424-7.424l1.757-1.757a.75.75 0 111.06 1.06l-1.757 1.757a3.75 3.75 0 105.304 5.304l4.5-4.5a3.75 3.75 0 00-1.035-6.037.75.75 0 01-.354-1z" clip-rule="evenodd" />
+                </svg>
+              </div>
             {:else if w.type === 'drone'}
               <div class="w-8 h-8 rounded-full bg-lime-500 flex items-center justify-center text-xs text-black font-bold">D</div>
             {:else if w.type === 'scatter'}
@@ -2817,7 +3232,12 @@
         {/each}
         <!-- Boost Charges -->
         <div class="text-center p-1 {boostActive ? 'ring-2 ring-cyan-400 rounded animate-pulse' : ''}">
-          <div class="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center text-xs font-bold">B</div>
+          <div class="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center text-xs font-bold">
+            <!-- Thunderbolt Icon -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-white">
+              <path fill-rule="evenodd" d="M14.615 1.595a.75.75 0 01.359.852L12.982 9.75h7.268a.75.75 0 01.548 1.262l-10.5 11.25a.75.75 0 01-1.272-.71l1.992-7.302H3.75a.75.75 0 01-.548-1.262l10.5-11.25a.75.75 0 01.913-.143z" clip-rule="evenodd" />
+            </svg>
+          </div>
           <div class="text-xs mt-1">{boostCharges}</div>
         </div>
       </div>
