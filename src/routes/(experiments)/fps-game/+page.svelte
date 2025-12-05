@@ -43,10 +43,12 @@
   // Maps fetched from API
   let staticMapFiles: string[] = []
 
+
   let availableMaps: MapData[] = []
   let customMaps: MapData[] = []  // User-created maps from localStorage
   let builtInMaps: MapData[] = []  // Static maps from /3d-maps/
   let selectedMap: MapData | null = null
+  let mapsLoading = true  // Track map loading state
   let showMapSelector = true
   let isLoadingMap = false
   let defaultMapThumbnail: string | null = null
@@ -572,6 +574,7 @@
       }
     }
     updateAvailableMaps()
+    mapsLoading = false
   }
 
   async function loadStaticMaps() {
@@ -625,6 +628,7 @@
     })
     
     updateAvailableMaps()
+    mapsLoading = false
   }
 
   function updateAvailableMaps() {
@@ -3180,29 +3184,44 @@
                   <span class="text-xl font-bold">‹</span>
                 </button>
 
+
                 <!-- Map Cards Container -->
                 <div
                   id="fps-map-carousel"
                   class="flex gap-4 overflow-x-auto scroll-smooth px-8 py-2"
                   style="scrollbar-width: none; -ms-overflow-style: none;"
                 >
-                  <!-- Default Map - Always First -->
-                  <button
-                    class="flex-shrink-0 w-52 card bg-green-50 hover:bg-green-100 transition-all duration-200 cursor-pointer border-2 {selectedMap === null ? 'border-green-500 ring-2 ring-green-400' : 'border-green-300 hover:border-green-500'} shadow-lg hover:shadow-xl"
-                    on:click={() => { selectedMap = null }}
-                  >
-                    <div class="card-body p-3">
-                      <div class="w-full h-24 rounded mb-2 overflow-hidden bg-gradient-to-br from-green-700 to-blue-800 flex items-center justify-center border border-green-300">
-                        {#if defaultMapThumbnail}
-                          <img src={defaultMapThumbnail} alt="Default Map" class="w-full h-full object-cover" />
-                        {:else}
-                          <div class="text-3xl opacity-70">🌍</div>
-                        {/if}
+                  {#if mapsLoading}
+                    <!-- Loading Placeholder Cards -->
+                    {#each [1, 2, 3] as i}
+                      <div class="flex-shrink-0 w-52 card bg-gray-100 border-2 border-gray-300 shadow-lg">
+                        <div class="card-body p-3">
+                          <div class="w-full h-24 rounded mb-2 bg-gray-200 flex items-center justify-center animate-pulse">
+                            <div class="loading loading-spinner loading-md text-gray-400"></div>
+                          </div>
+                          <div class="h-4 bg-gray-200 rounded animate-pulse mb-1"></div>
+                          <div class="h-3 bg-gray-200 rounded animate-pulse w-2/3"></div>
+                        </div>
                       </div>
-                      <h4 class="font-bold text-sm text-gray-900 truncate">Default Map</h4>
-                      <div class="text-xs text-gray-500">Procedural</div>
-                    </div>
-                  </button>
+                    {/each}
+                  {:else}
+                    <!-- Default Map - Always First -->
+                    <button
+                      class="flex-shrink-0 w-52 card bg-green-50 hover:bg-green-100 transition-all duration-200 cursor-pointer border-2 {selectedMap === null ? 'border-green-500 ring-2 ring-green-400' : 'border-green-300 hover:border-green-500'} shadow-lg hover:shadow-xl"
+                      on:click={() => { selectedMap = null }}
+                    >
+                      <div class="card-body p-3">
+                        <div class="w-full h-24 rounded mb-2 overflow-hidden bg-gradient-to-br from-green-700 to-blue-800 flex items-center justify-center border border-green-300">
+                          {#if defaultMapThumbnail}
+                            <img src={defaultMapThumbnail} alt="Default Map" class="w-full h-full object-cover" />
+                          {:else}
+                            <div class="text-3xl opacity-70">🌍</div>
+                          {/if}
+                        </div>
+                        <h4 class="font-bold text-sm text-gray-900 truncate">Default Map</h4>
+                        <div class="text-xs text-gray-500">Procedural</div>
+                      </div>
+                    </button>
 
                   <!-- Custom Maps -->
                   {#each customMaps as map}
@@ -3245,6 +3264,7 @@
                       </div>
                     </button>
                   {/each}
+                  {/if}
                 </div>
 
                 <!-- Right Arrow -->

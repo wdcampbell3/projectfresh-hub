@@ -658,8 +658,10 @@
     } else if (selectedModel && previewMesh && !isPanning && !isRotatingCamera && selectedPlacedObjects.length === 0) {
       // Only update preview if no object is selected
       updatePreviewPosition()
+    }
 
-      // Check for hover on existing objects
+    // Check for hover on existing objects (works even when objects are selected)
+    if (!isPanning && !isRotatingCamera && !isDraggingObject) {
       raycaster.setFromCamera(mouse, camera)
       const meshes = placedObjects.map(obj => obj.mesh)
       const intersects = raycaster.intersectObjects(meshes, true)
@@ -674,8 +676,8 @@
         const obj = placedObjects.find(obj => obj.mesh === hoveredMesh)
         if (obj) {
           hoveredObject = obj
-          // Hide preview when hovering over existing object
-          if (previewMesh) {
+          // Hide preview when hovering over existing object (only if in preview mode)
+          if (previewMesh && selectedPlacedObjects.length === 0) {
             previewMesh.visible = false
           }
         }

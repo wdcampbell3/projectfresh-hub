@@ -1,0 +1,5 @@
+I've got some new models to use for the starship flyer enemies:
+- Basic fighers: /Users/douglas/Code/Projects/ProjectFresh-Hub/static/3d-models/Enemy-Ships/Enemy-Spaceship-Basic-Red.glb
+- fast interceptors: /Users/douglas/Code/Projects/ProjectFresh-Hub/static/3d-models/Enemy-Ships/Enemy-Spaceship-Fast-Blue.glb
+- armored tanks: /Users/douglas/Code/Projects/ProjectFresh-Hub/static/3d-models/Enemy-Ships/Enemy-Spaceship-Tank-Orange.glb
+- bosses: /Users/douglas/Code/Projects/ProjectFresh-Hub/static/3d-models/Enemy-Ships/Enemy-Spaceship-Boss.glb

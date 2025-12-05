@@ -53,10 +53,14 @@
   // Maps fetched from API
   let staticMapFiles: string[] = []
 
+
   let availableMaps: MapData[] = []
   let customMaps: MapData[] = []  // User-created maps from localStorage
   let builtInMaps: MapData[] = []  // Static maps from /3d-maps/
   let selectedMap: MapData | null = null
+  let shuffledMapQueue: MapData[] = []  // Randomized queue of maps for current game
+  let currentMapIndex = 0  // Current position in the shuffled queue
+  let mapsLoading = true  // Track map loading state
   let showMapSelector = true
   let isLoadingMap = false
   let defaultMapThumbnail: string | null = null
@@ -229,10 +233,41 @@
       this.playTone(150, 'sawtooth', 0.3, 0.7, 50)
       this.playNoise(0.2, 0.4)
     }
-    // Chain: Lightning "zing" - fast high-pitch sweep
+    // Chain: Static crackle - like electricity arcing
     playChain() { 
-      this.playTone(800, 'sawtooth', 0.15, 0.4, 2000) 
-      setTimeout(() => this.playTone(2000, 'square', 0.1, 0.2, 500), 50) 
+      // Create crackling static effect with filtered noise bursts
+      if (!this.enabled || !this.ctx || !this.masterGain) return
+      const duration = 0.3
+      const bufferSize = this.ctx.sampleRate * duration
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate)
+      const data = buffer.getChannelData(0)
+      
+      // Generate crackling noise pattern
+      for (let i = 0; i < bufferSize; i++) {
+        const envelope = Math.sin((i / bufferSize) * Math.PI) // Fade in/out
+        data[i] = (Math.random() * 2 - 1) * envelope
+      }
+      
+      const noise = this.ctx.createBufferSource()
+      noise.buffer = buffer
+      
+      // High-pass filter for crispy crackle
+      const filter = this.ctx.createBiquadFilter()
+      filter.type = 'highpass'
+      filter.frequency.setValueAtTime(2000, this.ctx.currentTime)
+      filter.Q.setValueAtTime(5, this.ctx.currentTime) // Sharp filter for electric sound
+      
+      const gain = this.ctx.createGain()
+      gain.gain.setValueAtTime(0.6, this.ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration)
+      
+      noise.connect(filter)
+      filter.connect(gain)
+      gain.connect(this.masterGain)
+      noise.start()
+      
+      // Add a quick high-frequency zap for extra crackle
+      setTimeout(() => this.playTone(3000, 'square', 0.08, 0.15, 1500), 30)
     }
     // Drone: 3 super quick mini buzzes
     playDrone() { 
@@ -253,10 +288,10 @@
     }
     
     playBoost() { 
-      // Boost: "Wooosh" instead of "boing"
+      // Boost: Powerful "WOOOSH" with more volume and intensity
       // Filtered noise ramp up
       if (!this.enabled || !this.ctx || !this.masterGain) return
-      const duration = 1.5
+      const duration = 2.0 // Longer duration for more impact
       const bufferSize = this.ctx.sampleRate * duration
       const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate)
       const data = buffer.getChannelData(0)
@@ -266,11 +301,11 @@
       noise.buffer = buffer
       const filter = this.ctx.createBiquadFilter()
       filter.type = 'lowpass'
-      filter.frequency.setValueAtTime(200, this.ctx.currentTime)
-      filter.frequency.exponentialRampToValueAtTime(3000, this.ctx.currentTime + duration)
+      filter.frequency.setValueAtTime(150, this.ctx.currentTime) // Lower start for more bass
+      filter.frequency.exponentialRampToValueAtTime(4000, this.ctx.currentTime + duration) // Higher end for more power
       
       const gain = this.ctx.createGain()
-      gain.gain.setValueAtTime(0.5, this.ctx.currentTime)
+      gain.gain.setValueAtTime(2.0, this.ctx.currentTime) // Even louder for better audibility
       gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration)
       
       noise.connect(filter)
@@ -367,7 +402,9 @@
     speed: number
     fireRate: number
     damage: number
+    id: number // For stable noise/randomness
   }
+  let nextEnemyId = 0
   let enemies: Enemy[] = []
 
   // Projectiles
@@ -401,13 +438,14 @@
     boost: 0x00ffff,
     'weapon-missile': 0xffff00,
     'weapon-plasma': 0xff00ff,      // Magenta
-    'weapon-chain': 0x00aaff,       // Electric blue
+    'weapon-chain': 0xffffff,       // White lightning
     'weapon-drone': 0x88ff00,       // Lime green
     'weapon-scatter': 0xff8800      // Orange
   }
 
   // Boost charges (activated by spacebar)
   let boostCharges = 0
+  let lastDroppedPowerUps: PowerUpType[] = [] // Track last few power-ups for distribution
   let boostActive = false
   let boostEndTime = 0
   const boostDuration = 2000  // 2 seconds of boost per charge
@@ -454,6 +492,10 @@
     )
     
     availableMaps = [...customMaps, ...uniqueBuiltIn]
+    console.log(`Updated availableMaps: ${availableMaps.length} total (${customMaps.length} custom + ${uniqueBuiltIn.length} built-in)`)
+    if (availableMaps.length > 0) {
+      console.log('Available maps:', availableMaps.map(m => `"${m.name}" (${m.objects?.length || 0} objects)`).join(', '))
+    }
   }
 
   function loadAvailableMaps() {
@@ -475,6 +517,7 @@
       }
     }
     updateAvailableMaps()
+    mapsLoading = false
   }
 
   async function loadStaticMaps() {
@@ -528,6 +571,7 @@
     })
     
     updateAvailableMaps()
+    mapsLoading = false
   }
 
   // Load default map thumbnail for menu display
@@ -1090,103 +1134,93 @@
     console.log(`Level ${level} auto-generated: ${solidObjects.length} objects`)
   }
 
-  function createEnemyModel(type: EnemyType): THREE.Group {
-    const g = new THREE.Group()
+  // Cache for loaded enemy models
+  const enemyModelCache: Record<EnemyType, THREE.Group | null> = {
+    basic: null,
+    fast: null,
+    tank: null,
+    boss: null
+  }
 
-    if (type === 'basic') {
-      // Basic Enemy - Red Octahedron with Yellow Core and Orbiting Rings (matching Blocky Shooter)
-      const bodyMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.5, metalness: 0.3, roughness: 0.7 })
-      const body = new THREE.Mesh(new THREE.OctahedronGeometry(0.8, 0), bodyMat)
-      body.castShadow = true
-      g.add(body)
-
-      // Glowing yellow core
-      const coreMat = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xffff00, emissiveIntensity: 1 })
-      g.add(new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), coreMat))
-
-      // Orbiting rings
-      const ringMat = new THREE.MeshStandardMaterial({ color: 0xff3300, emissive: 0xff3300, emissiveIntensity: 0.3 })
-      const ring1 = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.08, 8, 16), ringMat)
-      ring1.rotation.x = Math.PI / 2
-      g.add(ring1)
-      const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.08, 8, 16), ringMat.clone())
-      ring2.rotation.z = Math.PI / 2
-      g.add(ring2)
-
-    } else if (type === 'fast') {
-      // Fast Enemy - Cyan Cone with Spikes (matching Blocky Shooter)
-      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x0088ff, emissiveIntensity: 0.7, metalness: 0.8, roughness: 0.2 })
-      const body = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.2, 8), bodyMat)
-      body.rotation.x = Math.PI / 2  // Point forward for flight
-      body.castShadow = true
-      g.add(body)
-
-      // Speed spikes
-      const spikeMat = new THREE.MeshStandardMaterial({ color: 0x0088ff, emissive: 0x0044ff, emissiveIntensity: 0.5 })
-      for (let i = 0; i < 4; i++) {
-        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.5, 4), spikeMat)
-        const angle = (i / 4) * Math.PI * 2
-        spike.position.x = Math.cos(angle) * 0.4
-        spike.position.y = Math.sin(angle) * 0.4
-        spike.rotation.z = -angle + Math.PI / 2
-        g.add(spike)
-      }
-
-    } else if (type === 'tank') {
-      // Tank Enemy - Bright Orange Box with Armor and Turret
-      const bodyMat = new THREE.MeshStandardMaterial({ color: 0xff8800, emissive: 0xff4400, emissiveIntensity: 0.4, metalness: 0.6, roughness: 0.9 })
-      const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 1.5), bodyMat)
-      body.castShadow = true
-      g.add(body)
-
-      // Armor plates
-      const armorMat = new THREE.MeshStandardMaterial({ color: 0x553300, emissive: 0x221100, emissiveIntensity: 0.3 })
-      const armorTop = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.3, 1.7), armorMat)
-      armorTop.position.y = 0.9
-      g.add(armorTop)
-      const armorBottom = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.3, 1.7), armorMat.clone())
-      armorBottom.position.y = -0.9
-      g.add(armorBottom)
-
-      // Turret
-      const turretMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.5 })
-      const turret = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.6, 8), turretMat)
-      turret.position.z = -0.9
-      turret.rotation.x = Math.PI / 2
-      g.add(turret)
-
-    } else {
-      // Boss Enemy - Dark Purple Dodecahedron with Magenta Core and Spikes (matching Blocky Shooter)
-      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4400aa, emissive: 0x8800ff, emissiveIntensity: 0.8, metalness: 0.9, roughness: 0.3 })
-      const body = new THREE.Mesh(new THREE.DodecahedronGeometry(3, 0), bodyMat)
-      body.castShadow = true
-      g.add(body)
-
-      // Massive glowing magenta core
-      const coreMat = new THREE.MeshStandardMaterial({ color: 0xff00ff, emissive: 0xff00ff, emissiveIntensity: 1.5 })
-      g.add(new THREE.Mesh(new THREE.SphereGeometry(1.5, 32, 32), coreMat))
-
-      // Multiple orbiting rings
-      for (let i = 0; i < 3; i++) {
-        const ringMat = new THREE.MeshStandardMaterial({ color: 0xff00aa, emissive: 0xff0088, emissiveIntensity: 0.6 })
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(2.5 + i * 0.5, 0.2, 12, 24), ringMat)
-        ring.rotation.x = (Math.PI / 4) * i
-        ring.rotation.y = (Math.PI / 3) * i
-        g.add(ring)
-      }
-
-      // Menacing spikes
-      const spikeMat = new THREE.MeshStandardMaterial({ color: 0x660099, emissive: 0x440066, emissiveIntensity: 0.5 })
-      for (let i = 0; i < 8; i++) {
-        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.4, 2, 8), spikeMat)
-        const angle = (i / 8) * Math.PI * 2
-        spike.position.x = Math.cos(angle) * 3.5
-        spike.position.z = Math.sin(angle) * 3.5
-        spike.rotation.z = Math.PI / 2
-        spike.rotation.y = angle
-        g.add(spike)
-      }
+  async function loadEnemyModel(type: EnemyType): Promise<THREE.Group> {
+    // Return cached model if available
+    if (enemyModelCache[type]) {
+      return enemyModelCache[type]!.clone()
     }
+
+    const modelPaths: Record<EnemyType, string> = {
+      basic: '/3d-models/Enemy-Ships/Enemy-Spaceship-Basic-Red.glb',
+      fast: '/3d-models/Enemy-Ships/Enemy-Spaceship-Fast-Blue.glb',
+      tank: '/3d-models/Enemy-Ships/Enemy-Spaceship-Tank-Orange.glb',
+      boss: '/3d-models/Enemy-Ships/Enemy-Spaceship-Boss.glb'
+    }
+
+    const loader = new GLTFLoader()
+    try {
+      const gltf = await loader.loadAsync(modelPaths[type])
+      const model = gltf.scene
+      
+      // Enable shadows
+      model.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true
+          child.receiveShadow = true
+        }
+      })
+
+      // Apply scaling based on type
+      if (type === 'boss') {
+        model.scale.setScalar(0.625) // Bosses are bigger (2.5 / 4)
+      } else {
+        model.scale.setScalar(0.375) // Standard size for other enemies (1.5 / 5)
+      }
+
+      // Cache the model
+      enemyModelCache[type] = model
+
+      return model.clone()
+    } catch (error) {
+      console.error(`Failed to load enemy model for ${type}:`, error)
+      // Fallback to simple geometry if model fails to load
+      return createFallbackEnemyModel(type)
+    }
+  }
+
+  function createFallbackEnemyModel(type: EnemyType): THREE.Group {
+    const g = new THREE.Group()
+    const color = type === 'basic' ? 0xff0000 : type === 'fast' ? 0x00ffff : type === 'tank' ? 0xff8800 : 0xff00ff
+    const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.5 })
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16), mat)
+    mesh.castShadow = true
+    g.add(mesh)
+    g.scale.setScalar(type === 'boss' ? 3 : 1)
+    return g
+  }
+
+  function createEnemyModel(type: EnemyType): THREE.Group {
+    // Create a placeholder group that will be replaced when the model loads
+    const g = new THREE.Group()
+    
+    // Add a temporary placeholder sphere
+    const placeholderMat = new THREE.MeshStandardMaterial({ 
+      color: type === 'basic' ? 0xff0000 : type === 'fast' ? 0x00ffff : type === 'tank' ? 0xff8800 : 0xff00ff,
+      emissive: type === 'basic' ? 0xff0000 : type === 'fast' ? 0x00ffff : type === 'tank' ? 0xff8800 : 0xff00ff,
+      emissiveIntensity: 0.5,
+      transparent: true,
+      opacity: 0.7
+    })
+    const placeholder = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 8), placeholderMat)
+    g.add(placeholder)
+
+    // Load the actual model asynchronously
+    loadEnemyModel(type).then((model) => {
+      // Remove placeholder
+      g.remove(placeholder)
+      // Add loaded model
+      g.add(model)
+    }).catch((error) => {
+      console.error('Failed to load enemy model:', error)
+    })
 
     // Scale appropriately - boss is already big, others need scaling
     if (type === 'boss') {
@@ -1210,7 +1244,19 @@
     const angle = Math.random() * Math.PI * 2, dist = 50 + Math.random() * 50
     mesh.position.set(Math.cos(angle) * dist, 10 + Math.random() * 30, Math.sin(angle) * dist)
     scene.add(mesh)
-    const enemy: Enemy = { mesh, health: stats.health, maxHealth: stats.health, lastShot: Date.now(), velocity: new THREE.Vector3(), type, speed: stats.speed, fireRate: stats.fireRate, damage: stats.damage }
+    const enemy: Enemy = {
+      mesh,
+      health: stats.health,
+      maxHealth: stats.health,
+      lastShot: Date.now(),
+      velocity: new THREE.Vector3(),
+      type,
+      speed: stats.speed,
+      fireRate: stats.fireRate,
+      damage: stats.damage,
+      id: nextEnemyId++
+    }
+    
     enemies.push(enemy)
     if (type === 'boss') { bossEnemy = enemy; bossHealth = enemy.health; bossMaxHealth = enemy.maxHealth }
   }
@@ -1218,7 +1264,22 @@
   function spawnWave() {
     const types: EnemyType[] = ['basic', 'basic', 'fast']
     if (level >= 2) types.push('tank')
-    if (level % 3 === 0) { isBossLevel = true; spawnEnemy('boss'); for (let i = 0; i < 3; i++) spawnEnemy('basic') }
+    if (level % 3 === 0) { 
+      isBossLevel = true
+      spawnEnemy('boss')
+      // Spawn initial enemies
+      for (let i = 0; i < 3; i++) spawnEnemy('basic')
+      // Continue spawning enemies during boss fight for power-ups
+      const bossWaveInterval = setInterval(() => {
+        if (!isBossLevel || isGameOver) {
+          clearInterval(bossWaveInterval)
+          return
+        }
+        // Spawn 2 enemies every 8 seconds during boss fight
+        spawnEnemy(types[Math.floor(Math.random() * types.length)])
+        setTimeout(() => spawnEnemy(types[Math.floor(Math.random() * types.length)]), 1000)
+      }, 8000)
+    }
     else { isBossLevel = false; for (let i = 0; i < Math.min(gameConfig.enemyCount + level, 15); i++) setTimeout(() => spawnEnemy(types[Math.floor(Math.random() * types.length)]), i * 300) }
   }
 
@@ -1249,9 +1310,32 @@
 
   function spawnPowerUpAt(position: THREE.Vector3, specificType?: PowerUpType) {
     const types: PowerUpType[] = ['health', 'ammo', 'boost', 'weapon-missile', 'weapon-plasma', 'weapon-chain', 'weapon-drone', 'weapon-scatter']
-    const type = specificType || types[Math.floor(Math.random() * types.length)]
+    
+    let type: PowerUpType
+    if (specificType) {
+      type = specificType
+    } else {
+      // Filter out recently dropped types for better distribution
+      const availableTypes = types.filter(t => !lastDroppedPowerUps.includes(t))
+      type = availableTypes.length > 0 
+        ? availableTypes[Math.floor(Math.random() * availableTypes.length)]
+        : types[Math.floor(Math.random() * types.length)]
+      
+      // Track last 3 dropped power-ups
+      lastDroppedPowerUps.push(type)
+      if (lastDroppedPowerUps.length > 3) lastDroppedPowerUps.shift()
+    }
+    
     const g = new THREE.Group()
     const color = powerUpColors[type]
+    
+    // Add random offset to position for variety
+    const randomOffset = new THREE.Vector3(
+      (Math.random() - 0.5) * 15,
+      (Math.random() - 0.5) * 10,
+      (Math.random() - 0.5) * 15
+    )
+    position.add(randomOffset)
 
     // Create type-specific power-up visuals
     if (type === 'health') {
@@ -1265,14 +1349,16 @@
       const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.7, metalness: 0.5, roughness: 0.3 })
       g.add(new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), mat))
     } else if (type === 'boost') {
-      // Boost/Flying - Cyan Jetpack/Wings
-      const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.0, metalness: 0.8, roughness: 0.2 })
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.8, 8), mat)
-      const leftWing = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.15, 0.6), mat)
-      const rightWing = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.15, 0.6), mat)
-      leftWing.position.x = -0.5
-      rightWing.position.x = 0.5
-      g.add(body, leftWing, rightWing)
+      // Boost - Cool triangles pointing up
+      const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.2, metalness: 0.9, roughness: 0.1 })
+      // Create 3 triangles of different sizes
+      for (let i = 0; i < 3; i++) {
+        const size = 0.5 - i * 0.12
+        const tri = new THREE.Mesh(new THREE.ConeGeometry(size, size * 1.5, 3), mat)
+        tri.rotation.y = Math.PI / 6 // Rotate to make it look like triangle
+        tri.position.y = i * 0.3 - 0.3
+        g.add(tri)
+      }
     } else if (type === 'weapon-missile') {
       // Missile - Yellow Cone/Rocket
       const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.8, metalness: 0.7, roughness: 0.2 })
@@ -1289,15 +1375,29 @@
       ring2.rotation.y = Math.PI / 2
       g.add(orb, ring1, ring2)
     } else if (type === 'weapon-chain') {
-      // Chain Lightning - Electric blue zigzag bolt
-      const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.5, metalness: 0.8, roughness: 0.2 })
-      const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.0, 6), mat)
-      const spark1 = new THREE.Mesh(new THREE.OctahedronGeometry(0.2), mat)
-      const spark2 = new THREE.Mesh(new THREE.OctahedronGeometry(0.15), mat)
-      spark1.position.set(0.3, 0.3, 0)
-      spark2.position.set(-0.3, -0.3, 0)
-      bolt.rotation.z = Math.PI / 4
-      g.add(bolt, spark1, spark2)
+      // Chain Lightning - White zigzag lightning bolt
+      const boltMat = new THREE.MeshStandardMaterial({ 
+        color: 0xffffff, 
+        emissive: 0xffffff, 
+        emissiveIntensity: 2.0, 
+        metalness: 1.0, 
+        roughness: 0.0 
+      })
+      
+      const points: THREE.Vector3[] = []
+      const segments = 6
+      for (let i = 0; i <= segments; i++) {
+        const t = i / segments
+        const y = (t - 0.5) * 1.2 // Vertical span
+        // Zigzag pattern
+        const x = (i % 2 === 0 ? 0.25 : -0.25) * (1 - Math.abs(t - 0.5)) // Tapered zigzag
+        points.push(new THREE.Vector3(x, y, 0))
+      }
+      
+      const curve = new THREE.CatmullRomCurve3(points)
+      const tubeGeometry = new THREE.TubeGeometry(curve, 12, 0.08, 6, false)
+      const bolt = new THREE.Mesh(tubeGeometry, boltMat)
+      g.add(bolt)
     } else if (type === 'weapon-drone') {
       // Drone Swarm - Lime green small ship cluster
       const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.8, metalness: 0.7, roughness: 0.3 })
@@ -1333,6 +1433,13 @@
 
   function spawnInitialWeaponDrops(count: number) {
     const weaponTypes: PowerUpType[] = ['weapon-missile', 'weapon-plasma', 'weapon-chain', 'weapon-drone', 'weapon-scatter']
+    
+    // Shuffle types to ensure variety
+    for (let i = weaponTypes.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [weaponTypes[i], weaponTypes[j]] = [weaponTypes[j], weaponTypes[i]];
+    }
+
     for (let i = 0; i < count; i++) {
       // Spawn in a circle around the center, slightly elevated
       const angle = (i / count) * Math.PI * 2
@@ -1342,7 +1449,8 @@
         10 + Math.random() * 10,
         Math.sin(angle) * radius
       )
-      const type = weaponTypes[Math.floor(Math.random() * weaponTypes.length)]
+      // Cycle through shuffled types
+      const type = weaponTypes[i % weaponTypes.length]
       spawnPowerUpAt(pos, type)
     }
   }
@@ -1946,12 +2054,21 @@
 
     // Auto-move forward based on setting
     const autoMoveForce = autoMoveSpeeds[gameConfig.autoMoveSpeed]
-    if (autoMoveForce > 0) {
-      target.add(fwd.clone().multiplyScalar(autoMoveForce))
+    let effectiveAutoMove = autoMoveForce
+    
+    // W key doubles the auto-move speed (or applies max speed if off)
+    if (keys['w']) {
+      if (gameConfig.autoMoveSpeed === 'off') {
+        effectiveAutoMove = maxSpeed
+      } else {
+        effectiveAutoMove = autoMoveForce * 2
+      }
+    }
+    
+    if (effectiveAutoMove > 0) {
+      target.add(fwd.clone().multiplyScalar(effectiveAutoMove))
     }
 
-    // W/S control forward/back thrust (adds to auto-move)
-    if (keys['w']) target.add(fwd.clone().multiplyScalar(acceleration))
     // S reverses the ship (full reverse, overrides auto-move)
     if (keys['s']) {
       // Cancel auto-move and apply reverse thrust
@@ -1967,7 +2084,22 @@
     target.add(barrelRollStrafe)
 
     velocity.lerp(target, delta * 3)
-    velocity.clampLength(0, maxSpeed * (boostActive ? 3 : 1))
+    
+    // Calculate speed limit
+    let limit = maxSpeed
+
+    if (boostActive) {
+      // Boost is 3x the current auto-speed setting
+      const base = gameConfig.autoMoveSpeed === 'off' ? maxSpeed : autoMoveSpeeds[gameConfig.autoMoveSpeed]
+      limit = base * 3
+    } else {
+      // Normal flight
+      if (gameConfig.autoMoveSpeed === 'hyper' && keys['w']) {
+        limit = maxSpeed * 2 // Hyper + W = 2x speed
+      }
+    }
+    
+    velocity.clampLength(0, limit)
     currentSpeed = velocity.length()
     playerShip.position.add(velocity.clone().multiplyScalar(delta))
 
@@ -2002,19 +2134,105 @@
 
   function updateEnemies(delta: number) {
     if (!playerShip) return
-    enemies.forEach(enemy => {
-      const toPlayer = new THREE.Vector3().subVectors(playerShip!.position, enemy.mesh.position)
-      const dist = toPlayer.length()
-      if (dist > 30) enemy.velocity.lerp(toPlayer.normalize().multiplyScalar(enemy.speed), delta * 2)
-      else if (dist > 15) enemy.velocity.lerp(new THREE.Vector3(-toPlayer.z, Math.sin(Date.now() * 0.001) * 5, toPlayer.x).normalize().multiplyScalar(enemy.speed), delta * 2)
-      else enemy.velocity.lerp(toPlayer.normalize().multiplyScalar(-enemy.speed * 0.5), delta * 2)
+    
+    const time = Date.now() * 0.001 // Time in seconds for wave functions
 
+    enemies.forEach(enemy => {
+      const toPlayer = playerShip!.position.clone().sub(enemy.mesh.position)
+      const distToPlayer = toPlayer.length()
+      const dirToPlayer = toPlayer.clone().normalize()
+
+      // 1. Separation Force (Anti-clustering) - Boids-like separation
+      const separation = new THREE.Vector3()
+      let neighborCount = 0
+      enemies.forEach(other => {
+        if (other === enemy) return
+        const toOther = enemy.mesh.position.clone().sub(other.mesh.position)
+        const dist = toOther.length()
+        const repulsionRadius = enemy.type === 'tank' ? 15 : 12 // Keep them apart
+        
+        if (dist < repulsionRadius) {
+          // Stronger repulsion the closer they are
+          const force = toOther.normalize().multiplyScalar((repulsionRadius - dist) / dist * 2.5)
+          separation.add(force)
+          neighborCount++
+        }
+      })
+
+      // 2. Steering Behavior based on Type
+      const desiredVelocity = new THREE.Vector3()
+
+      if (enemy.type === 'fast') {
+        // Fast enemies: Flanking / Swarming behavior
+        // Move towards player, but add a sine wave perpendicular to direction for "strafing" run
+        // Use enemy.id to offset the wave so they don't all wave in sync
+        const strafeAmount = Math.sin(time * 2 + enemy.id) * 20
+        const strafeDir = new THREE.Vector3(-dirToPlayer.z, 0, dirToPlayer.x).normalize() // Perpendicular
+        
+        // Combine forward + strafe
+        desiredVelocity.copy(dirToPlayer).multiplyScalar(enemy.speed).add(strafeDir.multiplyScalar(0.5))
+        
+      } else if (enemy.type === 'tank') {
+        // Tank enemies: Maintain optimal firing range
+        const idealDist = 40
+        if (distToPlayer > idealDist + 5) {
+          // Too far, approach
+          desiredVelocity.copy(dirToPlayer).multiplyScalar(enemy.speed)
+        } else if (distToPlayer < idealDist - 5) {
+          // Too close, back up slowly
+          desiredVelocity.copy(dirToPlayer).multiplyScalar(-enemy.speed * 0.5)
+        } else {
+          // In range, strafe slowly to be a moving target
+          const strafeDir = new THREE.Vector3(-dirToPlayer.z, 0, dirToPlayer.x).normalize()
+          const strafeSpeed = Math.sin(time + enemy.id) * enemy.speed * 0.3
+          desiredVelocity.copy(strafeDir).multiplyScalar(strafeSpeed)
+        }
+
+      } else if (enemy.type === 'boss') {
+        // Boss: Circle player logic (kept similar but smoothed)
+        const targetDist = 30
+        if (distToPlayer > targetDist + 10) {
+          desiredVelocity.copy(dirToPlayer).multiplyScalar(enemy.speed)
+        } else if (distToPlayer < targetDist - 10) {
+          desiredVelocity.copy(dirToPlayer).multiplyScalar(-enemy.speed * 0.5)
+        } else {
+          const tangent = new THREE.Vector3(-dirToPlayer.z, 0, dirToPlayer.x).normalize()
+          desiredVelocity.copy(tangent).multiplyScalar(enemy.speed)
+        }
+
+      } else {
+        // Basic enemies: Pursuit with noise
+        // Add some Perlin-like noise to their path so they don't follow a straight line
+        const noiseAngle = Math.sin(time * 0.5 + enemy.id) * 0.5 // +/- 0.5 radians
+        const noisyDir = dirToPlayer.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), noiseAngle)
+        desiredVelocity.copy(noisyDir).multiplyScalar(enemy.speed)
+      }
+
+      // 3. Combine Forces
+      // Add separation force to desired velocity
+      // Separation weight is high to prioritize not crashing into each other
+      const finalForce = desiredVelocity.add(separation.multiplyScalar(4.0))
+      
+      // 4. Apply to Velocity (Smooth steering)
+      // Lerp towards the desired velocity for momentum
+      enemy.velocity.lerp(finalForce.normalize().multiplyScalar(enemy.speed), 0.08)
+
+      // 5. Update Position & Rotation
       enemy.mesh.position.add(enemy.velocity.clone().multiplyScalar(delta))
       enemy.mesh.lookAt(playerShip!.position)
-      if (enemy.mesh.position.y < 3) { enemy.mesh.position.y = 3; enemy.velocity.y = Math.abs(enemy.velocity.y) }
+      
+      // Floor constraint
+      if (enemy.mesh.position.y < 3) { 
+        enemy.mesh.position.y = 3
+        enemy.velocity.y = Math.abs(enemy.velocity.y) 
+      }
 
+      // Firing Logic
       const now = Date.now()
-      if (now - enemy.lastShot > enemy.fireRate && dist < 60) { shootEnemyProjectile(enemy); enemy.lastShot = now }
+      if (now - enemy.lastShot > enemy.fireRate && distToPlayer < 70) { // Increased range slightly
+        shootEnemyProjectile(enemy)
+        enemy.lastShot = now 
+      }
     })
   }
 
@@ -2200,14 +2418,14 @@
         powerUpAlert = { message: alertInfo.name, color: alertInfo.color, timestamp: Date.now() }
         soundManager.playPowerUp()
 
-        if (p.type === 'health') health = Math.min(health + 30, 100)
-        else if (p.type === 'ammo') refillCurrentWeapon(10)
-        else if (p.type === 'boost') { boostCharges++ }  // Add boost charge to inventory
-        else if (p.type === 'weapon-missile') addWeapon('missile', 10, 'Missiles')
-        else if (p.type === 'weapon-plasma') addWeapon('plasma', 5, 'Plasma Cannon')
-        else if (p.type === 'weapon-chain') addWeapon('chain', 8, 'Chain Lightning')
-        else if (p.type === 'weapon-drone') addWeapon('drone', 3, 'Drone Swarm')
-        else if (p.type === 'weapon-scatter') addWeapon('scatter', 15, 'Scatter Shot')
+        if (p.type === 'health') { health = Math.min(health + 50, 100); soundManager.playPowerUp() }
+        else if (p.type === 'ammo') { weaponInventory.forEach(w => { if (w.type !== 'laser' && w.ammo !== -1) w.ammo = Math.min(w.ammo + 10, weaponMaxAmmo[w.type] || 99) }); soundManager.playPowerUp() }
+        else if (p.type === 'weapon-missile') addWeaponAndSelect('missile', 5, 'Missiles')
+        else if (p.type === 'weapon-plasma') addWeaponAndSelect('plasma', 5, 'Plasma Cannon')
+        else if (p.type === 'weapon-chain') addWeaponAndSelect('chain', 8, 'Chain Lightning')
+        else if (p.type === 'weapon-drone') addWeaponAndSelect('drone', 3, 'Drone Swarm')
+        else if (p.type === 'weapon-scatter') addWeaponAndSelect('scatter', 15, 'Scatter Shot')
+        else if (p.type === 'boost') { boostCharges++ }
         scene.remove(p.mesh); return false
       }
       return true
@@ -2227,10 +2445,10 @@
   const weaponMaxAmmo: Record<Weapon['type'], number> = {
     laser: -1,      // Unlimited
     missile: 8,
-    chain: 3,
-    plasma: 5,
-    drone: 5,
-    scatter: 8
+    chain: 5,
+    plasma: 4,
+    drone: 3,
+    scatter: 10
   }
 
   function refillCurrentWeapon(amount: number) {
@@ -2246,23 +2464,44 @@
     weaponInventory = weaponInventory.map((w, i) => i === currentWeaponIndex ? { ...w, ammo: updatedAmmo } : w)
   }
 
-  function addWeapon(type: Weapon['type'], ammo: number, name: string) {
+  function addWeapon(type: WeaponType, ammo: number, name: string) {
+    const existing = weaponInventory.find(w => w.type === type)
     const maxAmmo = weaponMaxAmmo[type]
-    const ex = weaponInventory.find(w => w.type === type)
-    if (ex) {
-      // Add ammo but cap at max
-      if (maxAmmo === -1) {
-        ex.ammo = -1  // Keep unlimited
-      } else {
-        ex.ammo = Math.min(ex.ammo + ammo, maxAmmo)
+    
+    if (existing) {
+      if (existing.ammo !== -1) {
+        // Cap at max ammo
+        existing.ammo = Math.min(existing.ammo + ammo, maxAmmo)
       }
     } else {
       // New weapon - cap initial ammo at max
       const initialAmmo = maxAmmo === -1 ? -1 : Math.min(ammo, maxAmmo)
       weaponInventory.push({ type, ammo: initialAmmo, name })
     }
-    weaponInventory = weaponInventory
+    soundManager.playPowerUp()
   }
+  
+  // Add weapon and reorder inventory to select it next
+  function addWeaponAndSelect(type: WeaponType, ammo: number, name: string) {
+    const existingIndex = weaponInventory.findIndex(w => w.type === type)
+    const maxAmmo = weaponMaxAmmo[type]
+
+    if (existingIndex !== -1) {
+      // Weapon exists, just add ammo
+      if (weaponInventory[existingIndex].ammo !== -1) {
+        weaponInventory[existingIndex].ammo = Math.min(weaponInventory[existingIndex].ammo + ammo, maxAmmo)
+      }
+      // Move to position after current weapon
+      const weapon = weaponInventory.splice(existingIndex, 1)[0]
+      weaponInventory.splice(currentWeaponIndex + 1, 0, weapon)
+    } else {
+      // New weapon, add after current weapon
+      const initialAmmo = maxAmmo === -1 ? -1 : Math.min(ammo, maxAmmo)
+      weaponInventory.splice(currentWeaponIndex + 1, 0, { type, ammo: initialAmmo, name })
+    }
+    soundManager.playPowerUp()
+  }
+
 
   async function levelUp() {
     if (isLoadingLevel || showLevelComplete) return
@@ -2283,6 +2522,9 @@
     // Reset weapons each level (player starts fresh with just laser)
     weaponInventory = [{ type: 'laser', ammo: -1, name: 'Laser Cannon' }]
     currentWeaponIndex = 0
+    
+    // Give player one boost charge at start of each level
+    boostCharges = 1
 
     // Clear existing solid objects before loading new level
     solidObjects.forEach(obj => scene.remove(obj))
@@ -2292,14 +2534,31 @@
     powerUps.forEach(p => scene.remove(p.mesh))
     powerUps = []
 
-    // Determine next map data
-    const nextMapIndex = level - 1
+    // Determine next map data from shuffled queue
     let mapData: MapData | null = null
     
-    if (availableMaps.length > 0 && nextMapIndex < availableMaps.length) {
-      mapData = availableMaps[nextMapIndex]
+    console.log(`=== LEVEL ${level} MAP SELECTION ===`)
+    console.log(`shuffledMapQueue.length: ${shuffledMapQueue.length}`)
+    console.log(`currentMapIndex: ${currentMapIndex}`)
+    
+    if (shuffledMapQueue.length > 0) {
+      // Use the next map in the shuffled queue
+      mapData = shuffledMapQueue[currentMapIndex]
+      console.log(`✓ Selected map: "${mapData.name}" with ${mapData.objects?.length || 0} objects`)
+      currentMapIndex = (currentMapIndex + 1) % shuffledMapQueue.length
+      console.log(`  Next index will be: ${currentMapIndex}/${shuffledMapQueue.length}`)
+      
+      // If we've cycled through all maps, reshuffle for variety
+      if (currentMapIndex === 0) {
+        console.log('🔄 Reshuffling map queue for next cycle')
+        for (let i = shuffledMapQueue.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffledMapQueue[i], shuffledMapQueue[j]] = [shuffledMapQueue[j], shuffledMapQueue[i]]
+        }
+      }
     } else {
-      // No more saved maps, use procedural generation
+      // No saved maps, use procedural generation
+      console.warn(`⚠ Level ${level}: No maps in queue, using procedural generation`)
       mapData = await generateInfiniteLevel()
     }
 
@@ -2318,16 +2577,8 @@
 
     // Load the map
     if (mapData) {
-      // Check if it's one of our available maps to use loadMap, otherwise createDefaultMap
-      // Actually, loadMap works with any MapData, so we can use it if we have data.
-      // But createDefaultMap handles the "procedural fallback" if data is missing/default.
-      // Let's stick to the pattern:
-      if (availableMaps.length > 0 && nextMapIndex < availableMaps.length) {
-         await loadMap(mapData)
-      } else {
-         // Use our new infinite generator if we are past the defined maps
-         await loadMap(mapData)
-      }
+      // Load the map data into the scene
+      await loadMap(mapData)
     } else {
       // Should not happen with new logic, but fallback
       await createDefaultMap()
@@ -2403,6 +2654,31 @@
     barrelRollAngle = 0
     shipYaw = 0
     shipPitch = -Math.PI / 4  // Face down towards center from (0,100,100)
+    
+    // Create shuffled map queue for this game session
+    console.log('=== CREATING MAP QUEUE ===')
+    console.log(`availableMaps.length: ${availableMaps.length}`)
+    console.log(`customMaps.length: ${customMaps.length}`)
+    console.log(`builtInMaps.length: ${builtInMaps.length}`)
+    
+    if (availableMaps.length > 0) {
+      // Shuffle the available maps using Fisher-Yates algorithm
+      shuffledMapQueue = [...availableMaps]
+      for (let i = shuffledMapQueue.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledMapQueue[i], shuffledMapQueue[j]] = [shuffledMapQueue[j], shuffledMapQueue[i]]
+      }
+      currentMapIndex = 0
+      console.log(`✓ Created shuffled map queue with ${shuffledMapQueue.length} maps:`)
+      shuffledMapQueue.forEach((m, i) => console.log(`  ${i + 1}. "${m.name}" - ${m.objects?.length || 0} objects`))
+    } else {
+      shuffledMapQueue = []
+      currentMapIndex = 0
+      console.warn('⚠ No maps available! Will use procedural generation')
+      console.log('This might happen if:')
+      console.log('  1. No maps are tagged for "starship flyer" or "all"')
+      console.log('  2. Maps failed to load from localStorage or /3d-maps/')
+    }
     
     // Low health warning state
     lowHealthOpacity = 0
@@ -2788,7 +3064,11 @@
   }
 </script>
 
-<svelte:head><title>Starship Flyer | Dougie's Game Hub</title></svelte:head>
+<svelte:head>
+  <title>Starship Flyer</title>
+  <meta name="description" content="Fly a starship and shoot enemies" />
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
+</svelte:head>
 
 <div class="flex h-screen overflow-hidden">
 <div bind:this={container} class="relative flex-1 h-screen overflow-hidden">
@@ -2851,29 +3131,44 @@
               <span class="text-xl font-bold">‹</span>
             </button>
 
+
             <!-- Map Cards Container -->
             <div
               id="map-carousel"
               class="flex gap-4 overflow-x-auto scroll-smooth px-8 py-2"
               style="scrollbar-width: none; -ms-overflow-style: none;"
             >
-              <!-- Default Map - Always First -->
-              <button
-                class="flex-shrink-0 w-52 card bg-green-50 hover:bg-green-100 transition-all duration-200 cursor-pointer border-2 {selectedMap === null ? 'border-green-500 ring-2 ring-green-400' : 'border-green-300 hover:border-green-500'} shadow-lg hover:shadow-xl"
-                on:click={() => selectedMap = null}
-              >
-                <div class="card-body p-3">
-                  <div class="w-full h-24 rounded mb-2 overflow-hidden bg-gradient-to-br from-green-700 to-blue-800 flex items-center justify-center border border-green-300">
-                    {#if defaultMapThumbnail}
-                      <img src={defaultMapThumbnail} alt="Default Map" class="w-full h-full object-cover" />
-                    {:else}
-                      <div class="text-3xl opacity-70">🌍</div>
-                    {/if}
+              {#if mapsLoading}
+                <!-- Loading Placeholder Cards -->
+                {#each [1, 2, 3] as i}
+                  <div class="flex-shrink-0 w-52 card bg-gray-100 border-2 border-gray-300 shadow-lg">
+                    <div class="card-body p-3">
+                      <div class="w-full h-24 rounded mb-2 bg-gray-200 flex items-center justify-center animate-pulse">
+                        <div class="loading loading-spinner loading-md text-gray-400"></div>
+                      </div>
+                      <div class="h-4 bg-gray-200 rounded animate-pulse mb-1"></div>
+                      <div class="h-3 bg-gray-200 rounded animate-pulse w-2/3"></div>
+                    </div>
                   </div>
-                  <h4 class="font-bold text-sm text-gray-900 truncate">Default Map</h4>
-                  <div class="text-xs text-gray-500">Procedural</div>
-                </div>
-              </button>
+                {/each}
+              {:else}
+                <!-- Default Map - Always First -->
+                <button
+                  class="flex-shrink-0 w-52 card bg-green-50 hover:bg-green-100 transition-all duration-200 cursor-pointer border-2 {selectedMap === null ? 'border-green-500 ring-2 ring-green-400' : 'border-green-300 hover:border-green-500'} shadow-lg hover:shadow-xl"
+                  on:click={() => selectedMap = null}
+                >
+                  <div class="card-body p-3">
+                    <div class="w-full h-24 rounded mb-2 overflow-hidden bg-gradient-to-br from-green-700 to-blue-800 flex items-center justify-center border border-green-300">
+                      {#if defaultMapThumbnail}
+                        <img src={defaultMapThumbnail} alt="Default Map" class="w-full h-full object-cover" />
+                      {:else}
+                        <div class="text-3xl opacity-70">🌍</div>
+                      {/if}
+                    </div>
+                    <h4 class="font-bold text-sm text-gray-900 truncate">Default Map</h4>
+                    <div class="text-xs text-gray-500">Procedural</div>
+                  </div>
+                </button>
 
               <!-- Custom Maps -->
               {#each customMaps as map}
@@ -2916,6 +3211,7 @@
                   </div>
                 </button>
               {/each}
+              {/if}
             </div>
 
             <!-- Right Arrow -->
@@ -3074,28 +3370,67 @@
           <div class="card bg-white shadow-xl">
             <div class="card-body p-4">
               <h3 class="font-semibold mb-2 text-sm">Power-Ups:</h3>
-              <ul class="space-y-1 text-xs">
-                <li><span class="inline-block w-3 h-3 rounded-full bg-red-500 mr-1"></span> Health - Restore hull</li>
-                <li><span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span> Ammo - +20 rounds</li>
-                <li><span class="inline-block w-3 h-3 rounded-full bg-cyan-500 mr-1"></span> Shield - Temporary protection</li>
-                <li><span class="inline-block w-3 h-3 rounded-full bg-yellow-500 mr-1"></span> Missiles - Homing rockets</li>
-                <li><span class="inline-block w-3 h-3 rounded-full bg-orange-500 mr-1"></span> Scatter - High-velocity shards</li>
-                <li><span class="inline-block w-3 h-3 rounded-full bg-lime-500 mr-1"></span> Drone - Autonomous ally</li>
-                <li><span class="inline-block w-3 h-3 rounded-full bg-blue-400 mr-1"></span> Chain - Arcing lightning</li>
-                <li><span class="inline-block w-3 h-3 rounded-full bg-fuchsia-500 mr-1"></span> Plasma - Explosive bolts</li>
+              <ul class="space-y-3 text-xs">
+                <li class="flex items-center"><div class="w-6 h-6 flex items-center justify-center mr-3"><svg viewBox="0 0 24 24" class="w-5 h-5 text-red-500 fill-current shadow-[0_0_10px_rgba(239,68,68,0.4)]"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div> Health - Restore hull</li>
+                <li class="flex items-center"><div class="w-6 h-6 flex items-center justify-center mr-3"><span class="inline-block w-4 h-4 bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.6)]"></span></div> Ammo - Add ammo to selected weapon</li>
+                <li class="flex items-center">
+                  <div class="w-6 h-6 flex items-center justify-center mr-3">
+                    <div class="flex flex-col items-center scale-75">
+                      <div class="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-b-[8px] border-b-cyan-400 mb-[1px]"></div>
+                      <div class="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-b-[10px] border-b-cyan-400 mb-[1px]"></div>
+                      <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[12px] border-b-cyan-400"></div>
+                    </div>
+                  </div>
+                  Boost - Speed burst
+                </li>
+                <li class="flex items-center"><div class="w-6 h-6 flex items-center justify-center mr-3"><span class="inline-block w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[12px] border-b-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.6)]"></span></div> Missiles - Homing rockets</li>
+                <li class="flex items-center">
+                  <div class="w-6 h-6 flex items-center justify-center mr-3">
+                    <div class="flex gap-[2px]">
+                      <div class="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_5px_rgba(249,115,22,0.6)]"></div>
+                      <div class="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_5px_rgba(249,115,22,0.6)]"></div>
+                      <div class="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_5px_rgba(249,115,22,0.6)]"></div>
+                    </div>
+                  </div>
+                  Scatter - High-velocity shards
+                </li>
+                <li class="flex items-center">
+                  <div class="w-6 h-6 flex items-center justify-center mr-3">
+                    <div class="flex gap-[2px]">
+                      <div class="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-b-[6px] border-b-lime-500 shadow-[0_0_5px_rgba(132,204,22,0.6)]"></div>
+                      <div class="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-b-[6px] border-b-lime-500 shadow-[0_0_5px_rgba(132,204,22,0.6)]"></div>
+                      <div class="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-b-[6px] border-b-lime-500 shadow-[0_0_5px_rgba(132,204,22,0.6)]"></div>
+                    </div>
+                  </div>
+                  Drone - Autonomous ally
+                </li>
+                <li class="flex items-center"><div class="w-6 h-6 flex items-center justify-center mr-3"><svg viewBox="0 0 24 24" class="w-5 h-5 text-gray-400 fill-current"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div> Chain - Arcing lightning</li>
+                <li class="flex items-center"><div class="w-6 h-6 flex items-center justify-center mr-3"><span class="inline-block w-4 h-4 rounded-full bg-fuchsia-500 shadow-[0_0_10px_rgba(217,70,239,0.6)]"></span></div> Plasma - Explosive bolts</li>
               </ul>
             </div>
           </div>
 
           <!-- Enemies Card -->
           <div class="card bg-white shadow-xl">
-            <div class="card-body p-4">
-              <h3 class="font-semibold mb-2 text-sm">Enemies:</h3>
-              <ul class="space-y-1 text-xs">
-                <li><span class="text-red-500">Red</span> - Basic fighters</li>
-                <li><span class="text-cyan-500">Cyan</span> - Fast interceptors</li>
-                <li><span class="text-orange-500">Orange</span> - Armored Tanks</li>
-                <li><span class="text-purple-500">Purple</span> - Boss ships</li>
+            <div class="card-body p-2">
+              <h3 class="font-semibold mb-1 text-sm">Enemies:</h3>
+              <ul class="grid grid-cols-2 gap-1 text-xs">
+                <li class="flex flex-col items-center text-center">
+                  <model-viewer src="/3d-models/Enemy-Ships/Enemy-Spaceship-Basic-Red.glb" auto-rotate rotation-per-second="60deg" disable-zoom disable-pan interaction-prompt="none" shadow-intensity="1" environment-image="neutral" style="width: 160px; height: 160px; background-color: transparent;"></model-viewer>
+                  <div class="font-bold mt-1">Basic Fighter</div>
+                </li>
+                <li class="flex flex-col items-center text-center">
+                  <model-viewer src="/3d-models/Enemy-Ships/Enemy-Spaceship-Fast-Blue.glb" auto-rotate rotation-per-second="60deg" disable-zoom disable-pan interaction-prompt="none" shadow-intensity="1" environment-image="neutral" style="width: 160px; height: 160px; background-color: transparent;"></model-viewer>
+                  <div class="font-bold mt-1">Interceptor</div>
+                </li>
+                <li class="flex flex-col items-center text-center">
+                  <model-viewer src="/3d-models/Enemy-Ships/Enemy-Spaceship-Tank-Orange.glb" auto-rotate rotation-per-second="60deg" disable-zoom disable-pan interaction-prompt="none" shadow-intensity="1" environment-image="neutral" style="width: 160px; height: 160px; background-color: transparent;"></model-viewer>
+                  <div class="font-bold mt-1">Tank</div>
+                </li>
+                <li class="flex flex-col items-center text-center">
+                  <model-viewer src="/3d-models/Enemy-Ships/Enemy-Spaceship-Boss.glb" auto-rotate rotation-per-second="60deg" disable-zoom disable-pan interaction-prompt="none" shadow-intensity="1" environment-image="neutral" style="width: 160px; height: 160px; background-color: transparent;"></model-viewer>
+                  <div class="font-bold mt-1">Boss</div>
+                </li>
               </ul>
             </div>
           </div>
@@ -3190,19 +3525,25 @@
       </div>
     {/if}
     <div class="absolute top-4 right-4 text-white font-bold z-10 bg-black/70 p-4 rounded-lg border-2 border-red-500"><div class="text-xl text-red-400">HOSTILES</div><div class="text-4xl text-center">{enemies.length}</div></div>
-    <div class="absolute bottom-4 left-4 text-white font-bold z-10 bg-black/70 p-4 rounded-lg border-2 border-cyan-500 {boostCharges > 0 && !boostActive ? 'animate-pulse' : ''}">
+    <div class="absolute bottom-4 left-4 text-white font-bold z-10 bg-black/70 p-4 rounded-lg border-2 border-cyan-500">
       <div class="text-sm">SPEED</div>
       <div class="w-32 bg-gray-700 h-3 rounded-full overflow-hidden">
         <div class="h-full transition-all {boostActive ? 'bg-gradient-to-r from-yellow-400 to-red-500' : 'bg-gradient-to-r from-cyan-400 to-blue-500'}" 
              style="width: {Math.min(100, (currentSpeed / maxSpeed) * 100)}%">
         </div>
       </div>
-      {#if boostActive}
-        <div class="text-yellow-400 text-xs animate-pulse mt-1">BOOST ACTIVE!</div>
-      {:else if boostCharges > 0}
-        <div class="text-blue-400 text-xs font-bold animate-pulse mt-1">BOOST AVAILABLE</div>
-      {/if}
     </div>
+    
+    <!-- Boost Indicator - Bottom Center -->
+    {#if boostCharges > 0 && !boostActive}
+      <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white font-bold z-10 bg-black/70 p-3 rounded-lg border-2 border-cyan-500 animate-pulse">
+        <div class="text-lg text-cyan-400 text-center">BOOST READY</div>
+      </div>
+    {:else if boostActive}
+      <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white font-bold z-10 bg-black/70 p-3 rounded-lg border-2 border-yellow-400">
+        <div class="text-lg text-yellow-400 text-center animate-pulse">BOOST ACTIVE!</div>
+      </div>
+    {/if}
     <!-- Power-up/Weapon Status -->
     <div class="absolute bottom-4 right-4 text-white font-bold z-10 bg-black/70 p-4 rounded-lg border-2 border-yellow-500">
       <div class="text-sm text-yellow-400 mb-2">POWER-UPS</div>
