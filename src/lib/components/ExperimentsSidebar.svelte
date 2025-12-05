@@ -54,7 +54,7 @@
       aria-label="close sidebar"
       class="drawer-overlay"
     ></label>
-    <aside class="min-h-screen w-64 bg-base-200 text-base-content border-r-2" style="border-color: rgba(102, 4, 96, 0.33);">
+    <aside class="min-h-screen w-64 bg-base-200 text-base-content sidebar-border">
       <div class="p-4">
         <h2 class="text-2xl font-bold mb-6">🧪 Experiments</h2>
 
@@ -78,7 +78,7 @@
                 <a
                   href={experiment.path}
                   class:active={$page.url.pathname === experiment.path}
-                  class="flex items-center gap-3"
+                  class="flex items-center gap-3 hover-bg-custom-secondary rounded-lg p-2"
                 >
                   <span class="text-2xl">{experiment.icon}</span>
                   <span>{experiment.name}</span>
@@ -99,7 +99,7 @@
                 <a
                   href={experiment.path}
                   class:active={$page.url.pathname === experiment.path}
-                  class="flex items-center gap-3"
+                  class="flex items-center gap-3 hover-bg-custom-secondary rounded-lg p-2"
                 >
                   <span class="text-2xl">{experiment.icon}</span>
                   <span>{experiment.name}</span>

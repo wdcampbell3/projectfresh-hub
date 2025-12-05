@@ -1567,12 +1567,14 @@
         moveForward = false
         break
       case "KeyA":
+      case "KeyQ":
         moveLeft = false
         break
       case "KeyS":
         moveBackward = false
         break
       case "KeyD":
+      case "KeyE":
         moveRight = false
         break
     }
@@ -2798,12 +2800,14 @@
         moveForward = true
         break
       case "KeyA":
+      case "KeyQ":
         moveLeft = true
         break
       case "KeyS":
         moveBackward = true
         break
       case "KeyD":
+      case "KeyE":
         moveRight = true
         break
       case "Space":
@@ -3115,7 +3119,7 @@
             <div class="flex-1 flex items-center justify-center overflow-y-auto">
               <div class="max-w-4xl w-full pb-8">
               <!-- Difficulty Settings -->
-              <div class="bg-white rounded-lg p-6 mb-6 border-2 border-gray-200 shadow-lg">
+              <div class="card-standard p-6 mb-6">
               <h3 class="text-2xl font-bold text-gray-900 mb-4">Difficulty & Settings</h3>
 
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -3285,23 +3289,23 @@
             <!-- Right Sidebar - Controls & Info -->
             <div class="w-full lg:w-1/4 flex flex-col gap-4 lg:min-w-[280px] overflow-y-auto">
               <!-- Controls Card -->
-              <div class="card bg-white shadow-xl">
+              <div class="card-standard">
                 <div class="card-body p-4">
                   <h3 class="font-semibold mb-2 text-sm">Controls:</h3>
                   <ul class="space-y-1 text-xs">
-                    <li><kbd class="kbd kbd-sm">W/A/S/D</kbd> - Move</li>
-                    <li><kbd class="kbd kbd-sm">Mouse</kbd> - Look around</li>
-                    <li><kbd class="kbd kbd-sm">Click</kbd> - Shoot</li>
-                    <li><kbd class="kbd kbd-sm">←/→ or ↑/↓</kbd> - Switch weapons</li>
-                    <li><kbd class="kbd kbd-sm">1-5</kbd> - Select weapon</li>
-                    <li><kbd class="kbd kbd-sm">Space</kbd> - Jump</li>
-                    <li><kbd class="kbd kbd-sm">ESC</kbd> - Pause</li>
+                    <li><kbd class="kbd-custom">W/A/S/D</kbd> - Move</li>
+                    <li><kbd class="kbd-custom">Mouse</kbd> - Look around</li>
+                    <li><kbd class="kbd-custom">Click</kbd> - Shoot</li>
+                    <li><kbd class="kbd-custom">←/→ or ↑/↓</kbd> - Switch weapons</li>
+                    <li><kbd class="kbd-custom">1-5</kbd> - Select weapon</li>
+                    <li><kbd class="kbd-custom">Space</kbd> - Jump</li>
+                    <li><kbd class="kbd-custom">ESC</kbd> - Pause</li>
                   </ul>
                 </div>
               </div>
 
               <!-- Power-Ups Card -->
-              <div class="card bg-white shadow-xl">
+              <div class="card-standard">
                 <div class="card-body p-4">
                   <h3 class="font-semibold mb-2 text-sm">Power-Ups (auto-apply):</h3>
                   <ul class="space-y-1 text-xs">
@@ -3315,7 +3319,7 @@
               </div>
 
               <!-- Enemies Card -->
-              <div class="card bg-white shadow-xl">
+              <div class="card-standard">
                 <div class="card-body p-4">
                   <h3 class="font-semibold mb-2 text-sm">Enemies:</h3>
                   <ul class="space-y-1 text-xs">
@@ -3327,7 +3331,7 @@
               </div>
 
               <!-- Tips Card -->
-              <div class="card bg-white shadow-xl">
+              <div class="card-standard">
                 <div class="card-body p-4">
                   <h3 class="font-semibold mb-2 text-sm">Tips:</h3>
                   <p class="text-xs">

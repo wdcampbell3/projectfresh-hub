@@ -1355,13 +1355,13 @@
     const g = new THREE.Group()
     const color = powerUpColors[type]
     
-    // Add random offset to position for variety
-    const randomOffset = new THREE.Vector3(
-      (Math.random() - 0.5) * 15,
-      (Math.random() - 0.5) * 10,
-      (Math.random() - 0.5) * 15
-    )
-    position.add(randomOffset)
+    // Add random offset to position for variety - REMOVED per user request for precise placement
+    // const randomOffset = new THREE.Vector3(
+    //   (Math.random() - 0.5) * 15,
+    //   (Math.random() - 0.5) * 10,
+    //   (Math.random() - 0.5) * 15
+    // )
+    // position.add(randomOffset)
 
     // Create type-specific power-up visuals
     if (type === 'health') {
@@ -3048,7 +3048,7 @@
         const texture = new THREE.CanvasTexture(canvas)
         scene.background = texture
       } else if (timeOfDay === 'night') {
-        scene.background = new THREE.Color(0x151515) // Dark gray
+        scene.background = new THREE.Color(0x2a2a2a) // Dark gray (lighter than 0x151515)
         console.log('Creating starfield...')
         createStarfield()
         console.log('Starfield created.')
@@ -3196,7 +3196,7 @@
         <div class="flex-1 flex justify-center overflow-y-auto">
           <div class="max-w-4xl w-full pb-8 my-auto">
             <!-- Ship Selection -->
-          <div class="bg-white rounded-lg p-6 mb-6 border-2 border-gray-200 shadow-lg">
+          <div class="card-standard p-6 mb-6">
           <h3 class="text-2xl font-bold text-gray-900 mb-4">Select Your Ship</h3>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             {#each spaceshipOptions as ship}
@@ -3216,7 +3216,7 @@
         </div>
 
         <!-- Select a Map -->
-        <div class="bg-white rounded-lg p-6 mb-6 border-2 border-gray-200 shadow-lg">
+        <div class="card-standard p-6 mb-6">
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-2xl font-bold text-gray-900">Select a Map</h3>
             <a class="text-blue-600 font-semibold underline text-sm" href="/world-builder">
@@ -3334,26 +3334,26 @@
         </div>
 
         <!-- Difficulty Settings (matching Blocky Shooter) -->
-        <div class="bg-white rounded-lg p-6 mb-6 border-2 border-gray-200 shadow-lg">
+        <div class="card-standard p-6 mb-6">
           <h3 class="text-2xl font-bold text-gray-900 mb-4">Difficulty & Settings</h3>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <button
-              class="btn {gameConfig.difficulty === 'easy' ? 'btn-success' : 'btn-outline'}"
+              class="btn {gameConfig.difficulty === 'easy' ? 'btn-success' : 'btn-secondary-custom'}"
               on:click={() => applyDifficultyPreset('easy')}
             >
               Easy
               <div class="text-xs">More health, slower enemies</div>
             </button>
             <button
-              class="btn {gameConfig.difficulty === 'normal' ? 'btn-warning' : 'btn-outline'}"
+              class="btn {gameConfig.difficulty === 'normal' ? 'btn-warning' : 'btn-secondary-custom'}"
               on:click={() => applyDifficultyPreset('normal')}
             >
               Normal
               <div class="text-xs">Balanced gameplay</div>
             </button>
             <button
-              class="btn {gameConfig.difficulty === 'hard' ? 'btn-error' : 'btn-outline'}"
+              class="btn {gameConfig.difficulty === 'hard' ? 'btn-error' : 'btn-secondary-custom'}"
               on:click={() => applyDifficultyPreset('hard')}
             >
               Hard
@@ -3377,19 +3377,19 @@
             <label class="label text-sm font-semibold">Auto-Move Speed</label>
             <div class="grid grid-cols-4 gap-2">
               <button
-                class="btn btn-sm {gameConfig.autoMoveSpeed === 'off' ? 'btn-neutral' : 'btn-outline'}"
+                class="btn btn-sm {gameConfig.autoMoveSpeed === 'off' ? 'btn-neutral' : 'btn-secondary-custom'}"
                 on:click={() => gameConfig.autoMoveSpeed = 'off'}
               >Off</button>
               <button
-                class="btn btn-sm {gameConfig.autoMoveSpeed === 'slow' ? 'btn-info' : 'btn-outline'}"
+                class="btn btn-sm {gameConfig.autoMoveSpeed === 'slow' ? 'btn-info' : 'btn-secondary-custom'}"
                 on:click={() => gameConfig.autoMoveSpeed = 'slow'}
               >Slow</button>
               <button
-                class="btn btn-sm {gameConfig.autoMoveSpeed === 'medium' ? 'btn-primary' : 'btn-outline'}"
+                class="btn btn-sm {gameConfig.autoMoveSpeed === 'medium' ? 'btn-primary' : 'btn-secondary-custom'}"
                 on:click={() => gameConfig.autoMoveSpeed = 'medium'}
               >Medium</button>
               <button
-                class="btn btn-sm {gameConfig.autoMoveSpeed === 'hyper' ? 'btn-error' : 'btn-outline'}"
+                class="btn btn-sm {gameConfig.autoMoveSpeed === 'hyper' ? 'btn-error' : 'btn-secondary-custom'}"
                 on:click={() => gameConfig.autoMoveSpeed = 'hyper'}
               >Hyper</button>
             </div>
@@ -3400,21 +3400,21 @@
             <label class="label text-sm font-semibold">Power-up Drops</label>
             <div class="grid grid-cols-3 gap-2">
               <button
-                class="btn btn-sm {gameConfig.powerUpFrequency === 'sparse' ? 'btn-warning' : 'btn-outline'}"
+                class="btn btn-sm {gameConfig.powerUpFrequency === 'sparse' ? 'btn-warning' : 'btn-secondary-custom'}"
                 on:click={() => gameConfig.powerUpFrequency = 'sparse'}
               >
                 Sparse
                 <div class="text-xs opacity-70">Every 3 kills</div>
               </button>
               <button
-                class="btn btn-sm {gameConfig.powerUpFrequency === 'normal' ? 'btn-primary' : 'btn-outline'}"
+                class="btn btn-sm {gameConfig.powerUpFrequency === 'normal' ? 'btn-primary' : 'btn-secondary-custom'}"
                 on:click={() => gameConfig.powerUpFrequency = 'normal'}
               >
                 Normal
                 <div class="text-xs opacity-70">Every 2 kills</div>
               </button>
               <button
-                class="btn btn-sm {gameConfig.powerUpFrequency === 'carnage' ? 'btn-error' : 'btn-outline'}"
+                class="btn btn-sm {gameConfig.powerUpFrequency === 'carnage' ? 'btn-error' : 'btn-secondary-custom'}"
                 on:click={() => gameConfig.powerUpFrequency = 'carnage'}
               >
                 Carnage
@@ -3464,24 +3464,24 @@
         <!-- Right Sidebar - Controls & Info -->
         <div class="w-full lg:w-1/4 flex flex-col gap-4 lg:min-w-[280px] overflow-y-auto">
           <!-- Controls Card -->
-          <div class="card bg-white shadow-xl">
+          <div class="card-standard">
             <div class="card-body p-4">
               <h3 class="font-semibold mb-2 text-sm">Controls:</h3>
               <ul class="space-y-1 text-xs">
-                <li><kbd class="kbd kbd-sm">W/S</kbd> - Forward/Back</li>
-                <li><kbd class="kbd kbd-sm">A/D</kbd> - Strafe Left/Right</li>
-                <li><kbd class="kbd kbd-sm">Mouse</kbd> - Aim</li>
-                <li><kbd class="kbd kbd-sm">Shift/Click</kbd> - Fire</li>
-                <li><kbd class="kbd kbd-sm">Space</kbd> - Boost</li>
-                <li><kbd class="kbd kbd-sm">Q/E</kbd> - Barrel Roll / Dodge</li>
-                <li><kbd class="kbd kbd-sm">↑/↓ or 1-5</kbd> - Switch Weapons</li>
-                <li><kbd class="kbd kbd-sm">ESC</kbd> - Pause</li>
+                <li><kbd class="kbd-custom">W/S</kbd> - Forward/Back</li>
+                <li><kbd class="kbd-custom">A/D</kbd> - Strafe Left/Right</li>
+                <li><kbd class="kbd-custom">Mouse</kbd> - Aim</li>
+                <li><kbd class="kbd-custom">Shift/Click</kbd> - Fire</li>
+                <li><kbd class="kbd-custom">Space</kbd> - Boost</li>
+                <li><kbd class="kbd-custom">Q/E</kbd> - Barrel Roll / Dodge</li>
+                <li><kbd class="kbd-custom">↑/↓ or 1-5</kbd> - Switch Weapons</li>
+                <li><kbd class="kbd-custom">ESC</kbd> - Pause</li>
               </ul>
             </div>
           </div>
 
           <!-- Power-Ups Card -->
-          <div class="card bg-white shadow-xl">
+          <div class="card-standard">
             <div class="card-body p-4">
               <h3 class="font-semibold mb-2 text-sm">Power-Ups:</h3>
               <ul class="space-y-3 text-xs">
@@ -3525,32 +3525,32 @@
           </div>
 
           <!-- Enemies Card -->
-          <div class="card bg-white shadow-xl">
-            <div class="card-body p-2">
-              <h3 class="font-semibold mb-1 text-sm">Enemies:</h3>
-              <ul class="grid grid-cols-2 gap-1 text-xs">
+          <div class="card-standard">
+            <div class="card-body p-4">
+              <h3 class="font-semibold mb-2 text-sm">Enemies:</h3>
+              <ul class="grid grid-cols-4 gap-0 text-xs">
                 <li class="flex flex-col items-center text-center">
-                  <model-viewer src="/3d-models/Enemy-Ships/Enemy-Spaceship-Basic-Red.glb" auto-rotate rotation-per-second="60deg" disable-zoom disable-pan interaction-prompt="none" shadow-intensity="1" environment-image="neutral" style="width: 160px; height: 160px; background-color: transparent;"></model-viewer>
-                  <div class="font-bold mt-1">Basic Fighter</div>
+                  <model-viewer src="/3d-models/Enemy-Ships/Enemy-Spaceship-Basic-Red.glb" auto-rotate rotation-per-second="60deg" disable-zoom disable-pan interaction-prompt="none" shadow-intensity="1" environment-image="neutral" style="width: 100%; height: auto; aspect-ratio: 1/1; background-color: transparent;"></model-viewer>
+                  <div class="font-bold mt-0 text-[9px] leading-tight">Fighter</div>
                 </li>
                 <li class="flex flex-col items-center text-center">
-                  <model-viewer src="/3d-models/Enemy-Ships/Enemy-Spaceship-Fast-Blue.glb" auto-rotate rotation-per-second="60deg" disable-zoom disable-pan interaction-prompt="none" shadow-intensity="1" environment-image="neutral" style="width: 160px; height: 160px; background-color: transparent;"></model-viewer>
-                  <div class="font-bold mt-1">Interceptor</div>
+                  <model-viewer src="/3d-models/Enemy-Ships/Enemy-Spaceship-Fast-Blue.glb" auto-rotate rotation-per-second="60deg" disable-zoom disable-pan interaction-prompt="none" shadow-intensity="1" environment-image="neutral" style="width: 100%; height: auto; aspect-ratio: 1/1; background-color: transparent;"></model-viewer>
+                  <div class="font-bold mt-0 text-[9px] leading-tight">Interceptor</div>
                 </li>
                 <li class="flex flex-col items-center text-center">
-                  <model-viewer src="/3d-models/Enemy-Ships/Enemy-Spaceship-Tank-Orange.glb" auto-rotate rotation-per-second="60deg" disable-zoom disable-pan interaction-prompt="none" shadow-intensity="1" environment-image="neutral" style="width: 160px; height: 160px; background-color: transparent;"></model-viewer>
-                  <div class="font-bold mt-1">Tank</div>
+                  <model-viewer src="/3d-models/Enemy-Ships/Enemy-Spaceship-Tank-Orange.glb" auto-rotate rotation-per-second="60deg" disable-zoom disable-pan interaction-prompt="none" shadow-intensity="1" environment-image="neutral" style="width: 100%; height: auto; aspect-ratio: 1/1; background-color: transparent;"></model-viewer>
+                  <div class="font-bold mt-0 text-[9px] leading-tight">Tank</div>
                 </li>
                 <li class="flex flex-col items-center text-center">
-                  <model-viewer src="/3d-models/Enemy-Ships/Enemy-Spaceship-Boss.glb" auto-rotate rotation-per-second="60deg" disable-zoom disable-pan interaction-prompt="none" shadow-intensity="1" environment-image="neutral" style="width: 160px; height: 160px; background-color: transparent;"></model-viewer>
-                  <div class="font-bold mt-1">Boss</div>
+                  <model-viewer src="/3d-models/Enemy-Ships/Enemy-Spaceship-Boss.glb" auto-rotate rotation-per-second="60deg" disable-zoom disable-pan interaction-prompt="none" shadow-intensity="1" environment-image="neutral" style="width: 100%; height: auto; aspect-ratio: 1/1; background-color: transparent;"></model-viewer>
+                  <div class="font-bold mt-0 text-[9px] leading-tight">Boss</div>
                 </li>
               </ul>
             </div>
           </div>
 
           <!-- Tips Card -->
-          <div class="card bg-white shadow-xl">
+          <div class="card-standard">
             <div class="card-body p-4">
               <h3 class="font-semibold mb-2 text-sm">Tips:</h3>
               <p class="text-xs">
@@ -3598,9 +3598,9 @@
       <div class="text-center text-white space-y-4">
         <div class="text-4xl font-bold animate-pulse">LAUNCHING...</div>
         <div class="w-64 h-4 bg-gray-800 rounded-full overflow-hidden mb-2">
-          <div class="h-full bg-cyan-400 transition-all duration-200" style="width: {loadingProgress}%"></div>
+          <div class="h-full bg-accent transition-all duration-200" style="width: {loadingProgress}%"></div>
         </div>
-        <div class="text-xl text-cyan-400">{loadingStatus}</div>
+        <div class="text-sm text-gray-400">{loadingStatus}</div>
       </div>
     </div>
   {/if}

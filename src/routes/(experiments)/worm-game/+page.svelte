@@ -661,7 +661,7 @@
   <div class="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
     <!-- Game Canvas - scales to fill available space -->
     <div class="flex-1 flex items-center justify-center min-w-0">
-      <div class="card bg-white shadow-xl relative">
+      <div class="card-standard relative">
         <div class="card-body p-4">
           <div
             class="game-board"
@@ -733,7 +733,7 @@
     <!-- Settings Panel - fixed 1/4 width -->
     <div class="w-full lg:w-1/4 flex flex-col gap-4 lg:min-w-[280px]">
       <!-- Stats Container -->
-      <div class="card bg-white shadow-xl">
+      <div class="card-standard">
         <div class="card-body p-4">
           <div class="stats stats-vertical lg:stats-horizontal shadow w-full overflow-visible flex-wrap">
             <div class="stat py-2 px-2 min-w-0">
@@ -749,7 +749,7 @@
       </div>
 
       <!-- Settings Container -->
-      <div class="card bg-white shadow-xl flex-1 lg:overflow-y-auto lg:max-h-full">
+      <div class="card-standard flex-1 lg:overflow-y-auto lg:max-h-full">
         <div class="card-body">
           <h2 class="card-title" style="color: #660460;">Settings</h2>
 

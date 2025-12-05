@@ -2711,7 +2711,7 @@
             <div class="grid grid-cols-6 gap-1">
               {#each recentModels as model}
                 <button
-                  class="btn btn-ghost btn-xs p-0 h-auto aspect-square {selectedModel?.path === model.path ? 'ring-2 ring-primary' : ''}"
+                  class="btn btn-ghost btn-xs p-0 h-auto aspect-square {selectedModel?.path === model.path ? 'thumb-highlight' : ''}"
                   onclick={() => selectModel(model)}
                   title={model.name}
                 >
@@ -2800,8 +2800,188 @@
         <!-- Maps Tab -->
         <h2 class="text-2xl font-bold mb-4" style="color: #660460;">Map Manager</h2>
 
+        <!-- Auto Generate Section - Moved to Top -->
+        <div class="bg-custom-secondary p-3 mb-4 rounded-lg" style="border: 1px solid #dac1cd; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);">
+          <h4 class="font-semibold mb-2">Auto Generate Settings</h4>
+          
+          <!-- Preset Radio Buttons -->
+          <div class="mb-3">
+            <label class="label label-text text-xs font-semibold">Quick Presets:</label>
+            <div class="flex flex-wrap gap-2 justify-start text-xs">
+              <label class="cursor-pointer flex items-center gap-1">
+                <input 
+                  type="radio" 
+                  name="preset" 
+                  class="radio radio-xs radio-custom" 
+                  value="town" 
+                  bind:group={quickStartPreset}
+                  onchange={() => {
+                    autoGenTrees = 15
+                    autoGenBuildings = 8
+                    autoGenVehicles = 3
+                    autoGenAnimals = 5
+                    autoGenCity = 0
+                    autoGenSpace = 0
+                  }}
+                />
+                <span>Town</span>
+              </label>
+              <label class="cursor-pointer flex items-center gap-1">
+                <input 
+                  type="radio" 
+                  name="preset" 
+                  class="radio radio-xs radio-custom" 
+                  value="city" 
+                  bind:group={quickStartPreset}
+                  onchange={() => {
+                    autoGenTrees = 5
+                    autoGenBuildings = 15
+                    autoGenVehicles = 8
+                    autoGenAnimals = 2
+                    autoGenCity = 10
+                    autoGenSpace = 0
+                  }}
+                />
+                <span>City</span>
+              </label>
+              <label class="cursor-pointer flex items-center gap-1">
+                <input 
+                  type="radio" 
+                  name="preset" 
+                  class="radio radio-xs radio-custom" 
+                  value="nature" 
+                  bind:group={quickStartPreset}
+                  onchange={() => {
+                    autoGenTrees = 30
+                    autoGenBuildings = 2
+                    autoGenVehicles = 1
+                    autoGenAnimals = 15
+                    autoGenCity = 0
+                    autoGenSpace = 0
+                  }}
+                />
+                <span>Nature</span>
+              </label>
+              <label class="cursor-pointer flex items-center gap-1">
+                <input 
+                  type="radio" 
+                  name="preset" 
+                  class="radio radio-xs radio-custom" 
+                  value="space" 
+                  bind:group={quickStartPreset}
+                  onchange={() => {
+                    autoGenTrees = 0
+                    autoGenBuildings = 0
+                    autoGenVehicles = 0
+                    autoGenAnimals = 0
+                    autoGenCity = 0
+                    autoGenSpace = 20
+                  }}
+                />
+                <span>Space</span>
+              </label>
+              <label class="cursor-pointer flex items-center gap-1">
+                <input 
+                  type="radio" 
+                  name="preset" 
+                  class="radio radio-xs radio-custom" 
+                  value="random" 
+                  bind:group={quickStartPreset}
+                  onchange={() => {
+                    autoGenTrees = Math.floor(Math.random() * 30)
+                    autoGenBuildings = Math.floor(Math.random() * 15)
+                    autoGenVehicles = Math.floor(Math.random() * 10)
+                    autoGenAnimals = Math.floor(Math.random() * 15)
+                    autoGenCity = Math.floor(Math.random() * 10)
+                    autoGenSpace = Math.floor(Math.random() * 15)
+                  }}
+                />
+                <span>Random</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 mb-3">
+            <div>
+              <label class="label label-text text-xs">Trees</label>
+              <input type="number" bind:value={autoGenTrees} min="0" max="50" class="input input-xs input-bordered w-full input-white" />
+            </div>
+            <div>
+              <label class="label label-text text-xs">Buildings</label>
+              <input type="number" bind:value={autoGenBuildings} min="0" max="20" class="input input-xs input-bordered w-full input-white" />
+            </div>
+            <div>
+              <label class="label label-text text-xs">Vehicles</label>
+              <input type="number" bind:value={autoGenVehicles} min="0" max="20" class="input input-xs input-bordered w-full input-white" />
+            </div>
+            <div>
+              <label class="label label-text text-xs">Animals</label>
+              <input type="number" bind:value={autoGenAnimals} min="0" max="20" class="input input-xs input-bordered w-full input-white" />
+            </div>
+            <div>
+              <label class="label label-text text-xs">City Scape</label>
+              <input type="number" bind:value={autoGenCity} min="0" max="20" class="input input-xs input-bordered w-full input-white" />
+            </div>
+            <div>
+              <label class="label label-text text-xs">Space</label>
+              <input type="number" bind:value={autoGenSpace} min="0" max="20" class="input input-xs input-bordered w-full input-white" />
+            </div>
+          </div>
+          <div class="flex gap-2 mb-3">
+             <button
+              class="btn btn-xs btn-red-white flex-1"
+              onclick={() => {
+                autoGenTrees = 0
+                autoGenBuildings = 0
+                autoGenVehicles = 0
+                autoGenAnimals = 0
+                autoGenCity = 0
+                autoGenSpace = 0
+              }}
+            >
+              🗑️ Clear All
+            </button>
+          </div>
+          <div class="form-control mb-3">
+            <label class="label cursor-pointer justify-start gap-2">
+              <span class="label-text text-xs font-semibold">Distribute Vertically:</span> 
+              <input type="radio" name="distribute" class="radio radio-xs" value={false} bind:group={distributeVertically} />
+              <span class="label-text text-xs">Off</span>
+              <input type="radio" name="distribute" class="radio radio-xs" value={true} bind:group={distributeVertically} />
+              <span class="label-text text-xs">On</span>
+            </label>
+          </div>
+          
+          <!-- Weather Selection -->
+          <div class="form-control mb-3">
+            <label class="label label-text text-xs font-semibold">Weather:</label>
+            <select class="select select-xs select-bordered w-full select-white" bind:value={weather}>
+              <option value="clear">☀️ Clear</option>
+              <option value="fog">🌫️ Fog</option>
+              <option value="rain">🌧️ Rain</option>
+              <option value="snow">❄️ Snow</option>
+            </select>
+          </div>
+          
+          <button
+            class="btn btn-sm btn-primary w-full"
+            onclick={() => {
+              hideInstructions = true
+              autoGenerateMap(false)
+            }}
+          >
+            🎲 Auto Generate Map
+          </button>
+          <p class="text-xs text-gray-500 mt-1 text-center">
+            Automatically place objects for fun gameplay
+          </p>
+        </div>
+
+        <!-- Divider -->
+        <div class="divider my-4"></div>
+
         <!-- Current Map Info -->
-        <div class="bg-base-300 p-3 rounded-lg mb-4">
+        <div class="bg-custom-secondary p-3 mb-4 rounded-lg" style="border: 1px solid #dac1cd; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);">
           <div class="text-sm font-semibold mb-1">Current Map:</div>
           <input
             type="text"
@@ -2838,7 +3018,7 @@
             </div>
             <div class="flex gap-2">
               <button
-                class="btn btn-sm btn-outline flex-1"
+                class="btn btn-sm btn-secondary-custom flex-1"
                 onclick={saveAsNewMap}
                 title="Save as a new copy"
               >
@@ -2873,77 +3053,15 @@
         <!-- Import/Export -->
         <div class="flex gap-2 mb-4">
           <button
-            class="btn btn-sm btn-outline flex-1"
+            class="btn btn-sm btn-secondary-custom flex-1"
             onclick={importMap}
           >
             📥 Import
           </button>
         </div>
 
-        <!-- Auto Generate -->
-        <div class="mb-4">
-          <h4 class="font-semibold mb-2">Auto Generate Settings</h4>
-          <div class="grid grid-cols-2 gap-2 mb-3">
-            <div>
-              <label class="label label-text text-xs">Trees</label>
-              <input type="number" bind:value={autoGenTrees} min="0" max="50" class="input input-xs input-bordered w-full" />
-            </div>
-            <div>
-              <label class="label label-text text-xs">Buildings</label>
-              <input type="number" bind:value={autoGenBuildings} min="0" max="20" class="input input-xs input-bordered w-full" />
-            </div>
-            <div>
-              <label class="label label-text text-xs">Vehicles</label>
-              <input type="number" bind:value={autoGenVehicles} min="0" max="20" class="input input-xs input-bordered w-full" />
-            </div>
-            <div>
-              <label class="label label-text text-xs">Animals</label>
-              <input type="number" bind:value={autoGenAnimals} min="0" max="20" class="input input-xs input-bordered w-full" />
-            </div>
-            <div>
-              <label class="label label-text text-xs">City Scape</label>
-              <input type="number" bind:value={autoGenCity} min="0" max="20" class="input input-xs input-bordered w-full" />
-            </div>
-            <div>
-              <label class="label label-text text-xs">Space</label>
-              <input type="number" bind:value={autoGenSpace} min="0" max="20" class="input input-xs input-bordered w-full" />
-            </div>
-          </div>
-          <div class="flex gap-2 mb-3">
-             <button
-              class="btn btn-xs btn-outline btn-error flex-1"
-              onclick={() => {
-                autoGenTrees = 0
-                autoGenBuildings = 0
-                autoGenVehicles = 0
-                autoGenAnimals = 0
-                autoGenCity = 0
-                autoGenSpace = 0
-              }}
-            >
-              🗑️ Clear All
-            </button>
-          </div>
-          <div class="form-control mb-3">
-            <label class="label cursor-pointer justify-start gap-2">
-              <span class="label-text text-xs font-semibold">Distribute Vertically:</span> 
-              <input type="radio" name="distribute" class="radio radio-xs" value={false} bind:group={distributeVertically} />
-              <span class="label-text text-xs">Off</span>
-              <input type="radio" name="distribute" class="radio radio-xs" value={true} bind:group={distributeVertically} />
-              <span class="label-text text-xs">On</span>
-            </label>
-          </div>
-          <button
-            class="btn btn-sm btn-accent w-full"
-            onclick={() => autoGenerateMap(false)}
-            style="background-color: #660460; color: white; border: none;"
-          >
-            🎲 Auto Generate Map
-          </button>
-          <p class="text-xs text-gray-500 mt-1 text-center">
-            Automatically place objects for fun gameplay
-          </p>
-        </div>
+        <!-- Divider -->
+        <div class="divider my-4"></div>
 
         <!-- Saved Maps List -->
         <h3 class="text-lg font-bold mb-2" style="color: #660460;">
@@ -3038,16 +3156,16 @@
       {:else if activeTab === 'options'}
         <!-- Options Tab -->
         <h2 class="text-2xl font-bold mb-4" style="color: #660460;">Controls</h2>
-        <div class="bg-base-100 p-4 rounded-lg shadow-sm mb-6 text-xs space-y-2">
+        <div class="card-standard p-4 mb-6 text-xs space-y-2">
           <p><strong>Select:</strong> Click object</p>
           <p><strong>Move:</strong> Drag object</p>
-          <p><strong>Vertical Move:</strong> Hold <kbd class="kbd kbd-xs">Shift</kbd> + Drag</p>
+          <p><strong>Vertical Move:</strong> Hold <kbd class="kbd-custom">Shift</kbd> + Drag</p>
           <p><strong>Rotate:</strong> Arrow keys</p>
           <p><strong>Scale:</strong> +/- keys</p>
           <p><strong>Delete:</strong> Delete/Backspace</p>
           <div class="divider my-2"></div>
           <p><strong>Camera Rotate:</strong> Drag background</p>
-          <p><strong>Camera Pan:</strong> Hold <kbd class="kbd kbd-xs">Space</kbd> + Drag</p>
+          <p><strong>Camera Pan:</strong> Hold <kbd class="kbd-custom">Space</kbd> + Drag</p>
         </div>
 
         <h2 class="text-2xl font-bold mb-4" style="color: #660460;">Environment</h2>
@@ -3059,25 +3177,25 @@
           </label>
           <div class="grid grid-cols-2 gap-2">
             <button
-              class="btn btn-sm {timeOfDay === 'dawn' ? 'btn-primary' : 'btn-outline'}"
+              class="btn btn-sm {timeOfDay === 'dawn' ? 'btn-primary' : 'btn-secondary-custom'}"
               onclick={() => timeOfDay = 'dawn'}
             >
               🌅 Dawn
             </button>
             <button
-              class="btn btn-sm {timeOfDay === 'day' ? 'btn-primary' : 'btn-outline'}"
+              class="btn btn-sm {timeOfDay === 'day' ? 'btn-primary' : 'btn-secondary-custom'}"
               onclick={() => timeOfDay = 'day'}
             >
               ☀️ Day
             </button>
             <button
-              class="btn btn-sm {timeOfDay === 'sunset' ? 'btn-primary' : 'btn-outline'}"
+              class="btn btn-sm {timeOfDay === 'sunset' ? 'btn-primary' : 'btn-secondary-custom'}"
               onclick={() => timeOfDay = 'sunset'}
             >
               🌇 Sunset
             </button>
             <button
-              class="btn btn-sm {timeOfDay === 'night' ? 'btn-primary' : 'btn-outline'}"
+              class="btn btn-sm {timeOfDay === 'night' ? 'btn-primary' : 'btn-secondary-custom'}"
               onclick={() => timeOfDay = 'night'}
             >
               🌙 Night
@@ -3121,18 +3239,18 @@
         <!-- Stats -->
         <div class="divider"></div>
         <h3 class="text-lg font-bold mb-2" style="color: #660460;">Scene Stats</h3>
-        <div class="stats stats-vertical shadow w-full">
-          <div class="stat p-3">
-            <div class="stat-title text-xs">Objects</div>
-            <div class="stat-value text-2xl">{placedObjects.length}</div>
+        <div class="card-standard p-3">
+          <div class="mb-2">
+            <div class="text-xs text-gray-500">Objects</div>
+            <div class="text-2xl font-bold">{placedObjects.length}</div>
           </div>
-          <div class="stat p-3">
-            <div class="stat-title text-xs">Polygons</div>
-            <div class="stat-value text-2xl {polygonCount > MAX_POLYGON_WARNING ? 'text-error' : ''}">
+          <div>
+            <div class="text-xs text-gray-500">Polygons</div>
+            <div class="text-2xl font-bold {polygonCount > MAX_POLYGON_WARNING ? 'text-error' : ''}">
               {(polygonCount / 1000).toFixed(1)}k
             </div>
             {#if polygonCount > MAX_POLYGON_WARNING}
-              <div class="stat-desc text-error">High poly count may affect performance</div>
+              <div class="text-xs text-error">High poly count may affect performance</div>
             {/if}
           </div>
         </div>
@@ -3166,34 +3284,15 @@
             <div class="bg-base-200 p-4 rounded-lg text-black max-w-md pointer-events-auto">
               <h4 class="font-bold mb-2 text-center text-[#660460]">🚀 Quick Start</h4>
               <div class="flex flex-col gap-3 items-center justify-center">
-                <div class="flex flex-wrap gap-2 justify-center text-xs">
-                  <label class="cursor-pointer flex items-center gap-1">
-                    <input type="radio" name="preset" class="radio radio-xs radio-primary" value="town" bind:group={quickStartPreset} />
-                    <span>Town</span>
-                  </label>
-                  <label class="cursor-pointer flex items-center gap-1">
-                    <input type="radio" name="preset" class="radio radio-xs radio-secondary" value="city" bind:group={quickStartPreset} />
-                    <span>City</span>
-                  </label>
-                  <label class="cursor-pointer flex items-center gap-1">
-                    <input type="radio" name="preset" class="radio radio-xs radio-accent" value="nature" bind:group={quickStartPreset} />
-                    <span>Nature</span>
-                  </label>
-                  <label class="cursor-pointer flex items-center gap-1">
-                    <input type="radio" name="preset" class="radio radio-xs radio-info" value="space" bind:group={quickStartPreset} />
-                    <span>Space</span>
-                  </label>
-                  <label class="cursor-pointer flex items-center gap-1">
-                    <input type="radio" name="preset" class="radio radio-xs" value="random" bind:group={quickStartPreset} />
-                    <span>Random</span>
-                  </label>
-                </div>
                 <button 
                   class="btn btn-sm btn-accent w-full"
-                  onclick={() => autoGenerateMap(true)}
+                  onclick={() => {
+                    hideInstructions = true
+                    activeTab = 'maps'
+                  }}
                   style="background-color: #660460; color: white; border: none;"
                 >
-                  🎲 Auto Generate World
+                  Auto Generate 🎲
                 </button>
                 <button 
                   class="btn btn-xs btn-link text-[#660460] no-underline hover:underline mt-2"
@@ -3203,7 +3302,7 @@
                     activeTab = 'models'
                   }}
                 >
-                  ...Or Build Your Own Map!
+                  ...Or Build From Scratch!
                 </button>
               </div>
             </div>
@@ -3212,21 +3311,20 @@
               <h3 class="text-2xl font-bold mb-4 text-[#660460]">🏗️ Building Instructions</h3>
               <p class="text-sm text-left">
                 <strong>Placing Objects:</strong><br/>
-                1. Select an object from the sidebar<br/>
-                2. Press <kbd class="kbd kbd-xs bg-base-300 text-base-content">Arrow Keys</kbd> to rotate<br/>
-                3. Press <kbd class="kbd kbd-xs bg-base-300 text-base-content">+</kbd>/<kbd class="kbd kbd-xs bg-base-300 text-base-content">-</kbd> to scale<br/>
-                4. Click to place in the world<br/><br/>
-
+                1. Click to place object<br/>
+                2. Press <kbd class="kbd-custom">Arrow Keys</kbd> to rotate<br/>
+                3. Press <kbd class="kbd-custom">+</kbd>/<kbd class="kbd-custom">-</kbd> to scale<br/>
+                4. Click to confirm placement<br/><br/>
+                
                 <strong>Editing Objects:</strong><br/>
-                5. Click placed objects to select them<br/>
-                6. Use <kbd class="kbd kbd-xs bg-base-300 text-base-content">Arrow Keys</kbd> to rotate selection<br/>
-                7. Use <kbd class="kbd kbd-xs bg-base-300 text-base-content">+</kbd>/<kbd class="kbd kbd-xs bg-base-300 text-base-content">-</kbd> to resize<br/>
-                8. Hold <kbd class="kbd kbd-xs bg-base-300 text-base-content">Shift</kbd> + drag to move vertically<br/>
-                9. Press <kbd class="kbd kbd-xs bg-base-300 text-base-content">Delete</kbd> to remove<br/><br/>
-
-                <strong>Camera:</strong><br/>
-                9. Drag to rotate camera<br/>
-                10. Hold <kbd class="kbd kbd-xs bg-base-300 text-base-content">Space</kbd> + drag to pan<br/>
+                5. Click to select an object<br/>
+                6. Use <kbd class="kbd-custom">Arrow Keys</kbd> to rotate selection<br/>
+                7. Use <kbd class="kbd-custom">+</kbd>/<kbd class="kbd-custom">-</kbd> to resize<br/>
+                8. Hold <kbd class="kbd-custom">Shift</kbd> + drag to move vertically<br/>
+                9. Press <kbd class="kbd-custom">Delete</kbd> to remove<br/><br/>
+                
+                <strong>Camera Controls:</strong><br/>
+                10. Hold <kbd class="kbd-custom">Space</kbd> + drag to pan<br/>
                 11. Scroll to zoom in/out
               </p>
             </div>

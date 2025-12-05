@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @plugin '@tailwindcss/typography';
+
 @plugin "daisyui" {
   /* Disable all other themes which forces the default theme created below. You can add a dark mode theme using daisyui if you like, and it will automatically use it when the user's system is in dark mode. Docs: https://daisyui.com/docs/themes/ */
   themes: false;
@@ -8,9 +9,12 @@
 
 @plugin "daisyui/theme" {
   name: "saasstartertheme";
-  default: true; /* set as default */
-  prefersdark: false; /* set as default dark mode (prefers-color-scheme:dark) */
-  color-scheme: light; /* color of browser-provided UI */
+  default: true;
+  /* set as default */
+  prefersdark: false;
+  /* set as default dark mode (prefers-color-scheme:dark) */
+  color-scheme: light;
+  /* color of browser-provided UI */
 
   --color-primary: #660460;
   --color-primary-content: #fefbf6;
@@ -60,6 +64,7 @@
   color utility to any element that depends on these defaults.
 */
 @layer base {
+
   *,
   ::after,
   ::before,
@@ -77,12 +82,147 @@ a {
 .authBtn {
   @apply btn;
 }
+
 button[disabled].authBtn {
   font-size: 0.001px;
   filter: brightness(65%);
 }
+
 button[disabled].authBtn::before {
   font-size: 14px;
   content: "Loading...";
   color: oklch(var(--pc));
+}
+
+/* Custom secondary color for map manager boxes */
+.bg-custom-secondary {
+  background-color: #dac1cd;
+}
+
+/* Standard Card Container */
+.card-standard {
+  background-color: white;
+  border: 1px solid #dac1cd;
+  border-radius: 0.5rem;
+  /* rounded-lg */
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  /* shadow-sm */
+}
+
+/* Secondary Button Custom */
+.btn-secondary-custom {
+  background-color: transparent;
+  border: 1px solid #660460;
+  color: #660460;
+}
+
+.btn-secondary-custom:hover {
+  background-color: #dac1cd;
+  border-color: #660460;
+  color: #660460;
+}
+
+/* White background for inputs and selects */
+.input-white,
+.select-white,
+.input-standard,
+.select-standard {
+  background-color: white;
+  border-color: #e5e7eb;
+  /* gray-200 */
+}
+
+/* Custom radio button: white background, purple checked */
+.radio-custom {
+  background-color: white;
+  border-color: #660460;
+  /* primary purple */
+}
+
+.radio-custom:checked {
+  background-color: white;
+  border-color: #660460;
+  color: #660460;
+  background-image: linear-gradient(#660460, #660460);
+  /* Force purple dot */
+}
+
+/* Red button with white text */
+.btn-red-white {
+  background-color: #ef4444;
+  /* red-500 */
+  color: white;
+  border: none;
+}
+
+.btn-red-white:hover {
+  background-color: #dc2626;
+  /* red-600 */
+}
+
+/* Hover background utility */
+.hover-bg-custom-secondary:hover {
+  background-color: #dac1cd !important;
+}
+
+/* Base container with cream background */
+.container-base {
+  background-color: #fffdef;
+}
+
+/* Keyboard label with mauve background */
+.kbd-custom {
+  background-color: #dac1cd;
+  color: #660460;
+  border: 1px solid #660460;
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Global input and select white backgrounds */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+select,
+textarea {
+  background-color: white !important;
+}
+
+/* Global radio button styling - all radios white background */
+input[type="radio"] {
+  background-color: white !important;
+  border-color: #660460 !important;
+  /* primary purple */
+}
+
+input[type="radio"]:checked {
+  background-color: white !important;
+  border-color: #660460 !important;
+  background-image: linear-gradient(#660460, #660460) !important;
+  /* Force purple dot */
+}
+
+/* Sidebar border */
+.sidebar-border {
+  border-right: 1px solid #dac1cd;
+}
+
+/* Remove shadows from all buttons globally */
+button,
+.btn {
+  box-shadow: none !important;
+}
+
+/* Model thumbnail highlight - 2px purple border */
+.thumb-highlight {
+  border: 2px solid #660460 !important;
+}
+
+/* Standard mauve border utility */
+.border-mauve {
+  border: 1px solid #dac1cd !important;
 }
