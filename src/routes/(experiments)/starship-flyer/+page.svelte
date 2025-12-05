@@ -105,6 +105,7 @@
     mouseInput: 'auto' | 'external' | 'trackpad'
     powerUpFrequency: PowerUpFrequency
     initialPowerUps: number
+    enemyLevelMultiplier: number
   }
 
   const autoMoveSpeeds: Record<AutoMoveSpeed, number> = {
@@ -151,8 +152,13 @@
     autoMoveSpeed: 'medium',  // Default to medium auto-move
     mouseInput: 'auto',  // Auto-detect trackpad vs external mouse
     powerUpFrequency: 'normal',  // Default to normal drops
-    initialPowerUps: 4 // Default number of weapon drops at start/level up
+    initialPowerUps: 4, // Default number of weapon drops at start/level up
+    enemyLevelMultiplier: 1 // How many extra enemies per level
   }
+  
+  let initialGameConfigState: GameConfig | null = null
+
+  let soundEnabled = true
 
   // Sound Manager
   class SoundManager {
@@ -321,7 +327,7 @@
   }
 
   let soundManager: SoundManager
-  let soundEnabled = true
+
 
   const difficultyPresets: Record<GameConfig['difficulty'], Partial<GameConfig>> = {
     easy: { startingHealth: 150, enemyCount: 3, enemyDamage: 5, playerDamage: 35, enemySpeed: 6.0, enemyFireRate: 3000 },
@@ -343,6 +349,7 @@
   let kills = 0
   let nextLevelScore = 1000
   let showLevelComplete = false
+  let currentLevelName = ''
   let isLoadingLevel = false
   let isBossLevel = false
   let bossEnemy: Enemy | null = null
@@ -458,14 +465,14 @@
   let flashTimer = 0
   let hitFlashTimer = 0 // Timer for red flash when hit
   const powerUpNames: Record<string, { name: string; color: string }> = {
-    health: { name: 'HEALTH +30', color: '#ff4444' },
-    ammo: { name: 'AMMO +10', color: '#44ff44' },
-    boost: { name: 'BOOST +1', color: '#44ffff' },
-    'weapon-missile': { name: 'MISSILES +10', color: '#ffff44' },
-    'weapon-plasma': { name: 'PLASMA +5', color: '#ff44ff' },
-    'weapon-chain': { name: 'CHAIN LIGHTNING +8', color: '#44aaff' },
-    'weapon-drone': { name: 'DRONE SWARM +3', color: '#88ff44' },
-    'weapon-scatter': { name: 'SCATTER SHOT +15', color: '#ff8844' }
+    health: { name: 'HEALTH', color: '#ff4444' },
+    ammo: { name: 'AMMO', color: '#44ff44' },
+    boost: { name: 'BOOST', color: '#44ffff' },
+    'weapon-missile': { name: 'MISSILES', color: '#ffff44' },
+    'weapon-plasma': { name: 'PLASMA', color: '#ff44ff' },
+    'weapon-chain': { name: 'CHAIN LIGHTNING', color: '#44aaff' },
+    'weapon-drone': { name: 'DRONE SWARM', color: '#88ff44' },
+    'weapon-scatter': { name: 'SCATTER SHOT', color: '#ff8844' }
   }
   const weaponFlashColors: Record<Weapon['type'], string> = {
     laser: '#44ffff',
@@ -867,8 +874,14 @@
     solidObjects.forEach(obj => scene.remove(obj))
     solidObjects = []
 
-    // We want a space background for all levels, so we don't apply the map's environment.
-    // applyEnvironment(map.environment)
+    // Apply map environment settings
+    if (map.environment) {
+      timeOfDay = map.environment.timeOfDay
+      weather = map.environment.weather // Explicitly set weather from map
+      // weather = 'clear' // REMOVED: Allow map weather to persist
+      applyEnvironment(map.environment)
+      updateEnvironment()
+    }
 
     // Also removing the ground plane.
     // const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshStandardMaterial({ color: 0x2d5016, roughness: 0.8 }))
@@ -1280,7 +1293,20 @@
         setTimeout(() => spawnEnemy(types[Math.floor(Math.random() * types.length)]), 1000)
       }, 8000)
     }
-    else { isBossLevel = false; for (let i = 0; i < Math.min(gameConfig.enemyCount + level, 15); i++) setTimeout(() => spawnEnemy(types[Math.floor(Math.random() * types.length)]), i * 300) }
+    else { 
+      isBossLevel = false; 
+      // Calculate target enemy count based on config and level multiplier
+      const targetCount = Math.min(gameConfig.enemyCount + (level * gameConfig.enemyLevelMultiplier), 25)
+      
+      // Spawn cap check: don't spawn if we already have too many enemies
+      if (enemies.length >= targetCount + 5) return
+
+      // Spawn up to the target count
+      const spawnCount = Math.max(0, targetCount - enemies.length)
+      const batchSize = Math.min(spawnCount, 5) // Don't spawn too many at once
+
+      for (let i = 0; i < batchSize; i++) setTimeout(() => spawnEnemy(types[Math.floor(Math.random() * types.length)]), i * 300) 
+    }
   }
 
   // Check if we should drop a power-up based on frequency setting
@@ -1741,15 +1767,7 @@
         // Check for kills on all hit enemies
         for (const e of hitEnemies) {
           if (e.health <= 0 && enemies.includes(e)) {
-            createExplosion(e.mesh.position, e.type === 'boss' ? 3 : 1)
-            const deathPos = e.mesh.position.clone()
-            scene.remove(e.mesh)
-            const idx = enemies.indexOf(e)
-            if (idx !== -1) enemies.splice(idx, 1)
-            score += e.type === 'boss' ? 500 : e.type === 'tank' ? 100 : e.type === 'fast' ? 50 : 25
-            kills++
-            if (e.type === 'boss') { bossEnemy = null; bossHealth = 0; isBossLevel = false }
-            trySpawnPowerUpOnKill(deathPos)
+            handleEnemyDeath(e)
           }
         }
       } else {
@@ -1830,22 +1848,22 @@
   function createPlasmaBlastVisual(pos: THREE.Vector3) {
     // Expanding pink sphere (starts a bit larger; scales to match damage radius)
     const core = new THREE.Mesh(
-      new THREE.SphereGeometry(1.2, 16, 16),
+      new THREE.SphereGeometry(1.6, 16, 16),
       new THREE.MeshBasicMaterial({ color: 0xff66ff, transparent: true, opacity: 0.8 })
     )
     core.position.copy(pos)
     scene.add(core)
-    particles.push({ mesh: core, velocity: new THREE.Vector3(), lifetime: 0.4, maxLifetime: 0.4, scaleGrowth: 6 })
+    particles.push({ mesh: core, velocity: new THREE.Vector3(), lifetime: 0.4, maxLifetime: 0.4, scaleGrowth: 8 })
 
     // Shockwave ring
     const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(1.8, 0.16, 12, 24),
+      new THREE.TorusGeometry(2.4, 0.16, 12, 24),
       new THREE.MeshBasicMaterial({ color: 0xff99ff, transparent: true, opacity: 0.7 })
     )
     ring.rotation.x = Math.PI / 2
     ring.position.copy(pos)
     scene.add(ring)
-    particles.push({ mesh: ring, velocity: new THREE.Vector3(), lifetime: 0.6, maxLifetime: 0.6, scaleGrowth: 3.5 })
+    particles.push({ mesh: ring, velocity: new THREE.Vector3(), lifetime: 0.6, maxLifetime: 0.6, scaleGrowth: 4.6 })
   }
 
   function handleEnemyDeath(enemy: Enemy) {
@@ -1856,14 +1874,51 @@
     soundManager.playExplosion(enemy.type === 'boss' ? 3 : 1)
     const deathPos = enemy.mesh.position.clone()
     scene.remove(enemy.mesh); enemies.splice(idx, 1)
-    score += enemy.type === 'boss' ? 500 : enemy.type === 'tank' ? 100 : enemy.type === 'fast' ? 50 : 25
+    // Score logic:
+    // 1. If boss is active, score is capped at current level threshold (unless we just killed the boss)
+    // 2. If we kill the boss, we get a bonus to reach the next level threshold
+    
+    const points = enemy.type === 'boss' ? 500 : enemy.type === 'tank' ? 100 : enemy.type === 'fast' ? 50 : 25
+    const levelTarget = level * 1000
+
+    if (enemy.type === 'boss') {
+      // Boss killed!
+      bossEnemy = null; bossHealth = 0; isBossLevel = false
+      
+      // Award bonus to reach next level
+      if (score < levelTarget) {
+        const bonus = levelTarget - score
+        score = levelTarget
+        // Show bonus effect (optional, for now just the score jump)
+      } else {
+        score += points
+      }
+      
+      // Trigger level up if we hit the target
+      if (score >= nextLevelScore) levelUp()
+      
+    } else {
+      // Normal enemy killed
+      if (bossEnemy) {
+        // Boss active: cap score at level target - 1 (so we don't level up on minions)
+        // Or just don't add points if we are at/near target?
+        // User said: "point scoring stops... unless they defeat the boss"
+        if (score < levelTarget) {
+          score = Math.min(score + points, levelTarget)
+        }
+      } else {
+        // No boss: normal scoring
+        score += points
+        if (score >= nextLevelScore) levelUp()
+      }
+    }
+
     kills++
-    if (enemy.type === 'boss') { bossEnemy = null; bossHealth = 0; isBossLevel = false }
     trySpawnPowerUpOnKill(deathPos)
   }
 
   function applyPlasmaBlastDamage(center: THREE.Vector3, baseDamage: number, primary?: Enemy) {
-    const blastRadius = 13
+    const blastRadius = 17
     const blastDelayMs = 120  // Fire the damage slightly after visuals start expanding
     createPlasmaBlastVisual(center)
 
@@ -2164,13 +2219,16 @@
 
       if (enemy.type === 'fast') {
         // Fast enemies: Flanking / Swarming behavior
-        // Move towards player, but add a sine wave perpendicular to direction for "strafing" run
-        // Use enemy.id to offset the wave so they don't all wave in sync
-        const strafeAmount = Math.sin(time * 2 + enemy.id) * 20
-        const strafeDir = new THREE.Vector3(-dirToPlayer.z, 0, dirToPlayer.x).normalize() // Perpendicular
-        
-        // Combine forward + strafe
-        desiredVelocity.copy(dirToPlayer).multiplyScalar(enemy.speed).add(strafeDir.multiplyScalar(0.5))
+        // Avoid ramming: if too close, break off and circle
+        if (distToPlayer < 25) {
+          const tangent = new THREE.Vector3(-dirToPlayer.z, 0, dirToPlayer.x).normalize()
+          desiredVelocity.copy(tangent).multiplyScalar(enemy.speed * 1.5)
+        } else {
+          // Move towards player, but add a sine wave perpendicular to direction for "strafing" run
+          const strafeAmount = Math.sin(time * 2 + enemy.id) * 20
+          const strafeDir = new THREE.Vector3(-dirToPlayer.z, 0, dirToPlayer.x).normalize() // Perpendicular
+          desiredVelocity.copy(dirToPlayer).multiplyScalar(enemy.speed).add(strafeDir.multiplyScalar(0.5))
+        }
         
       } else if (enemy.type === 'tank') {
         // Tank enemies: Maintain optimal firing range
@@ -2419,7 +2477,16 @@
         soundManager.playPowerUp()
 
         if (p.type === 'health') { health = Math.min(health + 50, 100); soundManager.playPowerUp() }
-        else if (p.type === 'ammo') { weaponInventory.forEach(w => { if (w.type !== 'laser' && w.ammo !== -1) w.ammo = Math.min(w.ammo + 10, weaponMaxAmmo[w.type] || 99) }); soundManager.playPowerUp() }
+        else if (p.type === 'ammo') { 
+          // Refill current weapon to max
+          const currentWep = weaponInventory[currentWeaponIndex]
+          if (currentWep.type !== 'laser') {
+             const max = weaponMaxAmmo[currentWep.type]
+             currentWep.ammo = max === -1 ? -1 : max
+             weaponInventory = weaponInventory // Trigger reactivity
+          }
+          soundManager.playPowerUp() 
+        }
         else if (p.type === 'weapon-missile') addWeaponAndSelect('missile', 5, 'Missiles')
         else if (p.type === 'weapon-plasma') addWeaponAndSelect('plasma', 5, 'Plasma Cannon')
         else if (p.type === 'weapon-chain') addWeaponAndSelect('chain', 8, 'Chain Lightning')
@@ -2445,7 +2512,7 @@
   const weaponMaxAmmo: Record<Weapon['type'], number> = {
     laser: -1,      // Unlimited
     missile: 8,
-    chain: 5,
+    chain: 4,
     plasma: 4,
     drone: 3,
     scatter: 10
@@ -2478,6 +2545,7 @@
       const initialAmmo = maxAmmo === -1 ? -1 : Math.min(ammo, maxAmmo)
       weaponInventory.push({ type, ammo: initialAmmo, name })
     }
+    weaponInventory = weaponInventory
     soundManager.playPowerUp()
   }
   
@@ -2487,18 +2555,19 @@
     const maxAmmo = weaponMaxAmmo[type]
 
     if (existingIndex !== -1) {
-      // Weapon exists, just add ammo
-      if (weaponInventory[existingIndex].ammo !== -1) {
-        weaponInventory[existingIndex].ammo = Math.min(weaponInventory[existingIndex].ammo + ammo, maxAmmo)
-      }
+      // Weapon exists: Max out ammo and move to next slot
+      weaponInventory[existingIndex].ammo = maxAmmo === -1 ? -1 : maxAmmo
+      
       // Move to position after current weapon
       const weapon = weaponInventory.splice(existingIndex, 1)[0]
       weaponInventory.splice(currentWeaponIndex + 1, 0, weapon)
     } else {
-      // New weapon, add after current weapon
-      const initialAmmo = maxAmmo === -1 ? -1 : Math.min(ammo, maxAmmo)
+      // New weapon: Max out ammo and add after current weapon
+      const initialAmmo = maxAmmo === -1 ? -1 : maxAmmo
       weaponInventory.splice(currentWeaponIndex + 1, 0, { type, ammo: initialAmmo, name })
     }
+    weaponInventory = weaponInventory
+    
     soundManager.playPowerUp()
   }
 
@@ -2511,13 +2580,25 @@
     // Update nextLevelScore IMMEDIATELY to prevent re-triggering
     level++
     nextLevelScore = level * 1000
+    
+    // Set level name for flash display
+    // If we have a map name, use it, otherwise generic
+    const mapName = shuffledMapQueue.length > 0 ? shuffledMapQueue[currentMapIndex].name : `Sector ${level}`
+    currentLevelName = mapName.toUpperCase()
 
     await new Promise(r => setTimeout(r, 2000))
-    showLevelComplete = false
-    gameConfig.enemyCount = Math.min(gameConfig.enemyCount + 1, 15)
+    await new Promise(r => setTimeout(r, 2000))
+    // showLevelComplete = false // REMOVED: Keep overlay up until map is loaded
+    // Slower difficulty scaling: increase enemy count every 2 levels
+    if (level % 2 === 0) {
+      gameConfig.enemyCount = Math.min(gameConfig.enemyCount + 1, 15)
+    }
     gameConfig.enemySpeed *= 1.05
     gameConfig.enemyFireRate = Math.max(gameConfig.enemyFireRate * 0.95, 800)
+    gameConfig.enemyFireRate = Math.max(gameConfig.enemyFireRate * 0.95, 800)
     health = Math.min(health + 30, 100)
+
+    // Reset player position logic moved to end of function to prevent visual glitch
 
     // Reset weapons each level (player starts fresh with just laser)
     weaponInventory = [{ type: 'laser', ammo: -1, name: 'Laser Cannon' }]
@@ -2588,7 +2669,23 @@
     const spawnPos = findSafeSpawnPosition()
     if (playerShip) {
       playerShip.position.copy(spawnPos)
+      playerShip.rotation.set(0, 0, 0)
+      playerShip.lookAt(0, 0, 0)
       velocity.set(0, 0, 0)
+      shipYaw = 0
+      shipPitch = 0
+      smoothedSway = 0
+      
+      // Force camera snap HERE, after final position is set
+      cameraInitialized = false
+      const camDistance = 10
+      const camHeight = 5
+      const camX = playerShip.position.x + Math.sin(shipYaw) * camDistance
+      const camY = playerShip.position.y + camHeight
+      const camZ = playerShip.position.z + Math.cos(shipYaw) * camDistance
+      smoothedCameraPos.set(camX, camY, camZ)
+      camera.position.copy(smoothedCameraPos)
+      camera.lookAt(playerShip.position)
     }
 
     spawnWave()
@@ -2596,6 +2693,7 @@
     // Spawn initial weapon power-ups based on settings
     spawnInitialWeaponDrops(gameConfig.initialPowerUps)
 
+    showLevelComplete = false
     isLoadingLevel = false
   }
 
@@ -2633,6 +2731,9 @@
   }
 
   async function startGame() {
+    // Save initial config state to restore on game over
+    initialGameConfigState = { ...gameConfig }
+
     // Initialize audio context on user interaction
     if (soundManager && soundManager.ctx && soundManager.ctx.state === 'suspended' && soundEnabled) {
       soundManager.ctx.resume()
@@ -2810,6 +2911,11 @@
     isPlaying = false
     isGameOver = true
     document.exitPointerLock()
+    
+    // Restore initial config state
+    if (initialGameConfigState) {
+      gameConfig = { ...initialGameConfigState }
+    }
   }
 
   // Restart game (resets map and spawns at new location)
@@ -3335,6 +3441,14 @@
               <input type="range" min="10" max="50" bind:value={gameConfig.playerDamage} class="range range-xs range-info" />
             </div>
             <div>
+              <label class="label text-xs">Enemy Fire Rate: {gameConfig.enemyFireRate}ms</label>
+              <input type="range" min="500" max="3000" step="250" bind:value={gameConfig.enemyFireRate} class="range range-xs range-error" />
+            </div>
+            <div>
+              <label class="label text-xs">Enemy Level Multiplier: {gameConfig.enemyLevelMultiplier}x</label>
+              <input type="range" min="0" max="5" step="1" bind:value={gameConfig.enemyLevelMultiplier} class="range range-xs range-warning" />
+            </div>
+            <div>
               <label class="label text-xs">Mouse Sensitivity: {gameConfig.mouseSensitivity.toFixed(1)}</label>
               <input type="range" min="0.5" max="2.0" step="0.1" bind:value={gameConfig.mouseSensitivity} class="range range-xs range-warning" />
             </div>
@@ -3471,6 +3585,9 @@
       <div class="text-center text-white animate-bounce">
         <div class="text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500">LEVEL {level - 1}</div>
         <div class="text-6xl font-bold text-green-400 mt-4">COMPLETE!</div>
+        {#if currentLevelName}
+          <div class="text-4xl font-bold text-blue-300 mt-6 animate-pulse tracking-widest">NEXT UP: {currentLevelName}</div>
+        {/if}
         <div class="text-3xl mt-4">Score: {score}</div>
       </div>
     </div>
