@@ -2861,6 +2861,12 @@
     showMapSelector = false
     isSpawning = true  // Show loading screen
     hasStartedGame = true
+    
+    // Request pointer lock immediately on start (user interaction context)
+    if (renderer && renderer.domElement) {
+      renderer.domElement.requestPointerLock()
+    }
+
     isGameOver = false
     score = 0; level = 1; health = gameConfig.startingHealth; kills = 0; nextLevelScore = 1000
     isBossLevel = false; bossEnemy = null; bossHealth = 0; bossMaxHealth = 0
@@ -3427,25 +3433,41 @@
               {/each}
 
               <!-- Built-in Maps -->
-              {#each builtInMaps as map}
-                <button
-                  class="flex-shrink-0 w-52 card transition-all duration-200 cursor-pointer border-2 shadow-lg hover:shadow-xl {selectedMap?.id === map.id ? 'bg-yellow-100 border-yellow-500 ring-2 ring-yellow-400' : 'bg-yellow-50 hover:bg-yellow-100 border-yellow-300 hover:border-yellow-500'}"
-                  on:click={() => selectedMap = map}
-                >
-                  <div class="card-body p-3">
-                    <div class="absolute top-2 right-2 bg-yellow-500 text-gray-900 text-xs px-2 py-0.5 rounded">Built-in</div>
-                    <div class="w-full h-24 rounded mb-2 overflow-hidden bg-yellow-100 flex items-center justify-center border border-yellow-300">
-                      {#if map.thumbnail}
-                        <img src={map.thumbnail} alt={map.name} class="w-full h-full object-cover" />
-                      {:else}
-                        <div class="text-3xl opacity-50">🗺️</div>
-                      {/if}
+              {#if builtInMaps.length === 0}
+                 <!-- Loading Placeholders for Built-in Maps -->
+                 {#each [1, 2, 3] as i}
+                  <div class="flex-shrink-0 w-52 card bg-yellow-50 border-2 border-yellow-200 shadow-lg opacity-70">
+                    <div class="card-body p-3">
+                      <div class="absolute top-2 right-2 bg-yellow-200 text-gray-500 text-xs px-2 py-0.5 rounded">Loading...</div>
+                      <div class="w-full h-24 rounded mb-2 bg-yellow-100 flex items-center justify-center animate-pulse">
+                        <span class="loading loading-dots loading-sm text-yellow-500"></span>
+                      </div>
+                      <div class="h-4 bg-yellow-100 rounded animate-pulse mb-1 w-3/4"></div>
+                      <div class="h-3 bg-yellow-100 rounded animate-pulse w-1/2"></div>
                     </div>
-                    <h4 class="font-bold text-sm text-gray-900 truncate">{map.name}</h4>
-                    <div class="text-xs text-gray-500 truncate">{map.stats.objectCount} objects</div>
                   </div>
-                </button>
-              {/each}
+                 {/each}
+              {:else}
+                {#each builtInMaps as map}
+                  <button
+                    class="flex-shrink-0 w-52 card transition-all duration-200 cursor-pointer border-2 shadow-lg hover:shadow-xl {selectedMap?.id === map.id ? 'bg-yellow-100 border-yellow-500 ring-2 ring-yellow-400' : 'bg-yellow-50 hover:bg-yellow-100 border-yellow-300 hover:border-yellow-500'}"
+                    on:click={() => selectedMap = map}
+                  >
+                    <div class="card-body p-3">
+                      <div class="absolute top-2 right-2 bg-yellow-500 text-gray-900 text-xs px-2 py-0.5 rounded">Built-in</div>
+                      <div class="w-full h-24 rounded mb-2 overflow-hidden bg-yellow-100 flex items-center justify-center border border-yellow-300">
+                        {#if map.thumbnail}
+                          <img src={map.thumbnail} alt={map.name} class="w-full h-full object-cover" />
+                        {:else}
+                          <div class="text-3xl opacity-50">🗺️</div>
+                        {/if}
+                      </div>
+                      <h4 class="font-bold text-sm text-gray-900 truncate">{map.name}</h4>
+                      <div class="text-xs text-gray-500 truncate">{map.stats.objectCount} objects</div>
+                    </div>
+                  </button>
+                {/each}
+              {/if}
               {/if}
             </div>
 
