@@ -214,5 +214,6 @@
   "stats": {
     "objectCount": 11,
     "polygonCount": 0
-  }
+  },
+  "planeVisible": false
 }

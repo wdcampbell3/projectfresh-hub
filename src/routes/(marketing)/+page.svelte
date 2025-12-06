@@ -7,9 +7,9 @@
       image: "/game-thumbs/world-builder.jpg",
     },
     {
-      name: "🎯 Blocky Shooter",
-      path: "/fps-game",
-      description: "First-person shooter with multiple weapons, enemy types, and power-ups across custom maps",
+      name: "👽 Alien Attack",
+      path: "/alien-attack",
+      description: "Defend the base from waves of alien invaders in this intense FPS shooter",
       image: "/game-thumbs/fps-game.jpg",
     },
     {

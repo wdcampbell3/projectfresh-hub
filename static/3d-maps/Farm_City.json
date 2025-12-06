@@ -448,5 +448,6 @@
   "stats": {
     "objectCount": 24,
     "polygonCount": 40740
-  }
+  },
+  "planeVisible": true
 }

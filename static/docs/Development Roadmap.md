@@ -16,3 +16,7 @@ issues remaining:
 - update the power descriptions to remove any mention of time. 
 - power ups are being delivered in the same order each time. they need to be more random.
 - queued power ups need to work like this: down button uses the next power up in the queue. It is immediately removed from the user's power up inventory, it ends any currently enabled power ups and replaces it with the new power up. 
+
+
+3D games:
+- also I'd like to add an INVINCILBLE power up to both games and indicate the new addition in the game menus. I want it to me a multicolor star. When the player hits it 

@@ -2,4 +2,4 @@
   import StarshipGame from "$lib/components/StarshipGame.svelte"
 </script>
 
-<StarshipGame gameMode="space" />
+<StarshipGame gameMode="ground" />

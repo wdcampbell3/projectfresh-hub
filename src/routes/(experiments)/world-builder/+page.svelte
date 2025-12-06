@@ -299,9 +299,9 @@
     ground.receiveShadow = true
     scene.add(ground)
 
-    // Grid - increased resolution by 10x (40 -> 400 divisions)
-    gridHelper = new THREE.GridHelper(200, 400, 0x888888, 0x444444)
-    gridHelper.position.y = 0.01
+    // Grid - increased resolution by 10x (40    // Grid Helper
+    gridHelper = new THREE.GridHelper(2000, 200, 0x444444, 0x222222)
+    gridHelper.visible = false // Default to hidden
     scene.add(gridHelper)
 
     // Handle window resize
@@ -1369,7 +1369,7 @@
     // Load plane visibility
     if (map.planeVisible !== undefined) {
       showGrid = map.planeVisible
-      if (gridHelper) gridHelper.visible = showGrid
+      if (gridHelper) gridHelper.visible = false // Always hide grid helper on load
       if (ground) ground.visible = showGrid
     }
 
@@ -2998,11 +2998,11 @@
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
               <input type="radio" name="game-select" class="radio radio-xs" value="blocky shooter" bind:group={selectedGame} />
-              <span class="text-xs">Blocky Shooter</span>
+              <span class="text-xs">Ground Games</span>
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
               <input type="radio" name="game-select" class="radio radio-xs" value="starship flyer" bind:group={selectedGame} />
-              <span class="text-xs">Starship Flyer</span>
+              <span class="text-xs">Flight Games</span>
             </label>
           </div>
           {#if currentMapId}
@@ -3087,11 +3087,11 @@
           <button 
             class="tab {mapFilter === 'blocky shooter' ? 'tab-active' : ''}" 
             onclick={() => mapFilter = 'blocky shooter'}
-          >Blocky Shooter</button>
+            >Ground Games</button>
           <button 
             class="tab {mapFilter === 'starship flyer' ? 'tab-active' : ''}" 
             onclick={() => mapFilter = 'starship flyer'}
-          >Starship Flyer</button>
+            >Flight Games</button>
         </div>
 
         {#if savedMaps.length === 0}

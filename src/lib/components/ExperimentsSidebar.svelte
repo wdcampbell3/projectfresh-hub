@@ -13,7 +13,7 @@
 
   const experiments3D = [
     { name: "World Builder", path: "/world-builder", icon: "🏗️" },
-    { name: "Blocky Shooter", path: "/fps-game", icon: "🎯" },
+    { name: "Alien Attack", path: "/alien-attack", icon: "👽" },
     { name: "Starship Flyer", path: "/starship-flyer", icon: "🚀" },
   ]
 </script>
