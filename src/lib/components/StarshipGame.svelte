@@ -67,6 +67,7 @@
   let showMapSelector = true
   let isLoadingMap = false
   let defaultMapThumbnail: string | null = null
+  let useRandomMap = true  // Default to random map selection
 
   // Spaceship Selection
   interface SpaceshipOption {
@@ -95,6 +96,7 @@
 
   // Game Configuration
   type AutoMoveSpeed = 'off' | 'slow' | 'medium' | 'hyper'
+  type GroundSpeed = 'slow' | 'normal' | 'fast'
   type MouseInputType = 'auto' | 'trackpad' | 'external'
   type PowerUpFrequency = 'sparse' | 'normal' | 'carnage'
   interface GameConfig {
@@ -107,6 +109,7 @@
     enemyFireRate: number
     mouseSensitivity: number
     autoMoveSpeed: AutoMoveSpeed
+    groundSpeed: GroundSpeed
     mouseInput: 'auto' | 'external' | 'trackpad'
     powerUpFrequency: PowerUpFrequency
     initialPowerUps: number
@@ -118,6 +121,13 @@
     slow: 8,
     medium: 15,
     hyper: 30
+  }
+
+  // Ground speed settings for Alien Attack (affects both movement and strafe)
+  const groundSpeeds: Record<GroundSpeed, number> = {
+    slow: 8,
+    normal: 15,
+    fast: 25
   }
 
   // Power-up drop rates: how many kills before guaranteed drop
@@ -155,7 +165,8 @@
     enemySpeed: 8.0,
     enemyFireRate: 2000,
     mouseSensitivity: 1.0,  // Default to 1.0 (comfortable), range 0.5-2.0
-    autoMoveSpeed: 'medium',  // Default to medium auto-move
+    autoMoveSpeed: gameMode === 'ground' ? 'off' : 'medium',  // Default off for ground mode
+    groundSpeed: 'normal',  // Default ground movement speed
     mouseInput: 'auto',  // Auto-detect trackpad vs external mouse
     powerUpFrequency: 'normal',  // Default to normal drops
     initialPowerUps: 4, // Default number of weapon drops at start/level up
@@ -163,9 +174,6 @@
   }
   
   // Override defaults for ground mode
-  if (gameMode === 'ground') {
-    gameConfig.autoMoveSpeed = 'off'
-  }
   
   let initialGameConfigState: GameConfig | null = null
 
@@ -366,16 +374,19 @@
   let bossEnemy: Enemy | null = null
   let bossHealth = 0
   let bossMaxHealth = 0
+  let isTargetingEnemy = false  // Track if crosshair is over an enemy
 
   // Environment State
   let timeOfDay: 'dawn' | 'day' | 'sunset' | 'night' = 'night'
   let weather: 'clear' | 'rain' | 'snow' | 'fog' = 'clear'
   let rainSystem: THREE.Points | null = null
   let snowSystem: THREE.Points | null = null
+  let groundPlane: THREE.Mesh | null = null  // Track ground plane for proper cleanup
 
   // Player ship
   let playerShip: THREE.Group | null = null
   const shipScale = 0.3  // Smaller ships
+  let crosshairSprite: THREE.Sprite | null = null
 
   let isSpawning = false  // Loading screen state
   
@@ -590,6 +601,12 @@
       return games.includes('all') || games.includes(requiredGame)
     })
     
+    // Shuffle built-in maps for variety each page load
+    for (let i = builtInMaps.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [builtInMaps[i], builtInMaps[j]] = [builtInMaps[j], builtInMaps[i]]
+    }
+    
     updateAvailableMaps()
     mapsLoading = false
   }
@@ -732,9 +749,8 @@
     // Init sound manager
     soundManager = new SoundManager()
     soundManager.toggle(soundEnabled)
-
-    // Render ship previews after a short delay to ensure DOM is ready
-    setTimeout(renderShipPreviews, 100)
+    
+    // Initial call handled by reactive statement below
 
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
@@ -762,6 +778,21 @@
       renderer?.dispose()
     }
   })
+
+  // Manage ship previews based on game state
+  $: if (showMapSelector) {
+    // Back in menu - render previews
+    // Use timeout to ensure DOM is ready
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        cleanupShipPreviews()
+        renderShipPreviews()
+      }, 100)
+    }
+  } else {
+    // In game - clean up to save resources
+    cleanupShipPreviews()
+  }
 
   async function preloadModels(paths: string[]) {
     const loader = new GLTFLoader()
@@ -798,6 +829,100 @@
     loadingProgress = 100
   }
 
+  // Progress-aware version for level transitions (maps progress to a custom range)
+  async function preloadModelsWithProgress(paths: string[], startProgress: number, endProgress: number) {
+    const loader = new GLTFLoader()
+    const uniquePaths = Array.from(new Set(paths))
+    const totalModels = uniquePaths.length
+    const progressRange = endProgress - startProgress
+    
+    if (totalModels === 0) {
+      loadingProgress = endProgress
+      return
+    }
+
+    let loadedCount = 0
+
+    // Load models in batches
+    const batchSize = 5
+    for (let i = 0; i < totalModels; i += batchSize) {
+      const batch = uniquePaths.slice(i, i + batchSize)
+      await Promise.all(batch.map(async (path) => {
+        try {
+          await loader.loadAsync(path)
+        } catch (e) {
+          console.warn(`Failed to preload ${path}:`, e)
+        } finally {
+          loadedCount++
+          loadingProgress = startProgress + (loadedCount / totalModels) * progressRange
+          loadingStatus = `Caching assets (${loadedCount}/${totalModels})...`
+        }
+      }))
+    }
+    
+    loadingProgress = endProgress
+  }
+
+  // Progress-aware loadMap for level transitions
+  async function loadMapWithProgress(map: MapData, startProgress: number, endProgress: number) {
+    isLoadingMap = true
+    const loader = new GLTFLoader()
+    const progressRange = endProgress - startProgress
+    
+    solidObjects.forEach(obj => scene.remove(obj))
+    solidObjects = []
+
+    // Apply map environment settings
+    if (map.environment) {
+      timeOfDay = map.environment.timeOfDay
+      weather = map.environment.weather
+      applyEnvironment(map.environment)
+      updateEnvironment()
+    }
+
+    // Handle ground plane
+    if (groundPlane) {
+      scene.remove(groundPlane)
+      groundPlane = null
+    }
+    
+    if (map.planeVisible === true) {
+      groundPlane = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshStandardMaterial({ color: 0x2d5016, roughness: 0.8 }))
+      groundPlane.rotation.x = -Math.PI / 2
+      groundPlane.receiveShadow = true
+      scene.add(groundPlane)
+    } else if (map.planeVisible === undefined && gameMode === 'ground') {
+      groundPlane = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshStandardMaterial({ color: 0x2d5016, roughness: 0.8 }))
+      groundPlane.rotation.x = -Math.PI / 2
+      groundPlane.receiveShadow = true
+      scene.add(groundPlane)
+    }
+
+    const totalObjects = map.objects.length
+    let loadedCount = 0
+    
+    for (const obj of map.objects) {
+      try {
+        const gltf = await loader.loadAsync(obj.modelPath)
+        const mesh = gltf.scene
+        mesh.position.set(obj.position.x, obj.position.y, obj.position.z)
+        mesh.rotation.set(obj.rotation.x, obj.rotation.y, obj.rotation.z)
+        mesh.scale.set(obj.scale.x, obj.scale.y, obj.scale.z)
+        mesh.traverse(child => { if (child instanceof THREE.Mesh) { child.castShadow = true; child.receiveShadow = true } })
+        scene.add(mesh)
+        solidObjects.push(mesh)
+      } catch (e) { console.error('Failed to load:', obj.modelPath) }
+      
+      loadedCount++
+      loadingProgress = startProgress + (loadedCount / totalObjects) * progressRange
+      loadingStatus = `Building sector (${loadedCount}/${totalObjects})...`
+    }
+    
+    loadingProgress = endProgress
+    loadingStatus = "Ready!"
+    isLoadingMap = false
+  }
+
   function createStarfield() {
     const starCount = 8500
     const starVertices: number[] = []
@@ -830,6 +955,42 @@
     scene.add(secondaryStars)
   }
 
+  function createCrosshairTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d')!;
+    
+    // Draw crosshair
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2; // Thinner lines
+    
+    // Circle
+    ctx.beginPath();
+    ctx.arc(32, 32, 12, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Horizontal line
+    ctx.beginPath();
+    ctx.moveTo(10, 32);
+    ctx.lineTo(54, 32);
+    ctx.stroke();
+
+    // Vertical line
+    ctx.beginPath();
+    ctx.moveTo(32, 10);
+    ctx.lineTo(32, 54);
+    ctx.stroke();
+    
+    // Dot in center
+    ctx.beginPath();
+    ctx.arc(32, 32, 2, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+
+    return new THREE.CanvasTexture(canvas);
+  }
+
   function initThree() {
     scene = new THREE.Scene()
     // Default to night/space if no map loaded yet
@@ -838,6 +999,27 @@
 
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 2000)
     camera.position.set(0, 5, 10)
+    
+    // Add camera to scene so its children are rendered
+    scene.add(camera)
+    
+    // Create 3D Crosshair attached to camera
+    // Always visible (depthTest: false) so it never gets occluded by objects
+    const crosshairTexture = createCrosshairTexture()
+    const crosshairMaterial = new THREE.SpriteMaterial({ 
+      map: crosshairTexture, 
+      color: 0x00ffff, 
+      transparent: true, 
+      opacity: 0.8,
+      depthTest: false, // Always render on top of everything
+      depthWrite: false // Don't block things behind it
+    })
+    crosshairSprite = new THREE.Sprite(crosshairMaterial)
+    // Place it in front of camera - closer now since it's always on top
+    crosshairSprite.position.set(0, 0, -10)
+    // Scale it to be visible at that distance
+    crosshairSprite.scale.set(1, 1, 1)
+    camera.add(crosshairSprite)
 
     renderer = new THREE.WebGLRenderer({ antialias: true })
     renderer.setSize(window.innerWidth, window.innerHeight)
@@ -917,22 +1099,31 @@
       updateEnvironment()
     }
 
-    // Ground plane visibility based on map setting
-    if (map.planeVisible !== undefined) {
-      if (map.planeVisible) {
-        const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshStandardMaterial({ color: 0x2d5016, roughness: 0.8 }))
-        ground.rotation.x = -Math.PI / 2
-        ground.receiveShadow = true
-        scene.add(ground)
-      }
-    } else if (gameMode === 'ground') {
-      // Default behavior if property missing: show ground in ground mode
-      const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshStandardMaterial({ color: 0x2d5016, roughness: 0.8 }))
-      ground.rotation.x = -Math.PI / 2
-      ground.receiveShadow = true
-      scene.add(ground)
+    // Remove any existing ground plane first
+    if (groundPlane) {
+      scene.remove(groundPlane)
+      groundPlane = null
     }
 
+    // Ground plane visibility based on map setting
+    // Only show if explicitly set to true
+    if (map.planeVisible === true) {
+      groundPlane = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshStandardMaterial({ color: 0x2d5016, roughness: 0.8 }))
+      groundPlane.rotation.x = -Math.PI / 2
+      groundPlane.receiveShadow = true
+      scene.add(groundPlane)
+    } else if (map.planeVisible === undefined && gameMode === 'ground') {
+      // Default behavior only if property is completely missing: show ground in ground mode
+      groundPlane = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshStandardMaterial({ color: 0x2d5016, roughness: 0.8 }))
+      groundPlane.rotation.x = -Math.PI / 2
+      groundPlane.receiveShadow = true
+      scene.add(groundPlane)
+    }
+    // If planeVisible is explicitly false, we don't add any ground plane
+
+    const totalObjects = map.objects.length
+    let loadedCount = 0
+    
     for (const obj of map.objects) {
       try {
         const gltf = await loader.loadAsync(obj.modelPath)
@@ -944,7 +1135,15 @@
         scene.add(mesh)
         solidObjects.push(mesh)
       } catch (e) { console.error('Failed to load:', obj.modelPath) }
+      
+      // Update loading progress
+      loadedCount++
+      loadingProgress = (loadedCount / totalObjects) * 100
+      loadingStatus = `Loading map (${loadedCount}/${totalObjects})...`
     }
+    
+    loadingProgress = 100
+    loadingStatus = "Ready!"
     isLoadingMap = false
   }
 
@@ -988,6 +1187,21 @@
     }
 
     if (defaultMapData) {
+      // Remove any existing ground plane first
+      if (groundPlane) {
+        scene.remove(groundPlane)
+        groundPlane = null
+      }
+
+      // Check planeVisible setting from the default map data
+      if (defaultMapData.planeVisible === true) {
+        groundPlane = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshStandardMaterial({ color: 0x2d5016, roughness: 0.8 }))
+        groundPlane.rotation.x = -Math.PI / 2
+        groundPlane.receiveShadow = true
+        scene.add(groundPlane)
+      }
+      // If planeVisible is false or undefined, don't add ground for default/space maps
+
       // We still want space background, so don't apply environment from map directly.
       // Instead, we just load the objects.
       isLoadingMap = true
@@ -1230,6 +1444,29 @@
         if (child instanceof THREE.Mesh) {
           child.castShadow = true
           child.receiveShadow = true
+          
+          // Make enemies brighter with color-coded emissive glow based on type
+          if (child.material) {
+            // Clone material to avoid shared material issues
+            const mat = child.material.clone()
+            child.material = mat
+            
+            // Apply color-coded glow based on enemy type
+            // Using medium-brightness colors for good visibility without washing out textures
+            let glowColor: number
+            if (type === 'basic') {
+              glowColor = 0x662222  // Medium red
+            } else if (type === 'fast') {
+              glowColor = 0x222266  // Medium blue
+            } else if (type === 'tank') {
+              glowColor = 0x664422  // Medium orange
+            } else {
+              glowColor = 0x662266  // Medium magenta for boss
+            }
+            
+            mat.emissive = new THREE.Color(glowColor)
+            mat.emissiveIntensity = 0.5  // Balanced intensity
+          }
         }
       })
 
@@ -1564,7 +1801,7 @@
       currentWeaponIndex = (currentWeaponIndex + 1) % weaponInventory.length
       flashSelectedWeapon()
     }
-    if (e.key === 'Escape' && isPlaying) { isPlaying = false; document.exitPointerLock() }
+    if (e.key === 'Escape' && isPlaying) { returnToMenu() }
   }
 
   function handleKeyUp(e: KeyboardEvent) {
@@ -1617,7 +1854,7 @@
 
   function handlePointerLockChange() {
     isPointerLocked = document.pointerLockElement === renderer.domElement
-    if (!isPointerLocked && isPlaying && hasStartedGame) isPlaying = false
+    if (!isPointerLocked && isPlaying && hasStartedGame) returnToMenu()
   }
 
   function handleResize() {
@@ -1643,16 +1880,31 @@
     lastShot = now
     if (!playerShip) return
 
-    // Calculate aim direction: find where camera center ray hits a target plane, then aim from ship to that point
-    // This corrects the parallax between camera position and ship position
-    const raycaster = new THREE.Raycaster()
-    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera)
-
-    // Find a point along the camera ray at a reasonable target distance
-    const targetDistance = 100  // Distance ahead where crosshair actually points
-    const targetPoint = raycaster.ray.origin.clone().add(raycaster.ray.direction.clone().multiplyScalar(targetDistance))
-
-    // Calculate direction from ship to that target point
+    // Calculate aim direction with proper parallax correction
+    // The crosshair is at screen center. We use the camera's exact forward direction
+    // to find where the player is aiming, then fire from the ship toward that point.
+    
+    // Get camera's world-space forward direction
+    const cameraForward = new THREE.Vector3()
+    camera.getWorldDirection(cameraForward)
+    
+    // Calculate target point along camera's forward ray
+    // Try to hit enemies first
+    const raycaster = new THREE.Raycaster(camera.position.clone(), cameraForward)
+    const enemyMeshes = enemies.map(e => e.mesh)
+    const enemyHits = raycaster.intersectObjects(enemyMeshes, true)
+    
+    let targetPoint: THREE.Vector3
+    if (enemyHits.length > 0) {
+      // Aiming directly at an enemy - use exact hit point
+      targetPoint = enemyHits[0].point.clone()
+    } else {
+      // No enemy hit - find convergence point at standard combat distance
+      const convergenceDistance = 50  // Distance where crosshair and projectile meet
+      targetPoint = camera.position.clone().add(cameraForward.clone().multiplyScalar(convergenceDistance))
+    }
+    
+    // Calculate direction from ship position to that target point
     const dir = targetPoint.clone().sub(playerShip.position).normalize()
 
     let mesh: THREE.Mesh | THREE.Group
@@ -2116,7 +2368,8 @@
 
     // A/D strafe left/right (FPS-style controls)
     let strafeVelocity = new THREE.Vector3()
-    const strafeSpeed = gameMode === 'ground' ? 10 : 20
+    // Ground mode: use groundSpeed setting for both movement and strafe
+    const strafeSpeed = gameMode === 'ground' ? groundSpeeds[gameConfig.groundSpeed] : 20
     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(playerShip.quaternion)
     if (keys['a']) {
       strafeVelocity.add(right.clone().multiplyScalar(-strafeSpeed))
@@ -2129,25 +2382,32 @@
     }
 
     // Q/E barrel roll with lateral movement (strafe in roll direction)
+    // In ground mode: Q/E mirrors A/D (simple strafe)
     let barrelRollStrafe = new THREE.Vector3()
-    if (keys['q']) {
-      rollAngularVelocity = rollSpeed * 6  // Continuous roll left while held
-      // Strafe relative to ground plane (using Yaw only), ignoring roll/pitch
-      const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), shipYaw)
-      barrelRollStrafe.add(right.clone().multiplyScalar(-60))  // Stronger strafe left while rolling left
-    } else if (keys['e']) {
-      rollAngularVelocity = -rollSpeed * 6  // Continuous roll right while held
-      // Strafe relative to ground plane (using Yaw only), ignoring roll/pitch
-      const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), shipYaw)
-      barrelRollStrafe.add(right.clone().multiplyScalar(60))  // Stronger strafe right while rolling right
-    } else {
-      rollAngularVelocity = 0  // Stop adding spin when key released
-    }
-    
-    // Disable barrel roll in ground mode
     if (gameMode === 'ground') {
+      // Ground mode: Q/E act as additional strafe keys (same as A/D)
+      if (keys['q']) {
+        strafeVelocity.add(right.clone().multiplyScalar(-strafeSpeed))
+      } else if (keys['e']) {
+        strafeVelocity.add(right.clone().multiplyScalar(strafeSpeed))
+      }
       rollAngularVelocity = 0
       barrelRollAngle = 0
+    } else {
+      // Space mode: Q/E trigger barrel roll with fast strafe
+      if (keys['q']) {
+        rollAngularVelocity = rollSpeed * 6  // Continuous roll left while held
+        // Strafe relative to ground plane (using Yaw only), ignoring roll/pitch
+        const rightDir = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), shipYaw)
+        barrelRollStrafe.add(rightDir.clone().multiplyScalar(-60))  // Stronger strafe left while rolling left
+      } else if (keys['e']) {
+        rollAngularVelocity = -rollSpeed * 6  // Continuous roll right while held
+        // Strafe relative to ground plane (using Yaw only), ignoring roll/pitch
+        const rightDir = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), shipYaw)
+        barrelRollStrafe.add(rightDir.clone().multiplyScalar(60))  // Stronger strafe right while rolling right
+      } else {
+        rollAngularVelocity = 0  // Stop adding spin when key released
+      }
     }
     // Integrate roll
     barrelRollAngle += rollAngularVelocity * delta
@@ -2168,35 +2428,62 @@
     playerShip.quaternion.copy(yawQuat).multiply(pitchQuat).multiply(rollQuat)
 
     // Calculate movement direction from ship's orientation
-    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(playerShip.quaternion)
+    // Ground mode: use yaw only for horizontal movement (looking up/down shouldn't affect walk direction)
+    // Starship mode: use full 3D orientation for flight
+    let fwd: THREE.Vector3
+    let lookDir: THREE.Vector3  // For camera look direction (always includes pitch)
+    const fullFwd = new THREE.Vector3(0, 0, -1).applyQuaternion(playerShip.quaternion)
+    
+    if (gameMode === 'ground' && !boostActive) {
+      // Walking: Horizontal forward direction based on yaw only (no jitter)
+      fwd = new THREE.Vector3(-Math.sin(shipYaw), 0, -Math.cos(shipYaw))
+      // Camera still looks up/down
+      lookDir = fullFwd
+    } else {
+      // Flying (Space or Jetpack): Use full 3D orientation
+      fwd = fullFwd
+      lookDir = fullFwd
+    }
     const up = new THREE.Vector3(0, 1, 0)
     let target = new THREE.Vector3()
 
-    // Auto-move forward based on setting
-    const autoMoveForce = autoMoveSpeeds[gameConfig.autoMoveSpeed]
-    let effectiveAutoMove = autoMoveForce
-    
-    // W key doubles the auto-move speed (or applies max speed if off)
-    if (keys['w']) {
-      if (gameConfig.autoMoveSpeed === 'off') {
-        effectiveAutoMove = gameMode === 'ground' ? maxSpeed * 0.5 : maxSpeed
-      } else {
-        effectiveAutoMove = autoMoveForce * 2
+    // Movement based on game mode
+    if (gameMode === 'ground') {
+      // Ground mode: W/S use groundSpeed setting (no auto-move)
+      const moveSpeed = groundSpeeds[gameConfig.groundSpeed]
+      if (keys['w']) {
+        target.add(fwd.clone().multiplyScalar(moveSpeed))
+      }
+      if (keys['s']) {
+        target.add(fwd.clone().multiplyScalar(-moveSpeed))
+      }
+    } else {
+      // Space mode: Auto-move forward based on setting
+      const autoMoveForce = autoMoveSpeeds[gameConfig.autoMoveSpeed]
+      let effectiveAutoMove = autoMoveForce
+      
+      // W key doubles the auto-move speed (or applies max speed if off)
+      if (keys['w']) {
+        if (gameConfig.autoMoveSpeed === 'off') {
+          effectiveAutoMove = maxSpeed
+        } else {
+          effectiveAutoMove = autoMoveForce * 2
+        }
+      }
+      
+      if (effectiveAutoMove > 0) {
+        target.add(fwd.clone().multiplyScalar(effectiveAutoMove))
+      }
+
+      // S reverses the ship (full reverse, overrides auto-move)
+      if (keys['s']) {
+        target.set(0, 0, 0)
+        target.add(fwd.clone().multiplyScalar(-acceleration))
       }
     }
     
-    if (effectiveAutoMove > 0) {
-      target.add(fwd.clone().multiplyScalar(effectiveAutoMove))
-    }
-
-    // S reverses the ship (full reverse, overrides auto-move)
-    if (keys['s']) {
-      // Cancel auto-move and apply reverse thrust
-      target.set(0, 0, 0)
-      target.add(fwd.clone().multiplyScalar(-acceleration))
-    }
-    // Control for up/down
-    if (keys['control']) target.add(up.clone().multiplyScalar(-acceleration * 0.5))
+    // Control for up/down (space mode only)
+    if (gameMode !== 'ground' && keys['control']) target.add(up.clone().multiplyScalar(-acceleration * 0.5))
 
     // Ground mode: Jetpack logic (fly up when space held and boost active)
     if (gameMode === 'ground') {
@@ -2219,7 +2506,13 @@
     // Add barrel roll lateral strafe (Q/E)
     target.add(barrelRollStrafe)
 
-    velocity.lerp(target, delta * 3)
+    // Ground mode: instant response (no inertia)
+    // Starship mode: smooth inertia
+    if (gameMode === 'ground') {
+      velocity.copy(target)
+    } else {
+      velocity.lerp(target, delta * 3)
+    }
     
     // Calculate speed limit
     let limit = maxSpeed
@@ -2276,7 +2569,8 @@
       }
     }
 
-    if (playerShip.position.length() > 250) playerShip.position.multiplyScalar(0.99)
+    const boundaryLimit = gameMode === 'space' ? 4000 : 500
+    if (playerShip.position.length() > boundaryLimit) playerShip.position.multiplyScalar(0.99)
 
     // Third-person camera: fixed position behind and above the ship
     // Camera follows yaw but NOT pitch - this keeps ship visible on screen
@@ -2301,7 +2595,7 @@
     // Look at a point ahead of the ship in the direction it's facing
     // This keeps the ship in the lower portion of screen and crosshair aligned with aim
     const lookAheadDist = 30
-    const lookTarget = playerShip.position.clone().add(fwd.clone().multiplyScalar(lookAheadDist))
+    const lookTarget = playerShip.position.clone().add(lookDir.clone().multiplyScalar(lookAheadDist))
     camera.lookAt(lookTarget)
   }
 
@@ -2493,7 +2787,7 @@
       p.mesh.position.add(p.velocity.clone().multiplyScalar(delta))
 
       // Enemy projectile hitting player
-      if (p.isEnemy && playerShip && p.mesh.position.distanceTo(playerShip.position) < 1) {
+      if (p.isEnemy && playerShip && p.mesh.position.distanceTo(playerShip.position) < 1 && !showLevelComplete) {
         health -= p.damage; 
         hitFlashTimer = 0.2; // Quick single flash (was 0.5)
         soundManager.playHit()
@@ -2603,6 +2897,13 @@
              const max = weaponMaxAmmo[currentWep.type]
              currentWep.ammo = max === -1 ? -1 : max
              weaponInventory = weaponInventory // Trigger reactivity
+             
+             // Show "Reloaded" message in weapon color
+             const col = weaponFlashColors[currentWep.type] || '#ffffff'
+             powerUpAlert = { message: `${currentWep.name.toUpperCase()} RELOADED`, color: col, timestamp: Date.now() }
+          } else {
+             // If holding Laser (infinite), show failure message
+             powerUpAlert = { message: "AMMO DROPPED", color: '#ff4444', timestamp: Date.now() }
           }
           soundManager.playPowerUp() 
         }
@@ -2667,8 +2968,8 @@
     weaponInventory = weaponInventory
     soundManager.playPowerUp()
   }
-  
-  // Add weapon and reorder inventory to select it next
+  // Add weapon and reorder inventory to place it next in the slot after current weapon
+  // Does NOT switch to the new weapon - player keeps their current selection
   function addWeaponAndSelect(type: WeaponType, ammo: number, name: string) {
     const existingIndex = weaponInventory.findIndex(w => w.type === type)
     const maxAmmo = weaponMaxAmmo[type]
@@ -2676,6 +2977,16 @@
     if (existingIndex !== -1) {
       // Weapon exists: Max out ammo and move to next slot
       weaponInventory[existingIndex].ammo = maxAmmo === -1 ? -1 : maxAmmo
+      
+      // If removing from before currentWeaponIndex, adjust index to stay on same weapon
+      if (existingIndex < currentWeaponIndex) {
+        currentWeaponIndex--
+      } else if (existingIndex === currentWeaponIndex) {
+        // Player is holding this weapon - just refill ammo, don't move it
+        weaponInventory = weaponInventory
+        soundManager.playPowerUp()
+        return
+      }
       
       // Move to position after current weapon
       const weapon = weaponInventory.splice(existingIndex, 1)[0]
@@ -2695,6 +3006,10 @@
     if (isLoadingLevel || showLevelComplete) return
     isLoadingLevel = true
     showLevelComplete = true
+    
+    // Reset loading progress for the new level
+    loadingProgress = 0
+    loadingStatus = "Mission Complete!"
 
     // Update nextLevelScore IMMEDIATELY to prevent re-triggering
     level++
@@ -2705,9 +3020,25 @@
     const mapName = shuffledMapQueue.length > 0 ? shuffledMapQueue[currentMapIndex].name : `Sector ${level}`
     currentLevelName = mapName.toUpperCase()
 
-    await new Promise(r => setTimeout(r, 2000))
-    await new Promise(r => setTimeout(r, 2000))
-    // showLevelComplete = false // REMOVED: Keep overlay up until map is loaded
+    // Phase 1: Celebration period with animated progress (0-35%)
+    const celebrationDuration = 3000 // 3 seconds
+    const celebrationStart = Date.now()
+    const animateCelebration = () => {
+      const elapsed = Date.now() - celebrationStart
+      const progress = Math.min(elapsed / celebrationDuration, 1)
+      loadingProgress = progress * 35 // 0-35%
+      if (progress < 0.33) loadingStatus = "Mission Complete!"
+      else if (progress < 0.66) loadingStatus = "Calculating rewards..."
+      else loadingStatus = "Preparing next sector..."
+      
+      if (progress < 1) requestAnimationFrame(animateCelebration)
+    }
+    animateCelebration()
+    await new Promise(r => setTimeout(r, celebrationDuration))
+    
+    loadingProgress = 35
+    loadingStatus = "Upgrading difficulty..."
+
     // Slower difficulty scaling: increase enemy count every 2 levels
     if (level % 2 === 0) {
       gameConfig.enemyCount = Math.min(gameConfig.enemyCount + 1, 15)
@@ -2715,7 +3046,7 @@
     gameConfig.enemySpeed *= 1.05
     gameConfig.enemyFireRate = Math.max(gameConfig.enemyFireRate * 0.95, 800)
     gameConfig.enemyFireRate = Math.max(gameConfig.enemyFireRate * 0.95, 800)
-    health = Math.min(health + 30, 100)
+    health = gameConfig.startingHealth
 
     // Reset player position logic moved to end of function to prevent visual glitch
 
@@ -2771,17 +3102,21 @@
       mapData.objects.forEach(obj => requiredModels.add(obj.modelPath))
     }
 
-    // Preload only the required models for the NEW level
-    loadingStatus = "Loading next sector..."
-    await preloadModels(Array.from(requiredModels))
+    // Phase 2: Preload models (36-75%)
+    loadingProgress = 36
+    loadingStatus = "Caching assets..."
+    await preloadModelsWithProgress(Array.from(requiredModels), 36, 75)
 
-    // Load the map
+    // Phase 3: Load the map (75-100%)
+    loadingProgress = 75
+    loadingStatus = "Building sector..."
     if (mapData) {
       // Load the map data into the scene
-      await loadMap(mapData)
+      await loadMapWithProgress(mapData, 75, 100)
     } else {
       // Should not happen with new logic, but fallback
       await createDefaultMap()
+      loadingProgress = 100
     }
 
     // Reposition player to safe location
@@ -2922,7 +3257,12 @@
 
     // Load map data first to determine assets
     let mapData: MapData | null = null
-    if (selectedMap) {
+    if (useRandomMap && shuffledMapQueue.length > 0) {
+      // Use the first map from the shuffled queue (ensures no duplicates)
+      mapData = shuffledMapQueue[currentMapIndex]
+      currentMapIndex = (currentMapIndex + 1) % shuffledMapQueue.length
+      console.log(`Level 1: Using shuffled queue map "${mapData.name}"`)
+    } else if (selectedMap) {
       mapData = selectedMap
     } else {
       mapData = await getDefaultMapData()
@@ -3050,6 +3390,16 @@
     }
   }
 
+  function returnToMenu() {
+    isPlaying = false
+    document.exitPointerLock()
+    
+    // Restore initial config state so menu shows original settings
+    if (initialGameConfigState) {
+      gameConfig = { ...initialGameConfigState }
+    }
+  }
+
   // Restart game (resets map and spawns at new location)
   async function restartGame() {
     await startGame()
@@ -3062,6 +3412,24 @@
     if (isPlaying) {
       updatePlayer(delta); updateEnemies(delta); updateProjectiles(delta); updateParticles(delta); updatePowerUps(delta)
       animateWeather(delta)
+      
+      // Check if crosshair is over an enemy
+      if (camera && enemies.length > 0) {
+        const cameraForward = new THREE.Vector3()
+        camera.getWorldDirection(cameraForward)
+        const raycaster = new THREE.Raycaster(camera.position.clone(), cameraForward)
+        const enemyMeshes = enemies.map(e => e.mesh)
+        const hits = raycaster.intersectObjects(enemyMeshes, true)
+        isTargetingEnemy = hits.length > 0
+      } else {
+        isTargetingEnemy = false
+      }
+      
+      // Update crosshair color
+      if (crosshairSprite) {
+        crosshairSprite.material.color.setHex(isTargetingEnemy ? 0xff3333 : 0x00ffff)
+      }
+      
       if (enemies.length === 0 && !isLoadingLevel && !showLevelComplete) { if (score >= nextLevelScore) levelUp(); else spawnWave() }
     }
     renderer?.render(scene, camera)
@@ -3393,29 +3761,25 @@
                   </div>
                 {/each}
               {:else}
-                <!-- Default Map - Always First -->
+                <!-- Random Map Option -->
                 <button
-                  class="flex-shrink-0 w-52 card transition-all duration-200 cursor-pointer border-2 shadow-lg hover:shadow-xl {selectedMap === null ? 'bg-green-100 border-green-500 ring-2 ring-green-400' : 'bg-green-50 hover:bg-green-100 border-green-300 hover:border-green-500'}"
-                  on:click={() => selectedMap = null}
+                  class="flex-shrink-0 w-52 card transition-all duration-200 cursor-pointer border-2 shadow-lg hover:shadow-xl {useRandomMap ? 'bg-gradient-to-br from-purple-100 to-pink-100 border-purple-500 ring-2 ring-purple-400' : 'bg-gradient-to-br from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 border-purple-300 hover:border-purple-500'}"
+                  on:click={() => { useRandomMap = true; selectedMap = null }}
                 >
                   <div class="card-body p-3">
-                    <div class="w-full h-24 rounded mb-2 overflow-hidden bg-gradient-to-br from-green-700 to-blue-800 flex items-center justify-center border border-green-300">
-                      {#if defaultMapThumbnail}
-                        <img src={defaultMapThumbnail} alt="Default Map" class="w-full h-full object-cover" />
-                      {:else}
-                        <div class="text-3xl opacity-70">🌍</div>
-                      {/if}
+                    <div class="w-full h-24 rounded mb-2 overflow-hidden bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 flex items-center justify-center border border-purple-300">
+                      <div class="text-5xl animate-pulse">🎲</div>
                     </div>
-                    <h4 class="font-bold text-sm text-gray-900 truncate">Default Map</h4>
-                    <div class="text-xs text-gray-500">Procedural</div>
+                    <h4 class="font-bold text-sm text-gray-900 truncate text-center">Random Map</h4>
+                    <div class="text-xs text-purple-600 text-center font-medium">Surprise Me!</div>
                   </div>
                 </button>
 
               <!-- Custom Maps -->
               {#each customMaps as map}
                 <button
-                  class="flex-shrink-0 w-52 card transition-all duration-200 cursor-pointer border-2 shadow-lg hover:shadow-xl {selectedMap?.id === map.id ? 'bg-purple-100 border-purple-500 ring-2 ring-purple-400' : 'bg-purple-50 hover:bg-purple-100 border-purple-300 hover:border-purple-500'}"
-                  on:click={() => selectedMap = map}
+                  class="flex-shrink-0 w-52 card transition-all duration-200 cursor-pointer border-2 shadow-lg hover:shadow-xl {!useRandomMap && selectedMap?.id === map.id ? 'bg-purple-100 border-purple-500 ring-2 ring-purple-400' : 'bg-purple-50 hover:bg-purple-100 border-purple-300 hover:border-purple-500'}"
+                  on:click={() => { selectedMap = map; useRandomMap = false }}
                 >
                   <div class="card-body p-3">
                     <div class="absolute top-2 right-2 bg-purple-500 text-white text-xs px-2 py-0.5 rounded">Custom</div>
@@ -3450,8 +3814,8 @@
               {:else}
                 {#each builtInMaps as map}
                   <button
-                    class="flex-shrink-0 w-52 card transition-all duration-200 cursor-pointer border-2 shadow-lg hover:shadow-xl {selectedMap?.id === map.id ? 'bg-yellow-100 border-yellow-500 ring-2 ring-yellow-400' : 'bg-yellow-50 hover:bg-yellow-100 border-yellow-300 hover:border-yellow-500'}"
-                    on:click={() => selectedMap = map}
+                    class="flex-shrink-0 w-52 card transition-all duration-200 cursor-pointer border-2 shadow-lg hover:shadow-xl {!useRandomMap && selectedMap?.id === map.id ? 'bg-yellow-100 border-yellow-500 ring-2 ring-yellow-400' : 'bg-yellow-50 hover:bg-yellow-100 border-yellow-300 hover:border-yellow-500'}"
+                    on:click={() => { selectedMap = map; useRandomMap = false }}
                   >
                     <div class="card-body p-3">
                       <div class="absolute top-2 right-2 bg-yellow-500 text-gray-900 text-xs px-2 py-0.5 rounded">Built-in</div>
@@ -3523,7 +3887,27 @@
             </label>
           </div>
 
-          <!-- Auto-Move Speed -->
+          <!-- Ground Speed (Alien Attack only) -->
+          {#if gameMode === 'ground'}
+          <div class="mb-4">
+            <label class="label text-sm font-semibold">Ground Speed</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button
+                class="btn btn-sm {gameConfig.groundSpeed === 'slow' ? 'btn-info' : 'btn-secondary-custom'}"
+                on:click={() => gameConfig.groundSpeed = 'slow'}
+              >Slow</button>
+              <button
+                class="btn btn-sm {gameConfig.groundSpeed === 'normal' ? 'btn-primary' : 'btn-secondary-custom'}"
+                on:click={() => gameConfig.groundSpeed = 'normal'}
+              >Normal</button>
+              <button
+                class="btn btn-sm {gameConfig.groundSpeed === 'fast' ? 'btn-error' : 'btn-secondary-custom'}"
+                on:click={() => gameConfig.groundSpeed = 'fast'}
+              >Fast</button>
+            </div>
+          </div>
+          {:else}
+          <!-- Auto-Move Speed (Starship Flyer only) -->
           <div class="mb-4">
             <label class="label text-sm font-semibold">Auto-Move Speed</label>
             <div class="grid grid-cols-4 gap-2">
@@ -3545,6 +3929,7 @@
               >Hyper</button>
             </div>
           </div>
+          {/if}
 
           <!-- Power-up Frequency -->
           <div class="mb-4">
@@ -3732,14 +4117,39 @@
   {/if}
 
   {#if showLevelComplete}
-    <div class="absolute inset-0 z-20 flex items-center justify-center bg-black/70">
-      <div class="text-center text-white animate-bounce">
-        <div class="text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500">LEVEL {level - 1}</div>
-        <div class="text-6xl font-bold text-green-400 mt-4">COMPLETE!</div>
+    <!-- Background overlay that fades in during loading phase -->
+    {#if loadingProgress > 35}
+      <div class="absolute inset-0 z-25 bg-black transition-opacity duration-500" style="opacity: {Math.min((loadingProgress - 35) / 20, 0.95)}"></div>
+    {/if}
+    
+    <!-- Card stays at top throughout for consistent positioning -->
+    <div class="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center justify-start pointer-events-none">
+      <div class="text-center text-white w-96 p-6 rounded-xl bg-black/80 border border-white/10 backdrop-blur-md shadow-2xl transition-all duration-300">
+        <div class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 mb-1">LEVEL {level - 1}</div>
+        <div class="text-2xl font-bold text-green-400 mb-4 tracking-wider">COMPLETE!</div>
+        
         {#if currentLevelName}
-          <div class="text-4xl font-bold text-blue-300 mt-6 animate-pulse tracking-widest">NEXT UP: {currentLevelName}</div>
+          <div class="text-sm text-blue-300 font-bold tracking-widest uppercase mb-1 opacity-80">NEXT DESTINATION</div>
+          <div class="text-lg font-bold text-white mb-4 shadow-black drop-shadow-md">{currentLevelName}</div>
         {/if}
-        <div class="text-3xl mt-4">Score: {score}</div>
+        
+        <div class="flex justify-between items-end mb-2 px-4">
+          <div class="text-sm text-gray-400">Mission Score</div>
+          <div class="text-xl font-mono text-yellow-400">{score}</div>
+        </div>
+        
+        <!-- Loading Progress Bar -->
+        <div class="w-full h-2 bg-gray-700/50 rounded-full overflow-hidden mt-2">
+          <div class="h-full bg-accent transition-all duration-200" style="width: {loadingProgress}%"></div>
+        </div>
+        <div class="flex justify-between mt-1 px-1">
+          <div class="text-[10px] text-white/50 font-mono tracking-tight">{loadingStatus}</div>
+          <div class="text-[10px] text-accent/80 font-mono">{Math.floor(loadingProgress)}%</div>
+        </div>
+        
+        {#if loadingProgress <= 35}
+          <div class="text-xs text-cyan-400 mt-3 animate-pulse">Keep playing while we prepare your next mission!</div>
+        {/if}
       </div>
     </div>
   {/if}
@@ -3775,14 +4185,7 @@
       {/if}
       <div class="mt-2 pt-2 border-t border-cyan-500"><div class="text-sm opacity-80">WEAPONS</div>{#each weaponInventory as w, i}<div class="text-sm {i === currentWeaponIndex ? 'text-yellow-400 font-bold' : 'opacity-60'}">{i + 1}. {w.name} {w.ammo === -1 ? '∞' : `(${w.ammo})`}</div>{/each}</div>
     </div>
-    <!-- Fixed centered crosshair -->
-    <div class="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
-      <div class="relative w-8 h-8">
-        <div class="absolute w-full h-0.5 bg-cyan-400 top-1/2 -translate-y-1/2 shadow-lg shadow-cyan-400/50"></div>
-        <div class="absolute h-full w-0.5 bg-cyan-400 left-1/2 -translate-x-1/2 shadow-lg shadow-cyan-400/50"></div>
-        <div class="absolute w-2 h-2 border-2 border-cyan-400 rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
-      </div>
-    </div>
+    <!-- Crosshair is now 3D webgl object -->
     <!-- Flashing power-up alert -->
     {#if powerUpAlert}
       <div class="absolute top-1/3 left-1/2 -translate-x-1/2 pointer-events-none z-20">

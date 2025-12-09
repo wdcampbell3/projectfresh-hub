@@ -1560,6 +1560,10 @@
         autoGenAnimals = 0
         autoGenCity = 0
         autoGenSpace = 40
+        // Automatically enable vertical distribution and night mode for space
+        distributeVertically = true
+        timeOfDay = 'night'
+        updateEnvironment()
       } else if (quickStartPreset === 'random') {
         autoGenTrees = Math.floor(Math.random() * 20)
         autoGenBuildings = Math.floor(Math.random() * 10)
@@ -2875,7 +2879,10 @@
                     autoGenVehicles = 0
                     autoGenAnimals = 0
                     autoGenCity = 0
-                    autoGenSpace = 20
+                    autoGenSpace = 40
+                    distributeVertically = true
+                    timeOfDay = 'night'
+                    updateEnvironment()
                   }}
                 />
                 <span>Space</span>
@@ -2952,6 +2959,17 @@
             </label>
           </div>
           
+          <!-- Time of Day Selection -->
+          <div class="form-control mb-3">
+            <label class="label label-text text-xs font-semibold">Time of Day:</label>
+            <select class="select select-xs select-bordered w-full select-white" bind:value={timeOfDay} onchange={updateEnvironment}>
+              <option value="dawn">🌅 Dawn</option>
+              <option value="day">☀️ Day</option>
+              <option value="sunset">🌇 Sunset</option>
+              <option value="night">🌙 Night</option>
+            </select>
+          </div>
+
           <!-- Weather Selection -->
           <div class="form-control mb-3">
             <label class="label label-text text-xs font-semibold">Weather:</label>
