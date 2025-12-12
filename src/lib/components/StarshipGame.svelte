@@ -2575,7 +2575,18 @@
     // Third-person camera: fixed position behind and above the ship
     // Camera follows yaw but NOT pitch - this keeps ship visible on screen
     const camDistance = 10
-    const camHeight = gameMode === 'ground' ? 1.7 : 5
+    const baseCamHeight = gameMode === 'ground' ? 1.7 : 5
+    
+    // In space mode, adjust camera height based on pitch to keep ship visible
+    // When pitching up (negative pitch), move camera higher to compensate
+    // When pitching down (positive pitch), move camera lower
+    let camHeight = baseCamHeight
+    if (gameMode === 'space') {
+      // shipPitch is negative when looking up, positive when looking down
+      // Offset camera in opposite direction: looking up = camera higher
+      const pitchCompensation = -shipPitch * 8  // Adjust multiplier for feel
+      camHeight = baseCamHeight + pitchCompensation
+    }
 
     // Camera only follows yaw (horizontal rotation)
     const camX = playerShip.position.x + Math.sin(shipYaw) * camDistance
@@ -4148,7 +4159,8 @@
         </div>
         
         {#if loadingProgress <= 35}
-          <div class="text-xs text-cyan-400 mt-3 animate-pulse">Keep playing while we prepare your next mission!</div>
+          <div class="text-lg text-yellow-300 mt-3 font-bold animate-pulse" style="text-shadow: 0 0 10px #ffd700, 0 0 20px #ffa500;">✨ Earn BONUS Points! ✨</div>
+          <div class="text-xs text-cyan-400 mt-1">Keep playing while the next mission loads!</div>
         {/if}
       </div>
     </div>
@@ -4166,7 +4178,7 @@
     </div>
   {/if}
 
-  {#if isPlaying && !isGameOver && !showLevelComplete && !isSpawning}
+  {#if isPlaying && !isGameOver && (!showLevelComplete || loadingProgress <= 35) && !isSpawning}
     <div 
       class="absolute top-4 left-4 text-white font-bold z-10 bg-black/70 p-4 rounded-lg space-y-2 border-2 transition-colors duration-100"
       class:border-cyan-500={health >= 20}
@@ -4188,7 +4200,7 @@
     <!-- Crosshair is now 3D webgl object -->
     <!-- Flashing power-up alert -->
     {#if powerUpAlert}
-      <div class="absolute top-1/3 left-1/2 -translate-x-1/2 pointer-events-none z-20">
+      <div class="absolute top-20 left-1/2 -translate-x-1/2 pointer-events-none z-20">
         <div class="text-4xl font-bold power-up-flash px-8 py-4 rounded-lg"
              style="color: {powerUpAlert.color}; text-shadow: 0 0 20px {powerUpAlert.color}, 0 0 40px {powerUpAlert.color}; background: rgba(0,0,0,0.7);">
           {powerUpAlert.message}
