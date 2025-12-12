@@ -102,12 +102,14 @@
   const MAX_POLYGON_WARNING = 250000
 
   // Auto-generate settings
-  let autoGenTrees = $state(16)
+  let autoGenTrees = $state(16)  // Trees & Plants
   let autoGenBuildings = $state(16)
   let autoGenVehicles = $state(8)
   let autoGenAnimals = $state(8)
   let autoGenCity = $state(0)
   let autoGenSpace = $state(0)
+  let autoGenRocks = $state(0)
+  let autoGenPlanets = $state(0)
   let quickStartPreset = $state('town')
   let distributeVertically = $state(false)
   let mapFilter = $state('all_levels')
@@ -177,7 +179,7 @@
   let history = $state<HistoryState[]>([])
   let historyIndex = $state(-1)
 
-  const categories = ["All", ...Array.from(new Set(modelCatalog.map(m => m.category))).sort()]
+  const categories = ["All", ...Array.from(new Set(modelCatalog.map(m => m.category))).filter(c => c !== 'Props').sort()]
 
   // Randomize model catalog on load
   function shuffleArray<T>(array: T[]): T[] {
@@ -1537,29 +1539,37 @@
         autoGenBuildings = 16
         autoGenVehicles = 8
         autoGenAnimals = 8
+        autoGenRocks = 5
         autoGenCity = 0
         autoGenSpace = 0
+        autoGenPlanets = 0
       } else if (quickStartPreset === 'city') {
         autoGenTrees = 4
         autoGenBuildings = 0
         autoGenVehicles = 16
         autoGenAnimals = 0
+        autoGenRocks = 0
         autoGenCity = 30
         autoGenSpace = 0
+        autoGenPlanets = 0
       } else if (quickStartPreset === 'nature') {
         autoGenTrees = 40
         autoGenBuildings = 0
         autoGenVehicles = 0
         autoGenAnimals = 20
+        autoGenRocks = 15
         autoGenCity = 0
         autoGenSpace = 0
+        autoGenPlanets = 0
       } else if (quickStartPreset === 'space') {
         autoGenTrees = 0
         autoGenBuildings = 0
         autoGenVehicles = 0
         autoGenAnimals = 0
+        autoGenRocks = 0
         autoGenCity = 0
-        autoGenSpace = 40
+        autoGenSpace = 20
+        autoGenPlanets = 8
         // Automatically enable vertical distribution and night mode for space
         distributeVertically = true
         timeOfDay = 'night'
@@ -1569,8 +1579,10 @@
         autoGenBuildings = Math.floor(Math.random() * 10)
         autoGenVehicles = Math.floor(Math.random() * 10)
         autoGenAnimals = Math.floor(Math.random() * 10)
+        autoGenRocks = Math.floor(Math.random() * 15)
         autoGenCity = Math.floor(Math.random() * 10)
         autoGenSpace = Math.floor(Math.random() * 10)
+        autoGenPlanets = Math.floor(Math.random() * 5)
       }
     }
 
@@ -1590,33 +1602,91 @@
     // Filter out models with "street" in the name
     const validModels = modelCatalog.filter(m => !m.name.toLowerCase().includes('street'))
 
-    const trees = validModels.filter(m =>
-      m.name.toLowerCase().includes('tree') ||
-      m.name.toLowerCase().includes('pine') ||
-      m.name.toLowerCase().includes('oak')
-    )
+    // Trees & Plants - includes trees, bushes, plants, flowers, grass, etc.
+    const trees = validModels.filter(m => {
+      const name = m.name.toLowerCase()
+      return name.includes('tree') ||
+        name.includes('pine') ||
+        name.includes('oak') ||
+        name.includes('birch') ||
+        name.includes('plant') ||
+        name.includes('bush') ||
+        name.includes('flower') ||
+        name.includes('grass') ||
+        name.includes('bamboo') ||
+        name.includes('fern') ||
+        name.includes('mushroom') ||
+        name.includes('clover') ||
+        name.includes('tall grass') ||
+        (name.includes('planter') && name.includes('bushes'))
+    })
+    
     const buildings = validModels.filter(m =>
       m.name.toLowerCase().includes('building') ||
       m.name.toLowerCase().includes('house') ||
       m.name.toLowerCase().includes('tower')
     )
+    
     const vehicles = validModels.filter(m =>
       m.name.toLowerCase().includes('car') ||
       m.name.toLowerCase().includes('truck') ||
       m.name.toLowerCase().includes('vehicle')
     )
-    const animals = validModels.filter(m =>
-      m.name.toLowerCase().includes('animal') ||
-      m.name.toLowerCase().includes('dog') ||
-      m.name.toLowerCase().includes('cat') ||
-      m.name.toLowerCase().includes('bird')
-    )
+    
+    // Animals - comprehensive list of all animal types
+    const animals = validModels.filter(m => {
+      const name = m.name.toLowerCase()
+      return m.category === 'Animals' ||
+        name.includes('animal') ||
+        name.includes('dog') ||
+        name.includes('cat') ||
+        name.includes('bird') ||
+        name.includes('alpaca') ||
+        name.includes('bull') ||
+        name.includes('cow') ||
+        name.includes('chicken') ||
+        name.includes('chick') ||
+        name.includes('deer') ||
+        name.includes('donkey') ||
+        name.includes('fox') ||
+        name.includes('frog') ||
+        name.includes('horse') ||
+        name.includes('llama') ||
+        name.includes('pig') ||
+        name.includes('sheep') ||
+        name.includes('snake') ||
+        name.includes('wolf') ||
+        name.includes('zebra')
+    })
+    
+    // Rocks - rock, pebble, boulder (exclude tools like pickaxe, shovel)
+    const rocks = validModels.filter(m => {
+      const name = m.name.toLowerCase()
+      return (name.includes('rock') || name.includes('pebble') || name.includes('boulder')) &&
+        !name.includes('pickaxe') &&
+        !name.includes('shovel') &&
+        !name.includes('sword') &&
+        !name.includes('axe') &&
+        !name.includes('poster') &&
+        !name.includes('path')
+    })
+    
+    // Planets - planets, moons, asteroids
+    const planets = validModels.filter(m => {
+      const name = m.name.toLowerCase()
+      return name.includes('planet') ||
+        name.includes('moon') ||
+        name.includes('asteroid') ||
+        name.includes('meteor')
+    })
+    
     const city = validModels.filter(m => m.category === 'City Scape')
     const space = validModels.filter(m => m.category === 'Space')
     const other = validModels.filter(m =>
       !trees.includes(m) && !buildings.includes(m) &&
       !vehicles.includes(m) && !animals.includes(m) &&
-      !city.includes(m) && !space.includes(m)
+      !city.includes(m) && !space.includes(m) &&
+      !rocks.includes(m) && !planets.includes(m)
     )
 
     const newObjects: Array<{ mesh: THREE.Group, modelPath: string, rotation: number, scale: number, mixer: THREE.AnimationMixer | null }> = []
@@ -1771,6 +1841,18 @@
     for (let i = 0; i < autoGenSpace && space.length > 0; i++) {
       const model = space[Math.floor(Math.random() * space.length)]
       await tryPlace(model, SAFE_SIZE, 2.0 + Math.random() * 2.0, distributeVertically)
+    }
+
+    // Place Rocks
+    for (let i = 0; i < autoGenRocks && rocks.length > 0; i++) {
+      const model = rocks[Math.floor(Math.random() * rocks.length)]
+      await tryPlace(model, SAFE_SIZE, 0.5 + Math.random() * 1.5, distributeVertically)
+    }
+
+    // Place Planets (for space scenes, larger scale)
+    for (let i = 0; i < autoGenPlanets && planets.length > 0; i++) {
+      const model = planets[Math.floor(Math.random() * planets.length)]
+      await tryPlace(model, SAFE_SIZE, 5.0 + Math.random() * 10.0, distributeVertically)
     }
 
     // Update placedObjects all at once
@@ -2824,8 +2906,10 @@
                     autoGenBuildings = 8
                     autoGenVehicles = 3
                     autoGenAnimals = 5
+                    autoGenRocks = 5
                     autoGenCity = 0
                     autoGenSpace = 0
+                    autoGenPlanets = 0
                   }}
                 />
                 <span>Town</span>
@@ -2842,8 +2926,10 @@
                     autoGenBuildings = 15
                     autoGenVehicles = 8
                     autoGenAnimals = 2
+                    autoGenRocks = 0
                     autoGenCity = 10
                     autoGenSpace = 0
+                    autoGenPlanets = 0
                   }}
                 />
                 <span>City</span>
@@ -2860,8 +2946,10 @@
                     autoGenBuildings = 2
                     autoGenVehicles = 1
                     autoGenAnimals = 15
+                    autoGenRocks = 10
                     autoGenCity = 0
                     autoGenSpace = 0
+                    autoGenPlanets = 0
                   }}
                 />
                 <span>Nature</span>
@@ -2878,8 +2966,10 @@
                     autoGenBuildings = 0
                     autoGenVehicles = 0
                     autoGenAnimals = 0
+                    autoGenRocks = 0
                     autoGenCity = 0
-                    autoGenSpace = 40
+                    autoGenSpace = 20
+                    autoGenPlanets = 8
                     distributeVertically = true
                     timeOfDay = 'night'
                     updateEnvironment()
@@ -2899,8 +2989,10 @@
                     autoGenBuildings = Math.floor(Math.random() * 15)
                     autoGenVehicles = Math.floor(Math.random() * 10)
                     autoGenAnimals = Math.floor(Math.random() * 15)
+                    autoGenRocks = Math.floor(Math.random() * 15)
                     autoGenCity = Math.floor(Math.random() * 10)
                     autoGenSpace = Math.floor(Math.random() * 15)
+                    autoGenPlanets = Math.floor(Math.random() * 5)
                   }}
                 />
                 <span>Random</span>
@@ -2910,7 +3002,7 @@
 
           <div class="grid grid-cols-2 gap-2 mb-3">
             <div>
-              <label class="label label-text text-xs">Trees</label>
+              <label class="label label-text text-xs">Trees & Plants</label>
               <input type="number" bind:value={autoGenTrees} min="0" max="50" class="input input-xs input-bordered w-full input-white" />
             </div>
             <div>
@@ -2926,12 +3018,20 @@
               <input type="number" bind:value={autoGenAnimals} min="0" max="20" class="input input-xs input-bordered w-full input-white" />
             </div>
             <div>
+              <label class="label label-text text-xs">Rocks</label>
+              <input type="number" bind:value={autoGenRocks} min="0" max="30" class="input input-xs input-bordered w-full input-white" />
+            </div>
+            <div>
               <label class="label label-text text-xs">City Scape</label>
               <input type="number" bind:value={autoGenCity} min="0" max="20" class="input input-xs input-bordered w-full input-white" />
             </div>
             <div>
               <label class="label label-text text-xs">Space</label>
               <input type="number" bind:value={autoGenSpace} min="0" max="20" class="input input-xs input-bordered w-full input-white" />
+            </div>
+            <div>
+              <label class="label label-text text-xs">Planets</label>
+              <input type="number" bind:value={autoGenPlanets} min="0" max="10" class="input input-xs input-bordered w-full input-white" />
             </div>
           </div>
           <div class="flex gap-2 mb-3">
@@ -2942,8 +3042,10 @@
                 autoGenBuildings = 0
                 autoGenVehicles = 0
                 autoGenAnimals = 0
+                autoGenRocks = 0
                 autoGenCity = 0
                 autoGenSpace = 0
+                autoGenPlanets = 0
               }}
             >
               🗑️ Clear All

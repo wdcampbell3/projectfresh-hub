@@ -629,30 +629,8 @@
     try {
       const response = await fetch('/modelCatalog.json')
       modelCatalog = await response.json()
-      // Preload thumbnails for enemies in the menu
-      const enemyModels = modelCatalog.filter(m => m.category === 'Enemies')
-      enemyModels.forEach(model => {
-        if (!thumbnailCache.has(model.path)) {
-          // Generate thumbnail if not cached
-          const viewer = document.createElement('model-viewer')
-          viewer.src = model.path
-          viewer.style.display = 'none'
-          document.body.appendChild(viewer)
-          viewer.addEventListener('load', async () => {
-            try {
-              const blob = await viewer.toBlob({ idealAspect: true })
-              const url = URL.createObjectURL(blob)
-              thumbnailCache.set(model.path, url)
-              // Force update if menu is open
-              if (showMapSelector) modelCatalog = [...modelCatalog]
-            } catch (e) {
-              console.warn('Failed to generate thumbnail for', model.name)
-            } finally {
-              viewer.remove()
-            }
-          })
-        }
-      })
+      // Note: Enemy previews in menu use inline model-viewer elements
+      // No need to generate cached thumbnails here
     } catch (e) {
       console.error('Failed to load model catalog:', e)
     }
@@ -1025,6 +1003,23 @@
     renderer.setSize(window.innerWidth, window.innerHeight)
     renderer.shadowMap.enabled = true
     container.appendChild(renderer.domElement)
+    
+    // Handle WebGL context loss
+    renderer.domElement.addEventListener('webglcontextlost', (event) => {
+      event.preventDefault()
+      console.warn('WebGL context lost - will restore when available')
+      cancelAnimationFrame(animationId)
+    })
+    
+    renderer.domElement.addEventListener('webglcontextrestored', () => {
+      console.log('WebGL context restored - reinitializing scene')
+      // Recreate scene essentials
+      scene.background = new THREE.Color(0x0a1326)
+      createStarfield()
+      updateEnvironment()
+      // Restart animation loop
+      animate()
+    })
 
     clock = new THREE.Clock()
 
