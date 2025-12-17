@@ -228,11 +228,48 @@
       if (animationId) {
         cancelAnimationFrame(animationId)
       }
+      
+      if (scene) {
+        dispose3DObject(scene)
+        scene.clear()
+      }
+
       if (renderer) {
         renderer.dispose()
       }
+      
+      // Cleanup thumbnails renderer if exists
+      // (It's created locally in generateThumbnails but might persist in closures)
     }
   })
+
+  function dispose3DObject(obj: THREE.Object3D | THREE.Group | THREE.Mesh | undefined) {
+    if (!obj) return
+
+    // Recursively dispose children first
+    while (obj.children.length > 0) {
+      dispose3DObject(obj.children[0])
+      obj.remove(obj.children[0])
+    }
+
+    if (obj instanceof THREE.Mesh) {
+      if (obj.geometry) {
+        obj.geometry.dispose()
+      }
+
+      if (obj.material) {
+        if (Array.isArray(obj.material)) {
+          obj.material.forEach((m) => {
+            if (m.map) m.map.dispose()
+            m.dispose()
+          })
+        } else {
+          if (obj.material.map) obj.material.map.dispose()
+          obj.material.dispose()
+        }
+      }
+    }
+  }
 
   function loadMapsFromStorage() {
     const stored = localStorage.getItem("worldBuilder_maps")

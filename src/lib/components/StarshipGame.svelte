@@ -872,8 +872,47 @@
     shipPreviews.forEach((preview) => {
       cancelAnimationFrame(preview.animId)
       preview.renderer.dispose()
+      dispose3DObject(preview.scene)
     })
     shipPreviews.clear()
+  }
+
+  function dispose3DObject(obj: THREE.Object3D | THREE.Group | THREE.Mesh | undefined) {
+    if (!obj) return
+
+    // Recursively dispose children first
+    while (obj.children.length > 0) {
+      dispose3DObject(obj.children[0])
+      obj.remove(obj.children[0])
+    }
+
+    if (obj instanceof THREE.Mesh) {
+      if (obj.geometry) {
+        obj.geometry.dispose()
+      }
+
+      if (obj.material) {
+        if (Array.isArray(obj.material)) {
+          obj.material.forEach((m) => {
+            if (m.map) m.map.dispose()
+            if (m.lightMap) m.lightMap.dispose()
+            if (m.bumpMap) m.bumpMap.dispose()
+            if (m.normalMap) m.normalMap.dispose()
+            if (m.specularMap) m.specularMap.dispose()
+            if (m.emissiveMap) m.emissiveMap.dispose()
+            m.dispose()
+          })
+        } else {
+          if (obj.material.map) obj.material.map.dispose()
+          if (obj.material.lightMap) obj.material.lightMap.dispose()
+          if (obj.material.bumpMap) obj.material.bumpMap.dispose()
+          if (obj.material.normalMap) obj.material.normalMap.dispose()
+          if (obj.material.specularMap) obj.material.specularMap.dispose()
+          if (obj.material.emissiveMap) obj.material.emissiveMap.dispose()
+          obj.material.dispose()
+        }
+      }
+    }
   }
 
   onMount(() => {
@@ -916,11 +955,29 @@
       window.removeEventListener("mouseup", handleMouseUp)
       window.removeEventListener("wheel", handleWheel)
       window.removeEventListener("contextmenu", handleContextMenu)
-      window.addEventListener("resize", handleResize)
+      window.removeEventListener("resize", handleResize)
       document.removeEventListener("pointerlockchange", handlePointerLockChange)
       cancelAnimationFrame(animationId)
+      
       cleanupShipPreviews()
-      renderer?.dispose()
+      
+      // Extensive Three.js cleanup
+      if (scene) {
+        dispose3DObject(scene)
+        scene.clear()
+      }
+      
+      if (renderer) {
+        renderer.dispose()
+      }
+      
+      // Clear all game arrays to free references
+      enemies = []
+      projectiles = []
+      particles = []
+      powerUps = []
+      solidObjects = []
+      
     }
   })
 
