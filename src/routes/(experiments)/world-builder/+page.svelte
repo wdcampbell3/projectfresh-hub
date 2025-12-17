@@ -3658,7 +3658,7 @@
         <div class="divider my-4"></div>
 
         <!-- Saved Maps List -->
-        <h3 class="text-lg font-bold mb-2" style="color: #660460;">
+        <h3 class="text-lg font-bold mb-2">
           Saved Maps ({savedMaps.filter((map) => {
             if (mapFilter === "all_levels") return true
             if (mapFilter === "all")
@@ -3758,7 +3758,7 @@
         {/if}
       {:else if activeTab === "options"}
         <!-- Options Tab -->
-        <h2 class="text-2xl font-bold mb-4" style="color: #660460;">
+        <h2 class="text-2xl font-bold mb-4">
           Controls
         </h2>
         <div class="card-standard p-4 mb-6 text-xs space-y-2">
@@ -3779,7 +3779,7 @@
           </p>
         </div>
 
-        <h2 class="text-2xl font-bold mb-4" style="color: #660460;">
+        <h2 class="text-2xl font-bold mb-4">
           Environment
         </h2>
 
@@ -3792,7 +3792,7 @@
             <button
               class="btn btn-sm {timeOfDay === 'dawn'
                 ? 'btn-primary'
-                : 'btn-secondary-custom'}"
+                : 'btn-outline'}"
               onclick={() => (timeOfDay = "dawn")}
             >
               🌅 Dawn
@@ -3800,7 +3800,7 @@
             <button
               class="btn btn-sm {timeOfDay === 'day'
                 ? 'btn-primary'
-                : 'btn-secondary-custom'}"
+                : 'btn-outline'}"
               onclick={() => (timeOfDay = "day")}
             >
               ☀️ Day
@@ -3808,7 +3808,7 @@
             <button
               class="btn btn-sm {timeOfDay === 'sunset'
                 ? 'btn-primary'
-                : 'btn-secondary-custom'}"
+                : 'btn-outline'}"
               onclick={() => (timeOfDay = "sunset")}
             >
               🌇 Sunset
@@ -3816,7 +3816,7 @@
             <button
               class="btn btn-sm {timeOfDay === 'night'
                 ? 'btn-primary'
-                : 'btn-secondary-custom'}"
+                : 'btn-outline'}"
               onclick={() => (timeOfDay = "night")}
             >
               🌙 Night
