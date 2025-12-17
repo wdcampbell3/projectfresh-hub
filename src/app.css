@@ -251,3 +251,35 @@ button,
 .border-mauve {
   @apply border border-base-300;
 }
+
+/* 
+  Theme-aware Menu Buttons (3D Games) 
+  Light Mode: Primary Color (Purple) lines/text
+  Dark Mode: White lines/text
+*/
+:root[data-theme="saasstartertheme"] .btn-menu-outline {
+  @apply btn-outline border-primary text-primary hover:bg-primary hover:text-white;
+}
+
+:root[data-theme="saasstarterdark"] .btn-menu-outline {
+  @apply btn-outline border-white text-white hover:bg-white/20 hover:border-white;
+}
+
+/* 
+  Theme-aware Launch Button
+  Light Mode: Primary (Dark Purple #660460)
+  Dark Mode: Dark Purple (#4c0248) - User requested specific darker purple
+*/
+:root[data-theme="saasstartertheme"] .btn-launch-action {
+  @apply btn-primary text-white border-none;
+}
+
+:root[data-theme="saasstarterdark"] .btn-launch-action {
+  background-color: #4c0248 !important;
+  color: white !important;
+  border: none !important;
+}
+
+.btn-launch-action:hover {
+  opacity: 0.9;
+}

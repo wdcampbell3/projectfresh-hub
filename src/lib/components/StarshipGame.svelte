@@ -4750,13 +4750,12 @@
       <div class="absolute inset-0 z-30 p-4 flex flex-col">
         <!-- Header with title and start button -->
         <div class="flex justify-between items-center mb-4">
-          <h1 class="text-4xl font-bold" style="color: #d46cd1;">
+          <h1 class="text-4xl font-bold text-primary">
             {gameMode === "ground" ? "👽" : "🚀"}
             {gameMode === "ground" ? "Alien Attack" : "Starship Flyer"}
           </h1>
           <button
-            class="btn text-white border-0 hover:opacity-90"
-            style="background-color: #4c0248;"
+            class="btn btn-launch-action"
             on:click={startGame}
           >
             Launch Mission
@@ -5029,7 +5028,7 @@
                   <button
                     class="btn {gameConfig.difficulty === 'easy'
                       ? 'btn-success'
-                      : 'btn-outline text-white border-white hover:bg-white/10 hover:border-white'}"
+                      : 'btn-menu-outline'}"
                     on:click={() => applyDifficultyPreset("easy")}
                   >
                     Easy
@@ -5038,7 +5037,7 @@
                   <button
                     class="btn {gameConfig.difficulty === 'normal'
                       ? 'btn-warning'
-                      : 'btn-outline text-white border-white hover:bg-white/10 hover:border-white'}"
+                      : 'btn-menu-outline'}"
                     on:click={() => applyDifficultyPreset("normal")}
                   >
                     Normal
@@ -5047,7 +5046,7 @@
                   <button
                     class="btn {gameConfig.difficulty === 'hard'
                       ? 'btn-error'
-                      : 'btn-outline text-white border-white hover:bg-white/10 hover:border-white'}"
+                      : 'btn-menu-outline'}"
                     on:click={() => applyDifficultyPreset("hard")}
                   >
                     Hard
@@ -5083,21 +5082,21 @@
                       <button
                         class="btn btn-sm {gameConfig.groundSpeed === 'slow'
                           ? 'btn-info'
-                          : 'btn-outline text-white border-white hover:bg-white/10 hover:border-white'}"
+                          : 'btn-menu-outline'}"
                         on:click={() => (gameConfig.groundSpeed = "slow")}
                         >Slow</button
                       >
                       <button
                         class="btn btn-sm {gameConfig.groundSpeed === 'normal'
                           ? 'btn-primary'
-                          : 'btn-secondary-custom'}"
+                          : 'btn-menu-outline'}"
                         on:click={() => (gameConfig.groundSpeed = "normal")}
                         >Normal</button
                       >
                       <button
                         class="btn btn-sm {gameConfig.groundSpeed === 'fast'
                           ? 'btn-error'
-                          : 'btn-outline text-white border-white hover:bg-white/10 hover:border-white'}"
+                          : 'btn-menu-outline'}"
                         on:click={() => (gameConfig.groundSpeed = "fast")}
                         >Fast</button
                       >
@@ -5113,28 +5112,28 @@
                       <button
                         class="btn btn-sm {gameConfig.autoMoveSpeed === 'off'
                           ? 'btn-neutral'
-                          : 'btn-outline text-white border-white hover:bg-white/10 hover:border-white'}"
+                          : 'btn-menu-outline'}"
                         on:click={() => (gameConfig.autoMoveSpeed = "off")}
                         >Off</button
                       >
                       <button
                         class="btn btn-sm {gameConfig.autoMoveSpeed === 'slow'
                           ? 'btn-info'
-                          : 'btn-outline text-white border-white hover:bg-white/10 hover:border-white'}"
+                          : 'btn-menu-outline'}"
                         on:click={() => (gameConfig.autoMoveSpeed = "slow")}
                         >Slow</button
                       >
                       <button
                         class="btn btn-sm {gameConfig.autoMoveSpeed === 'medium'
                           ? 'btn-primary'
-                          : 'btn-outline text-white border-white hover:bg-white/10 hover:border-white'}"
+                          : 'btn-menu-outline'}"
                         on:click={() => (gameConfig.autoMoveSpeed = "medium")}
                         >Medium</button
                       >
                       <button
                         class="btn btn-sm {gameConfig.autoMoveSpeed === 'hyper'
                           ? 'btn-error'
-                          : 'btn-outline text-white border-white hover:bg-white/10 hover:border-white'}"
+                          : 'btn-menu-outline'}"
                         on:click={() => (gameConfig.autoMoveSpeed = "hyper")}
                         >Hyper</button
                       >
@@ -5152,7 +5151,7 @@
                       class="btn btn-sm {gameConfig.powerUpFrequency ===
                       'sparse'
                         ? 'btn-warning'
-                        : 'btn-outline text-white border-white hover:bg-white/10 hover:border-white'}"
+                        : 'btn-menu-outline'}"
                       on:click={() => (gameConfig.powerUpFrequency = "sparse")}
                     >
                       Sparse
@@ -5162,7 +5161,7 @@
                       class="btn btn-sm {gameConfig.powerUpFrequency ===
                       'normal'
                         ? 'btn-primary'
-                        : 'btn-outline text-white border-white hover:bg-white/10 hover:border-white'}"
+                        : 'btn-menu-outline'}"
                       on:click={() => (gameConfig.powerUpFrequency = "normal")}
                     >
                       Normal
@@ -5172,7 +5171,7 @@
                       class="btn btn-sm {gameConfig.powerUpFrequency ===
                       'carnage'
                         ? 'btn-error'
-                        : 'btn-outline text-white border-white hover:bg-white/10 hover:border-white'}"
+                        : 'btn-menu-outline'}"
                       on:click={() => (gameConfig.powerUpFrequency = "carnage")}
                     >
                       Carnage
