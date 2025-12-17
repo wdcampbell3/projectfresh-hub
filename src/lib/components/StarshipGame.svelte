@@ -5271,7 +5271,7 @@
                         ><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg
                       >
                     </div>
-                     Health - Restore hull
+                    Health - Restore hull
                   </li>
                   <li class="flex items-center">
                     <div class="w-6 h-6 flex items-center justify-center mr-3">
@@ -5279,7 +5279,7 @@
                         class="inline-block w-4 h-4 bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.6)]"
                       ></span>
                     </div>
-                     Ammo - Add ammo to selected weapon
+                    Ammo - Add ammo to selected weapon
                   </li>
                   <li class="flex items-center">
                     <div class="w-6 h-6 flex items-center justify-center mr-3">
@@ -5305,7 +5305,7 @@
                         class="inline-block w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[12px] border-b-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.6)]"
                       ></span>
                     </div>
-                     Missiles - Homing rockets
+                    Missiles - Homing rockets
                   </li>
                   <li class="flex items-center">
                     <div class="w-6 h-6 flex items-center justify-center mr-3">
@@ -5347,7 +5347,7 @@
                         ><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg
                       >
                     </div>
-                     Chain - Arcing lightning
+                    Chain - Arcing lightning
                   </li>
                   <li class="flex items-center">
                     <div class="w-6 h-6 flex items-center justify-center mr-3">
@@ -5355,7 +5355,7 @@
                         class="inline-block w-4 h-4 rounded-full bg-fuchsia-500 shadow-[0_0_10px_rgba(217,70,239,0.6)]"
                       ></span>
                     </div>
-                     Plasma - Explosive bolts
+                    Plasma - Explosive bolts
                   </li>
                 </ul>
               </div>
