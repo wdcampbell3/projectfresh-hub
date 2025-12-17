@@ -1,4 +1,6 @@
 <script lang="ts">
+  import ThemeToggle from "$lib/components/ThemeToggle.svelte"
+
   const games3D = [
     {
       name: "🏗️ World Builder",
@@ -75,21 +77,24 @@
   >
 </svelte:head>
 
-<div class="min-h-screen bg-base-200">
+<div class="min-h-screen bg-base-200 transition-colors duration-300">
   <!-- Header Banner -->
-  <div class="w-full py-8 mb-8" style="background-color: #660460;">
+  <div class="w-full py-8 mb-8 bg-[#660460] text-white shadow-lg relative transition-colors duration-300">
+    <div class="absolute right-4 top-1/2 -translate-y-1/2">
+      <ThemeToggle />
+    </div>
     <div class="container mx-auto px-4 text-center">
-      <h1 class="text-5xl font-bold mb-2 text-white">Dougie's Game Hub</h1>
-      <p class="text-xl text-white italic">
+      <h1 class="text-5xl font-bold mb-2">Dougie's Game Hub</h1>
+      <p class="text-xl italic opacity-90">
         Vibe Coded—100% AI Chat-Prompted—Game Experiments!
       </p>
-      <div class="text-white italic">
+      <div class="italic opacity-80 mt-2">
         This project is open source on <a
-          style="text-decoration:underline"
+          class="underline hover:opacity-100 font-medium"
           href="https://github.com/douglas-fresh/project-fresh-hub">GitHub</a
         >! Wait, who's
         <a
-          style="text-decoration:underline"
+          class="underline hover:opacity-100 font-medium"
           href="http://www.projectfresh.com"
           target="_blank">Dougie</a
         >?
@@ -100,10 +105,10 @@
   <div class="container mx-auto px-4 pb-12">
     <!-- 3D Games Section -->
     <div class="mb-16">
-      <h2 class="text-4xl font-bold mb-2 text-center" style="color: #660460;">
+      <h2 class="text-4xl font-bold mb-2 text-center text-primary">
         3D Games
       </h2>
-      <p class="text-lg text-gray-600 text-center mb-8">
+      <p class="text-lg text-base-content/70 text-center mb-8">
         Build a custom world... And play games in it!
       </p>
       <div
@@ -112,7 +117,7 @@
         {#each games3D as game}
           <a
             href={game.path}
-            class="card bg-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2"
+            class="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-base-300"
           >
             <figure class="h-48 overflow-hidden">
               <img
@@ -122,10 +127,10 @@
               />
             </figure>
             <div class="card-body">
-              <h2 class="card-title" style="color: #660460;">
+              <h2 class="card-title text-primary">
                 {game.name}
               </h2>
-              <p class="text-gray-600">{game.description}</p>
+              <p class="text-base-content/70">{game.description}</p>
             </div>
           </a>
         {/each}
@@ -134,10 +139,10 @@
 
     <!-- 2D Games Section -->
     <div>
-      <h2 class="text-4xl font-bold mb-2 text-center" style="color: #660460;">
+      <h2 class="text-4xl font-bold mb-2 text-center text-primary">
         2D Games
       </h2>
-      <p class="text-lg text-gray-600 text-center mb-8">
+      <p class="text-lg text-base-content/70 text-center mb-8">
         Power Packed Upgrades to Old Classics!
       </p>
       <div
@@ -146,7 +151,7 @@
         {#each games2D as game}
           <a
             href={game.path}
-            class="card bg-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2"
+            class="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-base-300"
           >
             <figure class="h-48 overflow-hidden">
               <img
@@ -156,10 +161,10 @@
               />
             </figure>
             <div class="card-body">
-              <h2 class="card-title" style="color: #660460;">
+              <h2 class="card-title text-primary">
                 {game.name}
               </h2>
-              <p class="text-gray-600">{game.description}</p>
+              <p class="text-base-content/70">{game.description}</p>
             </div>
           </a>
         {/each}
@@ -168,9 +173,3 @@
   </div>
 </div>
 
-<style>
-  :global(body) {
-    background-color: #fffdef;
-    overflow: auto;
-  }
-</style>

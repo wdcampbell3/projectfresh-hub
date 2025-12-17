@@ -3114,14 +3114,14 @@
     <div class="flex-1 overflow-y-auto p-4 pt-0" style="pointer-events: auto;">
       {#if activeTab === "models"}
         <!-- Models Tab -->
-        <h2 class="text-2xl font-bold mb-4" style="color: #660460;">
+        <h2 class="text-2xl font-bold mb-4 text-primary">
           Object Palette
         </h2>
 
         <!-- Recent Models -->
         {#if recentModels.length > 0}
           <div class="mb-4">
-            <h3 class="text-xs font-bold text-gray-500 uppercase mb-2">
+            <h3 class="text-xs font-bold text-base-content/60 uppercase mb-2">
               Recent
             </h3>
             <div class="grid grid-cols-6 gap-1">
@@ -3178,7 +3178,7 @@
 
         <!-- Model Count -->
         <div
-          class="text-xs text-gray-500 mb-3 flex justify-between items-center"
+          class="text-xs text-base-content/60 mb-3 flex justify-between items-center"
         >
           <span>{getFilteredModels().length} models</span>
           {#if thumbnailsLoading}
@@ -3232,14 +3232,13 @@
         </div>
       {:else if activeTab === "maps"}
         <!-- Maps Tab -->
-        <h2 class="text-2xl font-bold mb-4" style="color: #660460;">
+        <h2 class="text-2xl font-bold mb-4 text-primary">
           Map Manager
         </h2>
 
         <!-- Auto Generate Section - Moved to Top -->
         <div
-          class="bg-custom-secondary p-3 mb-4 rounded-lg"
-          style="border: 1px solid #dac1cd; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);"
+          class="bg-custom-secondary p-3 mb-4 rounded-lg border-mauve shadow-sm"
         >
           <h4 class="font-semibold mb-2">Auto Generate Settings</h4>
 
@@ -3887,9 +3886,9 @@
           <div class="flex flex-col gap-4 items-center">
             <!-- Auto Generate Quick Start -->
             <div
-              class="bg-base-200 p-4 rounded-lg text-black max-w-md pointer-events-auto"
+              class="bg-base-200 p-4 rounded-lg text-base-content max-w-md pointer-events-auto shadow-lg border border-base-300"
             >
-              <h4 class="font-bold mb-2 text-center text-[#660460]">
+              <h4 class="font-bold mb-2 text-center text-primary">
                 🚀 Quick Start
               </h4>
               <div class="flex flex-col gap-3 items-center justify-center">
@@ -3904,7 +3903,7 @@
                   Auto Generate 🎲
                 </button>
                 <button
-                  class="btn btn-xs btn-link text-[#660460] no-underline hover:underline mt-2"
+                  class="btn btn-xs btn-link text-primary no-underline hover:underline mt-2"
                   onclick={() => {
                     // Hide the overlay and switch to models tab
                     hideInstructions = true
@@ -3917,9 +3916,9 @@
             </div>
 
             <div
-              class="bg-base-200 p-8 rounded-lg text-black text-center max-w-md"
+              class="bg-base-200 p-8 rounded-lg text-base-content text-center max-w-md shadow-lg border border-base-300"
             >
-              <h3 class="text-2xl font-bold mb-4 text-[#660460]">
+              <h3 class="text-2xl font-bold mb-4 text-primary">
                 🏗️ Building Instructions
               </h3>
               <p class="text-sm text-left">

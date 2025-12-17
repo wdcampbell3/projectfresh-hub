@@ -3339,12 +3339,11 @@
         <div class="absolute inset-0 z-30 p-4 flex flex-col">
           <!-- Header with title and start button -->
           <div class="flex justify-between items-center mb-4">
-            <h1 class="text-4xl font-bold" style="color: #660460;">
+            <h1 class="text-4xl font-bold text-primary">
               🎯 Blocky Shooter
             </h1>
             <button
-              class="btn text-white border-0 hover:opacity-90"
-              style="background-color: #660460;"
+              class="btn btn-primary text-primary-content border-0 hover:opacity-90"
               on:click={() => {
                 if (selectedMap) selectMapAndStart(selectedMap)
                 else startWithDefaultMap()
@@ -3451,10 +3450,10 @@
 
                 <!-- Select a Map -->
                 <div
-                  class="bg-white rounded-lg p-6 mb-6 border-2 border-gray-200 shadow-lg"
+                  class="bg-base-100 rounded-lg p-6 mb-6 border-mauve shadow-lg"
                 >
                   <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-2xl font-bold text-gray-900">
+                    <h3 class="text-2xl font-bold text-base-content">
                       Select a Map
                     </h3>
                     <a
@@ -3469,7 +3468,7 @@
                   <div class="relative">
                     <!-- Left Arrow -->
                     <button
-                      class="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-full w-10 h-10 flex items-center justify-center shadow-lg -ml-2 transition-all"
+                      class="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-warning hover:bg-warning/90 text-warning-content rounded-full w-10 h-10 flex items-center justify-center shadow-lg -ml-2 transition-all"
                       on:click={() => {
                         const container =
                           document.getElementById("fps-map-carousel")
@@ -3512,17 +3511,17 @@
                       {:else}
                         <!-- Default Map - Always First -->
                         <button
-                          class="flex-shrink-0 w-52 card bg-green-50 hover:bg-green-100 transition-all duration-200 cursor-pointer border-2 {selectedMap ===
+                          class="flex-shrink-0 w-52 card bg-base-200/50 hover:bg-base-200 transition-all duration-200 cursor-pointer border-2 {selectedMap ===
                           null
-                            ? 'border-green-500 ring-2 ring-green-400'
-                            : 'border-green-300 hover:border-green-500'} shadow-lg hover:shadow-xl"
+                            ? 'border-success ring-2 ring-success'
+                            : 'border-base-300 hover:border-success'} shadow-lg hover:shadow-xl"
                           on:click={() => {
                             selectedMap = null
                           }}
                         >
                           <div class="card-body p-3">
                             <div
-                              class="w-full h-24 rounded mb-2 overflow-hidden bg-gradient-to-br from-green-700 to-blue-800 flex items-center justify-center border border-green-300"
+                              class="w-full h-24 rounded mb-2 overflow-hidden bg-gradient-to-br from-green-700 to-blue-800 flex items-center justify-center border border-success/30"
                             >
                               {#if defaultMapThumbnail}
                                 <img
@@ -3535,11 +3534,11 @@
                               {/if}
                             </div>
                             <h4
-                              class="font-bold text-sm text-gray-900 truncate"
+                              class="font-bold text-sm text-base-content truncate"
                             >
                               Default Map
                             </h4>
-                            <div class="text-xs text-gray-500">Procedural</div>
+                            <div class="text-xs text-base-content/60">Procedural</div>
                           </div>
                         </button>
 

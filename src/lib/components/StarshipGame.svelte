@@ -4693,13 +4693,12 @@
       <div class="absolute inset-0 z-30 p-4 flex flex-col">
         <!-- Header with title and start button -->
         <div class="flex justify-between items-center mb-4">
-          <h1 class="text-4xl font-bold" style="color: #660460;">
+          <h1 class="text-4xl font-bold text-primary">
             {gameMode === "ground" ? "👽" : "🚀"}
             {gameMode === "ground" ? "Alien Attack" : "Starship Flyer"}
           </h1>
           <button
-            class="btn text-white border-0 hover:opacity-90"
-            style="background-color: #660460;"
+            class="btn btn-primary text-primary-content border-0 hover:opacity-90"
             on:click={startGame}
           >
             Launch Mission
@@ -4713,28 +4712,28 @@
             <div class="max-w-4xl w-full pb-8 my-auto">
               <!-- Ship Selection -->
               {#if gameMode !== "ground"}
-                <div class="card-standard p-6 mb-6">
-                  <h3 class="text-2xl font-bold text-gray-900 mb-4">
+                <div class="bg-base-100 rounded-lg p-6 mb-6 border-mauve shadow-lg">
+                  <h3 class="text-2xl font-bold text-base-content mb-4">
                     Select Your Ship
                   </h3>
                   <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {#each spaceshipOptions as ship}
                       <button
-                        class="card bg-yellow-50 hover:bg-yellow-100 transition-all duration-200 cursor-pointer border-2 {selectedSpaceship.id ===
+                        class="card bg-base-200/50 hover:bg-base-200 transition-all duration-200 cursor-pointer border-2 {selectedSpaceship.id ===
                         ship.id
-                          ? 'border-yellow-500 ring-2 ring-yellow-400'
-                          : 'border-yellow-300 hover:border-yellow-500'} shadow-lg hover:shadow-xl"
+                          ? 'border-warning ring-2 ring-warning'
+                          : 'border-base-300 hover:border-warning'} shadow-lg hover:shadow-xl"
                         on:click={() => (selectedSpaceship = ship)}
                       >
                         <div class="card-body p-3">
                           <div
-                            class="w-full h-24 rounded mb-2 overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center border border-yellow-300"
+                            class="w-full h-24 rounded mb-2 overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center border border-warning/30"
                           >
                             <canvas class="ship-preview-{ship.id} w-full h-full"
                             ></canvas>
                           </div>
                           <h4
-                            class="font-bold text-sm text-gray-900 text-center"
+                            class="font-bold text-sm text-base-content text-center"
                           >
                             {ship.name}
                           </h4>
@@ -4746,11 +4745,11 @@
               {/if}
 
               <!-- Select a Map -->
-              <div class="card-standard p-6 mb-6">
+              <div class="bg-base-100 rounded-lg p-6 mb-6 border-mauve shadow-lg">
                 <div class="flex justify-between items-center mb-4">
-                  <h3 class="text-2xl font-bold text-gray-900">Select a Map</h3>
+                  <h3 class="text-2xl font-bold text-base-content">Select a Map</h3>
                   <a
-                    class="text-blue-600 font-semibold underline text-sm"
+                    class="text-primary font-semibold underline text-sm"
                     href="/world-builder"
                   >
                     Build a Map →
@@ -4761,7 +4760,7 @@
                 <div class="relative">
                   <!-- Left Arrow -->
                   <button
-                    class="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-full w-10 h-10 flex items-center justify-center shadow-lg -ml-2 transition-all"
+                    class="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-warning hover:bg-warning/90 text-warning-content rounded-full w-10 h-10 flex items-center justify-center shadow-lg -ml-2 transition-all"
                     on:click={() => {
                       const container = document.getElementById("map-carousel")
                       if (container)
@@ -4804,8 +4803,8 @@
                       <!-- Random Map Option -->
                       <button
                         class="flex-shrink-0 w-52 card transition-all duration-200 cursor-pointer border-2 shadow-lg hover:shadow-xl {useRandomMap
-                          ? 'bg-gradient-to-br from-purple-100 to-pink-100 border-purple-500 ring-2 ring-purple-400'
-                          : 'bg-gradient-to-br from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 border-purple-300 hover:border-purple-500'}"
+                          ? 'bg-gradient-to-br from-secondary/20 to-accent/20 border-secondary ring-2 ring-secondary'
+                          : 'bg-gradient-to-br from-base-200 to-base-300 hover:from-base-200 hover:to-base-100 border-base-300 hover:border-secondary'}"
                         on:click={() => {
                           useRandomMap = true
                           selectedMap = null
@@ -4813,17 +4812,17 @@
                       >
                         <div class="card-body p-3">
                           <div
-                            class="w-full h-24 rounded mb-2 overflow-hidden bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 flex items-center justify-center border border-purple-300"
+                            class="w-full h-24 rounded mb-2 overflow-hidden bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 flex items-center justify-center border border-secondary/30"
                           >
                             <div class="text-5xl animate-pulse">🎲</div>
                           </div>
                           <h4
-                            class="font-bold text-sm text-gray-900 truncate text-center"
+                            class="font-bold text-sm text-base-content truncate text-center"
                           >
                             Random Map
                           </h4>
                           <div
-                            class="text-xs text-purple-600 text-center font-medium"
+                            class="text-xs text-secondary text-center font-medium"
                           >
                             Surprise Me!
                           </div>
@@ -4835,8 +4834,8 @@
                         <button
                           class="flex-shrink-0 w-52 card transition-all duration-200 cursor-pointer border-2 shadow-lg hover:shadow-xl {!useRandomMap &&
                           selectedMap?.id === map.id
-                            ? 'bg-purple-100 border-purple-500 ring-2 ring-purple-400'
-                            : 'bg-purple-50 hover:bg-purple-100 border-purple-300 hover:border-purple-500'}"
+                            ? 'bg-secondary/10 border-secondary ring-2 ring-secondary'
+                            : 'bg-base-200 hover:bg-base-100 border-base-300 hover:border-secondary'}"
                           on:click={() => {
                             selectedMap = map
                             useRandomMap = false
@@ -4844,12 +4843,12 @@
                         >
                           <div class="card-body p-3">
                             <div
-                              class="absolute top-2 right-2 bg-purple-500 text-white text-xs px-2 py-0.5 rounded"
+                              class="absolute top-2 right-2 bg-secondary text-secondary-content text-xs px-2 py-0.5 rounded"
                             >
                               Custom
                             </div>
                             <div
-                              class="w-full h-24 rounded mb-2 overflow-hidden bg-purple-100 flex items-center justify-center border border-purple-300"
+                              class="w-full h-24 rounded mb-2 overflow-hidden bg-base-300 flex items-center justify-center border border-base-content/10"
                             >
                               {#if map.thumbnail}
                                 <img
@@ -4862,11 +4861,11 @@
                               {/if}
                             </div>
                             <h4
-                              class="font-bold text-sm text-gray-900 truncate"
+                              class="font-bold text-sm text-base-content truncate"
                             >
                               {map.name}
                             </h4>
-                            <div class="text-xs text-gray-500 truncate">
+                            <div class="text-xs text-base-content/60 truncate">
                               {map.stats.objectCount} objects
                             </div>
                           </div>
@@ -4907,8 +4906,8 @@
                           <button
                             class="flex-shrink-0 w-52 card transition-all duration-200 cursor-pointer border-2 shadow-lg hover:shadow-xl {!useRandomMap &&
                             selectedMap?.id === map.id
-                              ? 'bg-yellow-100 border-yellow-500 ring-2 ring-yellow-400'
-                              : 'bg-yellow-50 hover:bg-yellow-100 border-yellow-300 hover:border-yellow-500'}"
+                              ? 'bg-warning/10 border-warning ring-2 ring-warning'
+                              : 'bg-base-200 hover:bg-base-100 border-base-300 hover:border-warning'}"
                             on:click={() => {
                               selectedMap = map
                               useRandomMap = false
@@ -4916,12 +4915,12 @@
                           >
                             <div class="card-body p-3">
                               <div
-                                class="absolute top-2 right-2 bg-yellow-500 text-gray-900 text-xs px-2 py-0.5 rounded"
+                                class="absolute top-2 right-2 bg-warning text-warning-content text-xs px-2 py-0.5 rounded"
                               >
                                 Built-in
                               </div>
                               <div
-                                class="w-full h-24 rounded mb-2 overflow-hidden bg-yellow-100 flex items-center justify-center border border-yellow-300"
+                                class="w-full h-24 rounded mb-2 overflow-hidden bg-base-300 flex items-center justify-center border border-base-content/10"
                               >
                                 {#if map.thumbnail}
                                   <img
@@ -4934,11 +4933,11 @@
                                 {/if}
                               </div>
                               <h4
-                                class="font-bold text-sm text-gray-900 truncate"
+                                class="font-bold text-sm text-base-content truncate"
                               >
                                 {map.name}
                               </h4>
-                              <div class="text-xs text-gray-500 truncate">
+                              <div class="text-xs text-base-content/60 truncate">
                                 {map.stats.objectCount} objects
                               </div>
                             </div>
@@ -4963,8 +4962,8 @@
               </div>
 
               <!-- Difficulty Settings (matching Blocky Shooter) -->
-              <div class="card-standard p-6 mb-6">
-                <h3 class="text-2xl font-bold text-gray-900 mb-4">
+              <div class="bg-base-100 rounded-lg p-6 mb-6 border-mauve shadow-lg">
+                <h3 class="text-2xl font-bold text-base-content mb-4">
                   Difficulty & Settings
                 </h3>
 
