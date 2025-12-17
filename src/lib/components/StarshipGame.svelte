@@ -4750,12 +4750,12 @@
       <div class="absolute inset-0 z-30 p-4 flex flex-col">
         <!-- Header with title and start button -->
         <div class="flex justify-between items-center mb-4">
-          <h1 class="text-4xl font-bold text-primary">
+          <h1 class="text-4xl font-bold" style="color: #660460;">
             {gameMode === "ground" ? "👽" : "🚀"}
             {gameMode === "ground" ? "Alien Attack" : "Starship Flyer"}
           </h1>
           <button
-            class="btn btn-primary text-primary-content border-0 hover:opacity-90"
+            class="btn bg-primary hover:bg-primary-focus  text-white border-0 hover:opacity-90"
             on:click={startGame}
           >
             Launch Mission
@@ -5057,7 +5057,7 @@
                 <!-- Sound Toggle -->
                 <div class="form-control mb-6">
                   <label class="label cursor-pointer justify-start gap-4">
-                    <span class="label-text text-lg font-bold text-gray-900"
+                    <span class="label-text text-lg font-bold text-base-content/60"
                       >Sound Effects</span
                     >
                     <input

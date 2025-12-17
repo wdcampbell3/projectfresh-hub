@@ -3227,9 +3227,9 @@
         <div class="grid grid-cols-3 gap-2">
           {#each getFilteredModels() as model}
             <button
-              class="btn btn-ghost p-0.5 h-auto flex-col gap-1 {selectedModel?.path ===
+              class="btn btn-ghost p-0.5 h-auto flex-col gap-1 border-2 border-transparent hover:border-primary {selectedModel?.path ===
               model.path
-                ? 'ring-2 ring-primary'
+                ? 'ring-2 ring-primary !border-primary'
                 : ''}"
               onclick={() => selectModel(model)}
               title={model.name}
