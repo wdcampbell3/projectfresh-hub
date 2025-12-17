@@ -7,11 +7,13 @@ A full suite of custom 2D and 3D games built from scratch using SvelteKit, Three
 ## 🎯 Featured Games
 
 ### 3D Experiences
+
 - **World Builder** - Create and explore custom 3D environments with a rich model library
 - **Starship Flyer** - Space dogfighting with physics, barrel rolls, power-ups, and boss battles
 - **Alien Attack** - First-person ground combat with jetpack mechanics and multiple weapons
 
 ### 2D Classics (Reimagined)
+
 - **Space Invaders** - Modern take with power-ups and visual effects
 - **Light Particles** - TRON-style light-trail combat
 - **Cosmic Pong** - Enhanced Pong with dynamic mechanics
@@ -54,15 +56,15 @@ The app will be available at **http://localhost:5173**
 
 ## 📦 Available Scripts
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server with hot reload |
-| `npm run build` | Build for production |
-| `npm run preview` | Preview production build locally |
-| `npm run check` | Run Svelte type checking |
-| `npm run lint` | Run ESLint |
-| `npm run format` | Format code with Prettier |
-| `npm run test` | Run tests with Vitest |
+| Command           | Description                              |
+| ----------------- | ---------------------------------------- |
+| `npm run dev`     | Start development server with hot reload |
+| `npm run build`   | Build for production                     |
+| `npm run preview` | Preview production build locally         |
+| `npm run check`   | Run Svelte type checking                 |
+| `npm run lint`    | Run ESLint                               |
+| `npm run format`  | Format code with Prettier                |
+| `npm run test`    | Run tests with Vitest                    |
 
 ---
 
@@ -73,6 +75,7 @@ This project is pre-configured for Netlify deployment. Follow these steps:
 ### Option A: Deploy via Netlify Dashboard (Recommended)
 
 1. **Push your code to GitHub**
+
    ```bash
    git add -A
    git commit -m "Initial commit"
@@ -95,20 +98,23 @@ This project is pre-configured for Netlify deployment. Follow these steps:
 ### Option B: Deploy via Netlify CLI
 
 1. **Install Netlify CLI**
+
    ```bash
    npm install -g netlify-cli
    ```
 
 2. **Login to Netlify**
+
    ```bash
    netlify login
    ```
 
 3. **Initialize and Deploy**
+
    ```bash
    netlify init
    # Follow prompts to connect to your GitHub repo
-   
+
    # Deploy to production
    netlify deploy --prod
    ```
@@ -157,6 +163,7 @@ PRIVATE_STRIPE_API_KEY=your_stripe_secret_key
 #### Step 4: Enable Authentication (Optional)
 
 For email/password login:
+
 1. In Supabase dashboard, go to **Authentication** → **Providers**
 2. Ensure **Email** is enabled
 3. Configure email templates in **Authentication** → **Email Templates**
@@ -164,6 +171,7 @@ For email/password login:
 ### For Netlify Deployment
 
 Add these environment variables in Netlify:
+
 1. Go to **Site settings** → **Environment variables**
 2. Add each variable from your `.env` file
 
@@ -203,17 +211,18 @@ projectfresh-hub/
 ## 🎮 Controls
 
 ### Starship Flyer / Alien Attack
-| Key | Action |
-|-----|--------|
-| `W/S` | Forward / Backward |
-| `A/D` | Strafe Left / Right |
-| `Q/E` | Barrel Roll (Starship) / Strafe (Alien Attack) |
-| `Space` | Jetpack Boost |
-| `Mouse` | Look Around |
-| `Click` | Fire Weapon |
-| `Scroll` | Switch Weapons |
-| `1-5` | Quick Weapon Select |
-| `Esc` | Pause / Menu |
+
+| Key      | Action                                         |
+| -------- | ---------------------------------------------- |
+| `W/S`    | Forward / Backward                             |
+| `A/D`    | Strafe Left / Right                            |
+| `Q/E`    | Barrel Roll (Starship) / Strafe (Alien Attack) |
+| `Space`  | Jetpack Boost                                  |
+| `Mouse`  | Look Around                                    |
+| `Click`  | Fire Weapon                                    |
+| `Scroll` | Switch Weapons                                 |
+| `1-5`    | Quick Weapon Select                            |
+| `Esc`    | Pause / Menu                                   |
 
 ---
 

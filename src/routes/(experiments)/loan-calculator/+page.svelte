@@ -28,7 +28,9 @@
 </svelte:head>
 
 <div class="container mx-auto max-w-4xl p-6">
-  <h1 class="mb-8 text-center text-4xl font-bold" style="color: #660460;">Loan Calculator</h1>
+  <h1 class="mb-8 text-center text-4xl font-bold" style="color: #660460;">
+    Loan Calculator
+  </h1>
 
   <div class="grid gap-8 lg:grid-cols-2">
     <!-- Input Section -->

@@ -5,7 +5,11 @@
   import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
   import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js"
   import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
-  import { createRain, createSnow, animateWeather as animateWeatherShared } from '$lib/weatherSystem'
+  import {
+    createRain,
+    createSnow,
+    animateWeather as animateWeatherShared,
+  } from "$lib/weatherSystem"
 
   let container: HTMLDivElement
   let scene: THREE.Scene
@@ -24,15 +28,15 @@
     modified: number
     thumbnail: string
     environment: {
-      timeOfDay: 'dawn' | 'day' | 'sunset' | 'night'
-      weather: 'clear' | 'rain' | 'snow' | 'fog'
+      timeOfDay: "dawn" | "day" | "sunset" | "night"
+      weather: "clear" | "rain" | "snow" | "fog"
       fogDensity: number
     }
     objects: Array<{
       modelPath: string
-      position: { x: number, y: number, z: number }
-      rotation: { x: number, y: number, z: number }
-      scale: { x: number, y: number, z: number }
+      position: { x: number; y: number; z: number }
+      rotation: { x: number; y: number; z: number }
+      scale: { x: number; y: number; z: number }
     }>
     stats: {
       objectCount: number
@@ -43,12 +47,11 @@
   // Maps fetched from API
   let staticMapFiles: string[] = []
 
-
   let availableMaps: MapData[] = []
-  let customMaps: MapData[] = []  // User-created maps from localStorage
-  let builtInMaps: MapData[] = []  // Static maps from /3d-maps/
+  let customMaps: MapData[] = [] // User-created maps from localStorage
+  let builtInMaps: MapData[] = [] // Static maps from /3d-maps/
   let selectedMap: MapData | null = null
-  let mapsLoading = true  // Track map loading state
+  let mapsLoading = true // Track map loading state
   let showMapSelector = true
   let isLoadingMap = false
   let defaultMapThumbnail: string | null = null
@@ -63,7 +66,7 @@
 
   // Game Configuration
   interface GameConfig {
-    difficulty: 'easy' | 'normal' | 'hard'
+    difficulty: "easy" | "normal" | "hard"
     startingAmmo: number
     startingHealth: number
     enemyCount: number
@@ -75,7 +78,7 @@
   }
 
   let gameConfig: GameConfig = {
-    difficulty: 'normal',
+    difficulty: "normal",
     startingAmmo: 30,
     startingHealth: 100,
     enemyCount: 5,
@@ -83,11 +86,14 @@
     enemyDamage: 10,
     playerDamage: 25,
     enemySpeed: 2.0,
-    enemyFireRate: 2000
+    enemyFireRate: 2000,
   }
 
   // Difficulty presets
-  const difficultyPresets: Record<GameConfig['difficulty'], Partial<GameConfig>> = {
+  const difficultyPresets: Record<
+    GameConfig["difficulty"],
+    Partial<GameConfig>
+  > = {
     easy: {
       startingAmmo: 50,
       startingHealth: 150,
@@ -95,7 +101,7 @@
       enemyDamage: 5,
       playerDamage: 35,
       enemySpeed: 1.5,
-      enemyFireRate: 3000
+      enemyFireRate: 3000,
     },
     normal: {
       startingAmmo: 30,
@@ -104,7 +110,7 @@
       enemyDamage: 10,
       playerDamage: 25,
       enemySpeed: 2.0,
-      enemyFireRate: 2000
+      enemyFireRate: 2000,
     },
     hard: {
       startingAmmo: 20,
@@ -113,11 +119,11 @@
       enemyDamage: 15,
       playerDamage: 20,
       enemySpeed: 2.5,
-      enemyFireRate: 1500
-    }
+      enemyFireRate: 1500,
+    },
   }
 
-  function applyDifficultyPreset(difficulty: GameConfig['difficulty']) {
+  function applyDifficultyPreset(difficulty: GameConfig["difficulty"]) {
     gameConfig = { ...gameConfig, ...difficultyPresets[difficulty], difficulty }
   }
 
@@ -160,17 +166,17 @@
   // Power-ups
   interface PowerUp {
     mesh: THREE.Group
-    type: 'health' | 'ammo' | 'flying' | 'weapon-missile' | 'weapon-grenade'
+    type: "health" | "ammo" | "flying" | "weapon-missile" | "weapon-grenade"
   }
   let powerUps: PowerUp[] = []
 
   // Power-up colors
   const powerUpColors = {
-    health: 0xff0000,      // Red
-    ammo: 0x00ff00,        // Green
-    flying: 0x00ffff,      // Cyan
-    'weapon-missile': 0xffff00,  // Yellow
-    'weapon-grenade': 0xff6600   // Orange
+    health: 0xff0000, // Red
+    ammo: 0x00ff00, // Green
+    flying: 0x00ffff, // Cyan
+    "weapon-missile": 0xffff00, // Yellow
+    "weapon-grenade": 0xff6600, // Orange
   }
 
   // Active power-ups
@@ -179,12 +185,12 @@
   let currentTime = Date.now() // For reactive countdown updates
 
   // Simplified power-up application - no inventory, instant effects
-  function applyPowerUpEffect(type: PowerUp['type']) {
+  function applyPowerUpEffect(type: PowerUp["type"]) {
     switch (type) {
-      case 'health':
+      case "health":
         health = Math.min(health + 30, 100) // Cap at 100
         break
-      case 'ammo':
+      case "ammo":
         // Add ammo to current weapon (if it's not laser with infinite ammo)
         const currentWeapon = weaponInventory[currentWeaponIndex]
         if (currentWeapon.ammo !== -1) {
@@ -193,24 +199,27 @@
           weaponInventory = weaponInventory
         } else {
           // Current weapon has infinite ammo, add to a random weapon that uses ammo
-          const weaponsWithAmmo = weaponInventory.filter(w => w.ammo !== -1)
+          const weaponsWithAmmo = weaponInventory.filter((w) => w.ammo !== -1)
           if (weaponsWithAmmo.length > 0) {
-            const randomWeapon = weaponsWithAmmo[Math.floor(Math.random() * weaponsWithAmmo.length)]
+            const randomWeapon =
+              weaponsWithAmmo[
+                Math.floor(Math.random() * weaponsWithAmmo.length)
+              ]
             randomWeapon.ammo += 20
             weaponInventory = weaponInventory
           }
         }
         break
-      case 'flying':
-        activePowerUps.add('flying')
+      case "flying":
+        activePowerUps.add("flying")
         flyingModeEndTime = Date.now() + 30000 // 30 seconds
         velocity.y = 10 // Launch 2/3 as high (was 15)
         break
-      case 'weapon-missile':
-        addWeaponToInventory('missile', 10, 'Missiles')
+      case "weapon-missile":
+        addWeaponToInventory("missile", 10, "Missiles")
         break
-      case 'weapon-grenade':
-        addWeaponToInventory('grenade', 5, 'Grenades')
+      case "weapon-grenade":
+        addWeaponToInventory("grenade", 5, "Grenades")
         break
     }
   }
@@ -226,20 +235,20 @@
 
     // Show level complete splash (before incrementing level so it shows correct number)
     showLevelComplete = true
-    await new Promise(resolve => setTimeout(resolve, 2500)) // Show splash for 2.5 seconds
+    await new Promise((resolve) => setTimeout(resolve, 2500)) // Show splash for 2.5 seconds
     showLevelComplete = false
 
     level++
     nextLevelScore = level * 1000 // Set next level threshold
 
     // Check if this is a boss level (every 3rd level)
-    isBossLevel = (level % 3 === 0)
+    isBossLevel = level % 3 === 0
 
     // Clear EVERYTHING from the scene
     clearEnvironment()
 
     // Clear scenery objects array
-    sceneryObjects.forEach(obj => scene.remove(obj))
+    sceneryObjects.forEach((obj) => scene.remove(obj))
     sceneryObjects = []
     bossEnemy = null
     bossHealth = 0
@@ -298,30 +307,36 @@
     if (modelCatalog.length === 0) return
 
     // Categorize models (same as World Builder)
-    const trees = modelCatalog.filter(m =>
-      m.category === 'Nature' && (
-        m.name.toLowerCase().includes('tree') ||
-        m.name.toLowerCase().includes('pine') ||
-        m.name.toLowerCase().includes('oak')
-      )
+    const trees = modelCatalog.filter(
+      (m) =>
+        m.category === "Nature" &&
+        (m.name.toLowerCase().includes("tree") ||
+          m.name.toLowerCase().includes("pine") ||
+          m.name.toLowerCase().includes("oak")),
     )
-    const buildings = modelCatalog.filter(m =>
-      m.category === 'Buildings' ||
-      m.name.toLowerCase().includes('building') ||
-      m.name.toLowerCase().includes('house') ||
-      m.name.toLowerCase().includes('tower')
+    const buildings = modelCatalog.filter(
+      (m) =>
+        m.category === "Buildings" ||
+        m.name.toLowerCase().includes("building") ||
+        m.name.toLowerCase().includes("house") ||
+        m.name.toLowerCase().includes("tower"),
     )
-    const vehicles = modelCatalog.filter(m =>
-      m.category === 'Vehicles'
-    )
-    const other = modelCatalog.filter(m =>
-      m.category === 'Decor' || m.category === 'Urban' || m.category === 'Props'
+    const vehicles = modelCatalog.filter((m) => m.category === "Vehicles")
+    const other = modelCatalog.filter(
+      (m) =>
+        m.category === "Decor" ||
+        m.category === "Urban" ||
+        m.category === "Props",
     )
 
     const loader = new GLTFLoader()
 
     // Helper to place model
-    const placeModel = async (model: ModelCatalogItem, position: THREE.Vector3, baseScale: number) => {
+    const placeModel = async (
+      model: ModelCatalogItem,
+      position: THREE.Vector3,
+      baseScale: number,
+    ) => {
       try {
         const gltf = await loader.loadAsync(model.path)
         const mesh = gltf.scene
@@ -356,13 +371,13 @@
         sceneryObjects.push(mesh)
 
         // Add to collision detection based on category
-        if (category === 'solid') {
+        if (category === "solid") {
           solidObjects.push(mesh)
         } else {
           walkthroughObjects.push(mesh)
         }
       } catch (error) {
-        console.error('Failed to load scenery model:', model.path, error)
+        console.error("Failed to load scenery model:", model.path, error)
       }
     }
 
@@ -370,7 +385,11 @@
     const treeCount = 10 + Math.floor(Math.random() * 6)
     for (let i = 0; i < treeCount && trees.length > 0; i++) {
       const model = trees[Math.floor(Math.random() * trees.length)]
-      const pos = new THREE.Vector3((Math.random() - 0.5) * 80, 0, (Math.random() - 0.5) * 80)
+      const pos = new THREE.Vector3(
+        (Math.random() - 0.5) * 80,
+        0,
+        (Math.random() - 0.5) * 80,
+      )
       await placeModel(model, pos, 3.5 + Math.random() * 1.5)
     }
 
@@ -380,7 +399,11 @@
       const model = buildings[Math.floor(Math.random() * buildings.length)]
       const angle = (i / buildingCount) * Math.PI * 2
       const radius = 30 + Math.random() * 20
-      const pos = new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius)
+      const pos = new THREE.Vector3(
+        Math.cos(angle) * radius,
+        0,
+        Math.sin(angle) * radius,
+      )
       await placeModel(model, pos, 10 + Math.random() * 2)
     }
 
@@ -388,7 +411,11 @@
     const vehicleCount = 2 + Math.floor(Math.random() * 3)
     for (let i = 0; i < vehicleCount && vehicles.length > 0; i++) {
       const model = vehicles[Math.floor(Math.random() * vehicles.length)]
-      const pos = new THREE.Vector3((Math.random() - 0.5) * 60, 0, (Math.random() - 0.5) * 60)
+      const pos = new THREE.Vector3(
+        (Math.random() - 0.5) * 60,
+        0,
+        (Math.random() - 0.5) * 60,
+      )
       await placeModel(model, pos, 3.5 + Math.random() * 0.5)
     }
 
@@ -396,31 +423,35 @@
     const otherCount = 5 + Math.floor(Math.random() * 6)
     for (let i = 0; i < otherCount && other.length > 0; i++) {
       const model = other[Math.floor(Math.random() * other.length)]
-      const pos = new THREE.Vector3((Math.random() - 0.5) * 70, 0, (Math.random() - 0.5) * 70)
+      const pos = new THREE.Vector3(
+        (Math.random() - 0.5) * 70,
+        0,
+        (Math.random() - 0.5) * 70,
+      )
       await placeModel(model, pos, 2.0 + Math.random() * 1.0)
     }
   }
 
   // Spawn boss enemy
   function spawnBoss() {
-    const mesh = createEnemyModel('boss')
+    const mesh = createEnemyModel("boss")
 
     // Spawn boss in a dramatic location (center of map, elevated)
     mesh.position.set(0, 0, -40) // In front of player
 
     scene.add(mesh)
 
-    const stats = getEnemyStats('boss')
+    const stats = getEnemyStats("boss")
     const boss: Enemy = {
       mesh,
       health: stats.health,
       maxHealth: stats.health,
       lastShot: Date.now(),
       velocity: new THREE.Vector3(),
-      type: 'boss',
+      type: "boss",
       speed: stats.speed,
       fireRate: stats.fireRate,
-      damage: stats.damage
+      damage: stats.damage,
     }
 
     enemies.push(boss)
@@ -430,7 +461,7 @@
   }
 
   // Weapons and Projectiles
-  type WeaponType = 'laser' | 'missile' | 'grenade'
+  type WeaponType = "laser" | "missile" | "grenade"
 
   interface WeaponInventory {
     type: WeaponType
@@ -439,10 +470,10 @@
   }
 
   let weaponInventory: WeaponInventory[] = [
-    { type: 'laser', ammo: -1, name: 'Laser Gun' } // Default weapon with infinite ammo
+    { type: "laser", ammo: -1, name: "Laser Gun" }, // Default weapon with infinite ammo
   ]
   let currentWeaponIndex = 0
-  let currentWeapon: WeaponType = 'laser'
+  let currentWeapon: WeaponType = "laser"
   let isGameOver = false
 
   interface Projectile {
@@ -454,7 +485,7 @@
   let projectiles: Projectile[] = []
 
   // Enemies
-  type EnemyType = 'basic' | 'fast' | 'tank' | 'boss'
+  type EnemyType = "basic" | "fast" | "tank" | "boss"
 
   interface Enemy {
     mesh: THREE.Object3D
@@ -474,7 +505,6 @@
   let rainSystem: THREE.Points | null = null
   let snowSystem: THREE.Points | null = null
 
-
   // Collidable objects (trees, boxes, etc.)
   let collidableObjects: THREE.Mesh[] = []
 
@@ -486,49 +516,131 @@
   let raycaster = new THREE.Raycaster()
 
   // Model categorization based on file path patterns
-  function categorizeModel(modelPath: string): 'solid' | 'walkthrough' {
+  function categorizeModel(modelPath: string): "solid" | "walkthrough" {
     const path = modelPath.toLowerCase()
 
     // Walkthrough objects (no collision) - plants, nature, small decorations
     const walkthroughPatterns = [
-      'tree', 'plant', 'flower', 'bush', 'grass', 'foliage', 'leaf', 'leaves',
-      'fern', 'vine', 'moss', 'mushroom', 'cactus', 'palm', 'pine', 'oak',
-      'birch', 'willow', 'shrub', 'hedge', 'weed', 'bamboo', 'reed',
-      'lantern', 'lamp', 'light', 'candle', 'torch', 'sign', 'flag',
-      'debris', 'litter', 'particle', 'effect', 'decal', 'sticker',
-      'roadlines', 'road-lines', 'road_lines', 'marking', 'stripe', 'painted', 'paint',
-      'road-segment', 'road_segment', 'roadsegment', 'asphalt', 'pavement',
-      'small-rock', 'pebble', 'stone-small', 'gravel'
+      "tree",
+      "plant",
+      "flower",
+      "bush",
+      "grass",
+      "foliage",
+      "leaf",
+      "leaves",
+      "fern",
+      "vine",
+      "moss",
+      "mushroom",
+      "cactus",
+      "palm",
+      "pine",
+      "oak",
+      "birch",
+      "willow",
+      "shrub",
+      "hedge",
+      "weed",
+      "bamboo",
+      "reed",
+      "lantern",
+      "lamp",
+      "light",
+      "candle",
+      "torch",
+      "sign",
+      "flag",
+      "debris",
+      "litter",
+      "particle",
+      "effect",
+      "decal",
+      "sticker",
+      "roadlines",
+      "road-lines",
+      "road_lines",
+      "marking",
+      "stripe",
+      "painted",
+      "paint",
+      "road-segment",
+      "road_segment",
+      "roadsegment",
+      "asphalt",
+      "pavement",
+      "small-rock",
+      "pebble",
+      "stone-small",
+      "gravel",
     ]
 
     // Solid objects (full collision) - buildings, vehicles, large structures
     const solidPatterns = [
-      'building', 'house', 'wall', 'fence', 'gate', 'door', 'barrier',
-      'car', 'vehicle', 'truck', 'van', 'bus', 'trailer', 'tractor',
-      'tank', 'jeep', 'wagon', 'cart', 'bike', 'motorcycle',
-      'rock', 'boulder', 'stone', 'cliff', 'mountain',
-      'crate', 'box', 'barrel', 'container', 'chest', 'bin',
-      'bench', 'table', 'chair', 'furniture',
-      'tower', 'bunker', 'shelter', 'shed', 'garage', 'barn',
-      'post', 'pole', 'pillar', 'column', 'statue'
+      "building",
+      "house",
+      "wall",
+      "fence",
+      "gate",
+      "door",
+      "barrier",
+      "car",
+      "vehicle",
+      "truck",
+      "van",
+      "bus",
+      "trailer",
+      "tractor",
+      "tank",
+      "jeep",
+      "wagon",
+      "cart",
+      "bike",
+      "motorcycle",
+      "rock",
+      "boulder",
+      "stone",
+      "cliff",
+      "mountain",
+      "crate",
+      "box",
+      "barrel",
+      "container",
+      "chest",
+      "bin",
+      "bench",
+      "table",
+      "chair",
+      "furniture",
+      "tower",
+      "bunker",
+      "shelter",
+      "shed",
+      "garage",
+      "barn",
+      "post",
+      "pole",
+      "pillar",
+      "column",
+      "statue",
     ]
 
     // Check walkthrough patterns first
     for (const pattern of walkthroughPatterns) {
       if (path.includes(pattern)) {
-        return 'walkthrough'
+        return "walkthrough"
       }
     }
 
     // Check solid patterns
     for (const pattern of solidPatterns) {
       if (path.includes(pattern)) {
-        return 'solid'
+        return "solid"
       }
     }
 
     // Default: small objects are walkthrough, large objects need volume check
-    return 'solid' // Conservative default - will be filtered by volume
+    return "solid" // Conservative default - will be filtered by volume
   }
 
   // Audio context for sound effects
@@ -556,20 +668,23 @@
 
   function loadAvailableMaps() {
     // Use same localStorage key as World Builder
-    const stored = localStorage.getItem('worldBuilder_maps')
+    const stored = localStorage.getItem("worldBuilder_maps")
     if (stored) {
       try {
         const allCustomMaps: MapData[] = JSON.parse(stored)
         // Filter maps for this game
-        const filteredCustomMaps = allCustomMaps.filter(map => {
+        const filteredCustomMaps = allCustomMaps.filter((map) => {
           // Strict filtering: must have 'games' property and include 'blocky shooter' or 'all'
           if (!map.games) return false
-          const games = map.games.toLowerCase().split(',').map(g => g.trim())
-          return games.includes('all') || games.includes('blocky shooter')
+          const games = map.games
+            .toLowerCase()
+            .split(",")
+            .map((g) => g.trim())
+          return games.includes("all") || games.includes("blocky shooter")
         })
         customMaps = filteredCustomMaps
       } catch (e) {
-        console.error('Failed to load maps:', e)
+        console.error("Failed to load maps:", e)
         customMaps = []
       }
     }
@@ -579,12 +694,12 @@
 
   async function loadStaticMaps() {
     try {
-      const response = await fetch('/api/maps')
+      const response = await fetch("/api/maps")
       if (response.ok) {
         staticMapFiles = await response.json()
       }
     } catch (e) {
-      console.error('Failed to fetch map list:', e)
+      console.error("Failed to fetch map list:", e)
     }
 
     const maps: MapData[] = []
@@ -596,18 +711,18 @@
         maps.push({
           ...data,
           id: data.id ?? file,
-          name: data.name ?? file.replace('.json', '')
+          name: data.name ?? file.replace(".json", ""),
         })
       } catch (e) {
-        console.error('Failed to load static map:', file, e)
+        console.error("Failed to load static map:", file, e)
       }
     }
-    
+
     // Deduplicate built-in maps by ID and Name
     const uniqueMaps: MapData[] = []
     const seenIds = new Set<string>()
     const seenNames = new Set<string>()
-    
+
     for (const map of maps) {
       if (!seenIds.has(map.id) && !seenNames.has(map.name)) {
         uniqueMaps.push(map)
@@ -615,52 +730,55 @@
         seenNames.add(map.name)
       }
     }
-    
+
     // Filter maps for this game
-    builtInMaps = uniqueMaps.filter(map => {
+    builtInMaps = uniqueMaps.filter((map) => {
       // Filter out the default map to avoid duplication
-      if (map.id === 'map_1763953751831') return false
+      if (map.id === "map_1763953751831") return false
 
       // Strict filtering: must have 'games' property and include 'blocky shooter' or 'all'
       if (!map.games) return false
-      const games = map.games.toLowerCase().split(',').map(g => g.trim())
-      return games.includes('all') || games.includes('blocky shooter')
+      const games = map.games
+        .toLowerCase()
+        .split(",")
+        .map((g) => g.trim())
+      return games.includes("all") || games.includes("blocky shooter")
     })
-    
+
     updateAvailableMaps()
     mapsLoading = false
   }
 
   function updateAvailableMaps() {
     // Merge custom and built-in maps, avoiding duplicates by ID and Name
-    const existingIds = new Set(customMaps.map(m => m.id))
-    const existingNames = new Set(customMaps.map(m => m.name))
-    
-    const uniqueBuiltIn = builtInMaps.filter(m => 
-      !existingIds.has(m.id) && !existingNames.has(m.name)
+    const existingIds = new Set(customMaps.map((m) => m.id))
+    const existingNames = new Set(customMaps.map((m) => m.name))
+
+    const uniqueBuiltIn = builtInMaps.filter(
+      (m) => !existingIds.has(m.id) && !existingNames.has(m.name),
     )
-    
+
     availableMaps = [...customMaps, ...uniqueBuiltIn]
   }
 
   // Load default map thumbnail for menu display
   async function loadDefaultMapThumbnail() {
     try {
-      const response = await fetch('/3d-maps/default_map.json')
+      const response = await fetch("/3d-maps/default_map.json")
       const data: MapData = await response.json()
       defaultMapThumbnail = data.thumbnail
     } catch (e) {
-      console.error('Failed to load default map thumbnail:', e)
+      console.error("Failed to load default map thumbnail:", e)
     }
   }
 
   async function loadModelCatalog() {
     // Load model catalog for random map generation
     try {
-      const response = await fetch('/modelCatalog.json')
+      const response = await fetch("/modelCatalog.json")
       modelCatalog = await response.json()
     } catch (e) {
-      console.error('Failed to load model catalog:', e)
+      console.error("Failed to load model catalog:", e)
     }
   }
 
@@ -745,7 +863,7 @@
     spawnEnemies()
 
     // Wait a bit for objects to settle in physics
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await new Promise((resolve) => setTimeout(resolve, 500))
 
     // Find a valid spawn position
     const validSpawnPos = findValidSpawnPosition()
@@ -769,7 +887,7 @@
 
     // Try to load the default map from JSON
     try {
-      const response = await fetch('/3d-maps/default_map.json')
+      const response = await fetch("/3d-maps/default_map.json")
       const defaultMap: MapData = await response.json()
       selectedMap = defaultMap
 
@@ -779,7 +897,10 @@
       // Load the default map
       await loadMapEnvironment(defaultMap)
     } catch (error) {
-      console.error('Failed to load default map, using basic environment:', error)
+      console.error(
+        "Failed to load default map, using basic environment:",
+        error,
+      )
       selectedMap = null
       // Fall back to original environment
       createEnvironment()
@@ -789,7 +910,7 @@
     spawnEnemies()
 
     // Wait a bit for objects to settle in physics
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await new Promise((resolve) => setTimeout(resolve, 500))
 
     // Find a valid spawn position
     const validSpawnPos = findValidSpawnPosition()
@@ -809,23 +930,36 @@
     mapGenerationProgress = 10
 
     // Select random environment settings
-    const timeOfDayOptions: Array<'dawn' | 'day' | 'sunset' | 'night'> = ['dawn', 'day', 'sunset', 'night']
-    const weatherOptions: Array<'clear' | 'rain' | 'snow' | 'fog'> = ['clear', 'clear', 'clear', 'rain', 'fog'] // More clear weather
-    const timeOfDay = timeOfDayOptions[Math.floor(Math.random() * timeOfDayOptions.length)]
-    const weather = weatherOptions[Math.floor(Math.random() * weatherOptions.length)]
+    const timeOfDayOptions: Array<"dawn" | "day" | "sunset" | "night"> = [
+      "dawn",
+      "day",
+      "sunset",
+      "night",
+    ]
+    const weatherOptions: Array<"clear" | "rain" | "snow" | "fog"> = [
+      "clear",
+      "clear",
+      "clear",
+      "rain",
+      "fog",
+    ] // More clear weather
+    const timeOfDay =
+      timeOfDayOptions[Math.floor(Math.random() * timeOfDayOptions.length)]
+    const weather =
+      weatherOptions[Math.floor(Math.random() * weatherOptions.length)]
 
     mapGenerationProgress = 20
 
     // Filter models by category for strategic placement
-    const buildings = modelCatalog.filter(m => m.category === 'Buildings')
-    const vehicles = modelCatalog.filter(m => m.category === 'Vehicles')
-    const nature = modelCatalog.filter(m => m.category === 'Nature')
-    const urban = modelCatalog.filter(m => m.category === 'Urban')
-    const decor = modelCatalog.filter(m => m.category === 'Decor')
+    const buildings = modelCatalog.filter((m) => m.category === "Buildings")
+    const vehicles = modelCatalog.filter((m) => m.category === "Vehicles")
+    const nature = modelCatalog.filter((m) => m.category === "Nature")
+    const urban = modelCatalog.filter((m) => m.category === "Urban")
+    const decor = modelCatalog.filter((m) => m.category === "Decor")
 
     mapGenerationProgress = 30
 
-    const objects: MapData['objects'] = []
+    const objects: MapData["objects"] = []
 
     // Place buildings (5-10) - strategic cover points
     const buildingCount = Math.floor(Math.random() * 6) + 5
@@ -837,18 +971,18 @@
           position: {
             x: (Math.random() - 0.5) * 80,
             y: 0,
-            z: (Math.random() - 0.5) * 80
+            z: (Math.random() - 0.5) * 80,
           },
           rotation: {
             x: 0,
             y: Math.random() * Math.PI * 2,
-            z: 0
+            z: 0,
           },
           scale: {
             x: 0.8 + Math.random() * 0.4,
             y: 0.8 + Math.random() * 0.4,
-            z: 0.8 + Math.random() * 0.4
-          }
+            z: 0.8 + Math.random() * 0.4,
+          },
         })
       }
     }
@@ -865,14 +999,14 @@
           position: {
             x: (Math.random() - 0.5) * 90,
             y: 0,
-            z: (Math.random() - 0.5) * 90
+            z: (Math.random() - 0.5) * 90,
           },
           rotation: {
             x: 0,
             y: Math.random() * Math.PI * 2,
-            z: 0
+            z: 0,
           },
-          scale: { x: 1, y: 1, z: 1 }
+          scale: { x: 1, y: 1, z: 1 },
         })
       }
     }
@@ -889,18 +1023,18 @@
           position: {
             x: (Math.random() - 0.5) * 100,
             y: 0,
-            z: (Math.random() - 0.5) * 100
+            z: (Math.random() - 0.5) * 100,
           },
           rotation: {
             x: 0,
             y: Math.random() * Math.PI * 2,
-            z: 0
+            z: 0,
           },
           scale: {
             x: 0.7 + Math.random() * 0.6,
             y: 0.7 + Math.random() * 0.6,
-            z: 0.7 + Math.random() * 0.6
-          }
+            z: 0.7 + Math.random() * 0.6,
+          },
         })
       }
     }
@@ -917,14 +1051,14 @@
           position: {
             x: (Math.random() - 0.5) * 80,
             y: 0,
-            z: (Math.random() - 0.5) * 80
+            z: (Math.random() - 0.5) * 80,
           },
           rotation: {
             x: 0,
             y: Math.random() * Math.PI * 2,
-            z: 0
+            z: 0,
           },
-          scale: { x: 1, y: 1, z: 1 }
+          scale: { x: 1, y: 1, z: 1 },
         })
       }
     }
@@ -941,14 +1075,14 @@
           position: {
             x: (Math.random() - 0.5) * 85,
             y: 0,
-            z: (Math.random() - 0.5) * 85
+            z: (Math.random() - 0.5) * 85,
           },
           rotation: {
             x: 0,
             y: Math.random() * Math.PI * 2,
-            z: 0
+            z: 0,
           },
-          scale: { x: 1, y: 1, z: 1 }
+          scale: { x: 1, y: 1, z: 1 },
         })
       }
     }
@@ -956,22 +1090,22 @@
     mapGenerationProgress = 95
 
     const randomMap: MapData = {
-      id: 'random_' + Date.now(),
+      id: "random_" + Date.now(),
       name: `Random Map - ${timeOfDay.toUpperCase()}`,
-      description: 'Procedurally generated battle arena',
+      description: "Procedurally generated battle arena",
       created: Date.now(),
       modified: Date.now(),
-      thumbnail: '',
+      thumbnail: "",
       environment: {
         timeOfDay,
         weather,
-        fogDensity: weather === 'fog' ? 0.02 : 0.005
+        fogDensity: weather === "fog" ? 0.02 : 0.005,
       },
       objects,
       stats: {
         objectCount: objects.length,
-        polygonCount: objects.length * 500 // Estimate
-      }
+        polygonCount: objects.length * 500, // Estimate
+      },
     }
 
     mapGenerationProgress = 100
@@ -980,11 +1114,14 @@
   }
 
   function findSafeSpawnPosition(): THREE.Vector3 {
-    console.log('Finding safe spawn position. Solid objects:', solidObjects.length)
+    console.log(
+      "Finding safe spawn position. Solid objects:",
+      solidObjects.length,
+    )
 
     // If no solid objects yet, spawn at center
     if (solidObjects.length === 0) {
-      console.log('No solid objects, spawning at center')
+      console.log("No solid objects, spawning at center")
       return new THREE.Vector3(0, 3.0, 0)
     }
 
@@ -1013,7 +1150,7 @@
       }
 
       if (isSafe) {
-        console.log('Found safe spawn at:', x, z, 'after', attempt, 'attempts')
+        console.log("Found safe spawn at:", x, z, "after", attempt, "attempts")
         return testPos
       }
     }
@@ -1039,48 +1176,49 @@
         }
       }
       if (isSafe) {
-        console.log('Spawning at safe corner')
+        console.log("Spawning at safe corner")
         return corner
       }
     }
 
-    console.warn('No safe spawn found, using default position')
+    console.warn("No safe spawn found, using default position")
     return new THREE.Vector3(0, 3.0, 0)
   }
 
   function clearEnvironment() {
-    console.log('Clearing environment...')
+    console.log("Clearing environment...")
 
     // Remove all existing collidable objects
-    collidableObjects.forEach(obj => scene.remove(obj))
+    collidableObjects.forEach((obj) => scene.remove(obj))
     collidableObjects = []
 
     // Clear categorized objects
-    solidObjects.forEach(obj => scene.remove(obj))
+    solidObjects.forEach((obj) => scene.remove(obj))
     solidObjects = []
-    walkthroughObjects.forEach(obj => scene.remove(obj))
+    walkthroughObjects.forEach((obj) => scene.remove(obj))
     walkthroughObjects = []
 
     // Clear enemies
-    enemies.forEach(enemy => scene.remove(enemy.mesh))
+    enemies.forEach((enemy) => scene.remove(enemy.mesh))
     enemies = []
 
     // Clear power-ups
-    powerUps.forEach(powerUp => scene.remove(powerUp.mesh))
+    powerUps.forEach((powerUp) => scene.remove(powerUp.mesh))
     powerUps = []
 
     // Clear projectiles
-    projectiles.forEach(proj => scene.remove(proj.mesh))
+    projectiles.forEach((proj) => scene.remove(proj.mesh))
     projectiles = []
 
     // Clear enemy bullets
-    enemyBullets.forEach(bullet => scene.remove(bullet.mesh))
+    enemyBullets.forEach((bullet) => scene.remove(bullet.mesh))
     enemyBullets = []
 
     // Remove ground if it exists
-    const existingGround = scene.children.find(child =>
-      child instanceof THREE.Mesh &&
-      child.geometry instanceof THREE.PlaneGeometry
+    const existingGround = scene.children.find(
+      (child) =>
+        child instanceof THREE.Mesh &&
+        child.geometry instanceof THREE.PlaneGeometry,
     )
     if (existingGround) {
       scene.remove(existingGround)
@@ -1089,7 +1227,7 @@
     // Reset collision debug count
     collisionDebugCount = 0
 
-    console.log('Environment cleared')
+    console.log("Environment cleared")
   }
 
   async function loadMapEnvironment(map: MapData) {
@@ -1122,8 +1260,16 @@
       try {
         const gltf = await loader.loadAsync(objData.modelPath)
         const newObject = gltf.scene
-        newObject.position.set(objData.position.x, objData.position.y, objData.position.z)
-        newObject.rotation.set(objData.rotation.x, objData.rotation.y, objData.rotation.z)
+        newObject.position.set(
+          objData.position.x,
+          objData.position.y,
+          objData.position.z,
+        )
+        newObject.rotation.set(
+          objData.rotation.x,
+          objData.rotation.y,
+          objData.rotation.z,
+        )
         newObject.scale.set(objData.scale.x, objData.scale.y, objData.scale.z)
 
         newObject.traverse((child) => {
@@ -1137,13 +1283,15 @@
 
         // Categorize object based on model path
         const category = categorizeModel(objData.modelPath)
-        const size = new THREE.Box3().setFromObject(newObject).getSize(new THREE.Vector3())
+        const size = new THREE.Box3()
+          .setFromObject(newObject)
+          .getSize(new THREE.Vector3())
         const volume = size.x * size.y * size.z
 
-        if (category === 'walkthrough') {
+        if (category === "walkthrough") {
           // Walkthrough objects - no collision
           walkthroughObjects.push(newObject)
-        } else if (category === 'solid' && volume > 0.5) {
+        } else if (category === "solid" && volume > 0.5) {
           // Solid objects - only add if reasonably sized (volume > 0.5)
           solidObjects.push(newObject)
           collidableObjects.push(newObject as any) // Keep for backward compatibility
@@ -1160,10 +1308,10 @@
       }
     }
 
-    console.log('Map loaded:', {
+    console.log("Map loaded:", {
       totalObjects: map.objects.length,
       solidObjects: solidObjects.length,
-      walkthroughObjects: walkthroughObjects.length
+      walkthroughObjects: walkthroughObjects.length,
     })
 
     // After all objects are loaded, find a safe spawn position
@@ -1171,32 +1319,32 @@
     camera.position.copy(safeSpawn)
   }
 
-  function updateEnvironmentFromMap(environment: MapData['environment']) {
+  function updateEnvironmentFromMap(environment: MapData["environment"]) {
     const skyGradients = {
       dawn: {
-        colors: ['#1a1a3e', '#6B4E71', '#D4738F', '#FFB56A'],
-        fogColor: 0xFFB56A,
+        colors: ["#1a1a3e", "#6B4E71", "#D4738F", "#FFB56A"],
+        fogColor: 0xffb56a,
         ambientIntensity: 0.5,
-        directionalIntensity: 0.7
+        directionalIntensity: 0.7,
       },
       day: {
-        colors: ['#87CEEB', '#87CEEB', '#B0E0E6', '#F0F8FF'],
-        fogColor: 0xB0E0E6,
+        colors: ["#87CEEB", "#87CEEB", "#B0E0E6", "#F0F8FF"],
+        fogColor: 0xb0e0e6,
         ambientIntensity: 0.7,
-        directionalIntensity: 1.0
+        directionalIntensity: 1.0,
       },
       sunset: {
-        colors: ['#1a1a3e', '#6B4E71', '#D4738F', '#FF9A56'],
+        colors: ["#1a1a3e", "#6B4E71", "#D4738F", "#FF9A56"],
         fogColor: 0xff9a56,
         ambientIntensity: 0.6,
-        directionalIntensity: 0.8
+        directionalIntensity: 0.8,
       },
       night: {
-        colors: ['#000033', '#000033', '#1a1a3e', '#2d2d5e'],
+        colors: ["#000033", "#000033", "#1a1a3e", "#2d2d5e"],
         fogColor: 0x1a1a3e,
         ambientIntensity: 0.3,
-        directionalIntensity: 0.4
-      }
+        directionalIntensity: 0.4,
+      },
     }
 
     const gradient = skyGradients[environment.timeOfDay]
@@ -1218,25 +1366,35 @@
     scene.background = texture
 
     // Update fog based on weather
-    let fogDensity = environment.weather === 'fog' ? 100 : 200
-    if (environment.weather === 'rain') fogDensity = 150
-    if (environment.weather === 'snow') fogDensity = 120
+    let fogDensity = environment.weather === "fog" ? 100 : 200
+    if (environment.weather === "rain") fogDensity = 150
+    if (environment.weather === "snow") fogDensity = 120
 
     scene.fog = new THREE.Fog(gradient.fogColor, 20, fogDensity)
 
     // Create weather particles based on environment
-    if (rainSystem) { scene.remove(rainSystem); rainSystem = null }
-    if (snowSystem) { scene.remove(snowSystem); snowSystem = null }
-    
-    if (environment.weather === 'rain') {
+    if (rainSystem) {
+      scene.remove(rainSystem)
+      rainSystem = null
+    }
+    if (snowSystem) {
+      scene.remove(snowSystem)
+      snowSystem = null
+    }
+
+    if (environment.weather === "rain") {
       rainSystem = createRain(scene)
-    } else if (environment.weather === 'snow') {
+    } else if (environment.weather === "snow") {
       snowSystem = createSnow(scene)
     }
 
     // Update lighting
-    const ambientLight = scene.children.find(child => child instanceof THREE.AmbientLight) as THREE.AmbientLight
-    const directionalLight = scene.children.find(child => child instanceof THREE.DirectionalLight) as THREE.DirectionalLight
+    const ambientLight = scene.children.find(
+      (child) => child instanceof THREE.AmbientLight,
+    ) as THREE.AmbientLight
+    const directionalLight = scene.children.find(
+      (child) => child instanceof THREE.DirectionalLight,
+    ) as THREE.DirectionalLight
 
     if (ambientLight) {
       ambientLight.intensity = gradient.ambientIntensity
@@ -1405,7 +1563,7 @@
     return tree
   }
 
-  function createPowerUpMesh(type: PowerUp['type']): THREE.Group {
+  function createPowerUpMesh(type: PowerUp["type"]): THREE.Group {
     // Get color for this power-up type
     const orbColor = powerUpColors[type]
     const group = new THREE.Group()
@@ -1414,7 +1572,7 @@
     let mainMesh: THREE.Mesh
 
     switch (type) {
-      case 'health': {
+      case "health": {
         // Red cross/plus symbol
         const horizontal = new THREE.BoxGeometry(1.2, 0.3, 0.3)
         const vertical = new THREE.BoxGeometry(0.3, 1.2, 0.3)
@@ -1423,7 +1581,7 @@
           emissive: orbColor,
           emissiveIntensity: 0.9,
           metalness: 0.3,
-          roughness: 0.4
+          roughness: 0.4,
         })
         const h = new THREE.Mesh(horizontal, material)
         const v = new THREE.Mesh(vertical, material)
@@ -1431,7 +1589,7 @@
         mainMesh = h
         break
       }
-      case 'ammo': {
+      case "ammo": {
         // Green box/crate
         const geometry = new THREE.BoxGeometry(0.8, 0.8, 0.8)
         const material = new THREE.MeshStandardMaterial({
@@ -1439,13 +1597,13 @@
           emissive: orbColor,
           emissiveIntensity: 0.7,
           metalness: 0.5,
-          roughness: 0.3
+          roughness: 0.3,
         })
         mainMesh = new THREE.Mesh(geometry, material)
         group.add(mainMesh)
         break
       }
-      case 'flying': {
+      case "flying": {
         // Cyan jetpack/wings
         const body = new THREE.CylinderGeometry(0.3, 0.3, 0.8, 8)
         const wing = new THREE.BoxGeometry(0.4, 0.15, 0.6)
@@ -1454,7 +1612,7 @@
           emissive: orbColor,
           emissiveIntensity: 1.0,
           metalness: 0.8,
-          roughness: 0.2
+          roughness: 0.2,
         })
         mainMesh = new THREE.Mesh(body, material)
         const leftWing = new THREE.Mesh(wing, material)
@@ -1464,7 +1622,7 @@
         group.add(mainMesh, leftWing, rightWing)
         break
       }
-      case 'weapon-missile': {
+      case "weapon-missile": {
         // Yellow missile/rocket
         const cone = new THREE.ConeGeometry(0.3, 1.2, 8)
         const material = new THREE.MeshStandardMaterial({
@@ -1472,14 +1630,14 @@
           emissive: orbColor,
           emissiveIntensity: 0.8,
           metalness: 0.7,
-          roughness: 0.2
+          roughness: 0.2,
         })
         mainMesh = new THREE.Mesh(cone, material)
         mainMesh.rotation.x = Math.PI / 2
         group.add(mainMesh)
         break
       }
-      case 'weapon-grenade': {
+      case "weapon-grenade": {
         // Orange grenade
         const sphere = new THREE.SphereGeometry(0.5, 16, 16)
         const material = new THREE.MeshStandardMaterial({
@@ -1487,7 +1645,7 @@
           emissive: orbColor,
           emissiveIntensity: 0.7,
           metalness: 0.6,
-          roughness: 0.4
+          roughness: 0.4,
         })
         mainMesh = new THREE.Mesh(sphere, material)
         // Add pin/handle
@@ -1500,7 +1658,7 @@
       default:
         mainMesh = new THREE.Mesh(
           new THREE.SphereGeometry(0.8, 32, 32),
-          new THREE.MeshStandardMaterial({ color: orbColor })
+          new THREE.MeshStandardMaterial({ color: orbColor }),
         )
         group.add(mainMesh)
     }
@@ -1510,7 +1668,7 @@
     const ringMaterial = new THREE.MeshBasicMaterial({
       color: orbColor,
       transparent: true,
-      opacity: 0.4
+      opacity: 0.4,
     })
     const ring = new THREE.Mesh(ringGeometry, ringMaterial)
     ring.rotation.x = Math.PI / 2
@@ -1524,7 +1682,13 @@
   }
 
   function spawnPowerUps() {
-    const types: PowerUp['type'][] = ['health', 'ammo', 'flying', 'weapon-missile', 'weapon-grenade']
+    const types: PowerUp["type"][] = [
+      "health",
+      "ammo",
+      "flying",
+      "weapon-missile",
+      "weapon-grenade",
+    ]
 
     for (let i = 0; i < gameConfig.targetCount; i++) {
       const type = types[Math.floor(Math.random() * types.length)]
@@ -1544,7 +1708,7 @@
 
       const powerUp: PowerUp = {
         mesh,
-        type
+        type,
       }
 
       powerUps.push(powerUp)
@@ -1663,7 +1827,7 @@
     if (currentWeaponData.ammo === 0) {
       // Out of ammo, switch to laser
       currentWeaponIndex = 0
-      currentWeapon = 'laser'
+      currentWeapon = "laser"
       return
     }
 
@@ -1680,7 +1844,7 @@
     let speed = 50
     let target: THREE.Object3D | undefined = undefined
 
-    if (currentWeapon === 'laser') {
+    if (currentWeapon === "laser") {
       // Create laser bolt projectile
       const boltGeometry = new THREE.SphereGeometry(0.1, 8, 8)
       const boltMaterial = new THREE.MeshStandardMaterial({
@@ -1699,7 +1863,7 @@
       })
       const glow = new THREE.Mesh(glowGeometry, glowMaterial)
       projectileMesh.add(glow)
-    } else if (currentWeapon === 'missile') {
+    } else if (currentWeapon === "missile") {
       // Create heat-seeking missile
       const missileGeometry = new THREE.ConeGeometry(0.15, 0.6, 8)
       const missileMaterial = new THREE.MeshStandardMaterial({
@@ -1712,7 +1876,7 @@
 
       // Find closest enemy as target
       let closestDist = Infinity
-      enemies.forEach(enemy => {
+      enemies.forEach((enemy) => {
         const dist = camera.position.distanceTo(enemy.mesh.position)
         if (dist < closestDist && dist < 60) {
           closestDist = dist
@@ -1721,7 +1885,7 @@
       })
 
       speed = 35
-    } else if (currentWeapon === 'grenade') {
+    } else if (currentWeapon === "grenade") {
       // Create grenade
       const grenadeGeometry = new THREE.SphereGeometry(0.2, 8, 8)
       const grenadeMaterial = new THREE.MeshStandardMaterial({
@@ -1744,7 +1908,12 @@
     const velocity = direction.multiplyScalar(speed)
 
     scene.add(projectileMesh)
-    projectiles.push({ mesh: projectileMesh, velocity, type: currentWeapon, target })
+    projectiles.push({
+      mesh: projectileMesh,
+      velocity,
+      type: currentWeapon,
+      target,
+    })
   }
 
   function createExplosion(position: THREE.Vector3) {
@@ -1816,7 +1985,13 @@
   }
 
   function spawnNewPowerUp() {
-    const types: PowerUp['type'][] = ['health', 'ammo', 'flying', 'weapon-missile', 'weapon-grenade']
+    const types: PowerUp["type"][] = [
+      "health",
+      "ammo",
+      "flying",
+      "weapon-missile",
+      "weapon-grenade",
+    ]
     const type = types[Math.floor(Math.random() * types.length)]
     const mesh = createPowerUpMesh(type)
 
@@ -1828,16 +2003,16 @@
 
     const powerUp: PowerUp = {
       mesh,
-      type
+      type,
     }
 
     powerUps.push(powerUp)
   }
 
-  function createEnemyModel(type: EnemyType = 'basic') {
+  function createEnemyModel(type: EnemyType = "basic") {
     const enemyGroup = new THREE.Group()
 
-    if (type === 'basic') {
+    if (type === "basic") {
       // Body - octahedron (diamond shape) - RED
       const bodyGeometry = new THREE.OctahedronGeometry(0.8, 0)
       const bodyMaterial = new THREE.MeshStandardMaterial({
@@ -1882,7 +2057,7 @@
       ring2.rotation.z = Math.PI / 2
       ring2.castShadow = true
       enemyGroup.add(ring2)
-    } else if (type === 'fast') {
+    } else if (type === "fast") {
       // Fast enemy - smaller, sleeker, CYAN/BLUE
       const bodyGeometry = new THREE.ConeGeometry(0.5, 1.2, 8)
       const bodyMaterial = new THREE.MeshStandardMaterial({
@@ -1915,7 +2090,7 @@
         spike.rotation.y = angle
         enemyGroup.add(spike)
       }
-    } else if (type === 'tank') {
+    } else if (type === "tank") {
       // Tank enemy - larger, bulkier, DARK ORANGE/BROWN
       const bodyGeometry = new THREE.BoxGeometry(1.5, 1.5, 1.5)
       const bodyMaterial = new THREE.MeshStandardMaterial({
@@ -1958,7 +2133,7 @@
       turret.position.y = 2.2
       turret.castShadow = true
       enemyGroup.add(turret)
-    } else if (type === 'boss') {
+    } else if (type === "boss") {
       // BOSS enemy - HUGE, intimidating, DARK PURPLE/BLACK with glowing accents
       const bodyGeometry = new THREE.DodecahedronGeometry(3, 0)
       const bodyMaterial = new THREE.MeshStandardMaterial({
@@ -2024,44 +2199,46 @@
   }
 
   function getEnemyStats(type: EnemyType) {
-    if (type === 'basic') {
+    if (type === "basic") {
       return {
         health: 50,
         speed: gameConfig.enemySpeed,
         fireRate: gameConfig.enemyFireRate,
-        damage: gameConfig.enemyDamage
+        damage: gameConfig.enemyDamage,
       }
-    } else if (type === 'fast') {
+    } else if (type === "fast") {
       return {
         health: 30,
         speed: gameConfig.enemySpeed * 2,
         fireRate: gameConfig.enemyFireRate * 1.5,
-        damage: gameConfig.enemyDamage * 0.7
+        damage: gameConfig.enemyDamage * 0.7,
       }
-    } else if (type === 'tank') {
+    } else if (type === "tank") {
       return {
         health: 100,
         speed: gameConfig.enemySpeed * 0.5,
         fireRate: gameConfig.enemyFireRate * 0.7,
-        damage: gameConfig.enemyDamage * 1.5
+        damage: gameConfig.enemyDamage * 1.5,
       }
-    } else { // boss
+    } else {
+      // boss
       return {
-        health: 1000 + (level * 200), // Scales with level - much more health
+        health: 1000 + level * 200, // Scales with level - much more health
         speed: gameConfig.enemySpeed * 0.5, // Slower movement
         fireRate: gameConfig.enemyFireRate * 0.25, // Fires MUCH more frequently (lower = faster)
-        damage: gameConfig.enemyDamage * 3 // Triple damage
+        damage: gameConfig.enemyDamage * 3, // Triple damage
       }
     }
   }
 
   function spawnEnemies() {
-    const types: EnemyType[] = ['basic', 'fast', 'tank']
+    const types: EnemyType[] = ["basic", "fast", "tank"]
 
     for (let i = 0; i < gameConfig.enemyCount; i++) {
       // Higher chance for basic enemies, but include all types
       const rand = Math.random()
-      const type: EnemyType = rand < 0.5 ? 'basic' : rand < 0.8 ? 'fast' : 'tank'
+      const type: EnemyType =
+        rand < 0.5 ? "basic" : rand < 0.8 ? "fast" : "tank"
 
       const enemyMesh = createEnemyModel(type)
       const stats = getEnemyStats(type)
@@ -2087,7 +2264,7 @@
         type,
         speed: stats.speed,
         fireRate: stats.fireRate,
-        damage: stats.damage
+        damage: stats.damage,
       }
 
       enemies.push(enemy)
@@ -2097,7 +2274,7 @@
   function spawnNewEnemy() {
     // Higher chance for basic enemies, but include all types
     const rand = Math.random()
-    const type: EnemyType = rand < 0.5 ? 'basic' : rand < 0.8 ? 'fast' : 'tank'
+    const type: EnemyType = rand < 0.5 ? "basic" : rand < 0.8 ? "fast" : "tank"
 
     const enemyMesh = createEnemyModel(type)
     const stats = getEnemyStats(type)
@@ -2117,7 +2294,7 @@
       type,
       speed: stats.speed,
       fireRate: stats.fireRate,
-      damage: stats.damage
+      damage: stats.damage,
     }
 
     enemies.push(enemy)
@@ -2130,7 +2307,13 @@
 
     // Debug logging (limit to avoid spam)
     if (collisionDebugCount < 10) {
-      console.log('Checking collision for position:', newPosition.toArray().map(v => v.toFixed(1)), 'against', solidObjects.length, 'solid objects')
+      console.log(
+        "Checking collision for position:",
+        newPosition.toArray().map((v) => v.toFixed(1)),
+        "against",
+        solidObjects.length,
+        "solid objects",
+      )
       collisionDebugCount++
     }
 
@@ -2161,9 +2344,18 @@
         // Player is at ~y=3.0, so objects must have some vertical presence at that height
         if (box.min.y < newPosition.y && box.max.y > newPosition.y - 2.0) {
           if (collisionDebugCount <= 10) {
-            console.log('COLLISION! Horizontal distance:', horizontalDistance.toFixed(2),
-              'Player:', [playerX.toFixed(1), newPosition.y.toFixed(1), playerZ.toFixed(1)],
-              'Box Y:', [box.min.y.toFixed(1), box.max.y.toFixed(1)])
+            console.log(
+              "COLLISION! Horizontal distance:",
+              horizontalDistance.toFixed(2),
+              "Player:",
+              [
+                playerX.toFixed(1),
+                newPosition.y.toFixed(1),
+                playerZ.toFixed(1),
+              ],
+              "Box Y:",
+              [box.min.y.toFixed(1), box.max.y.toFixed(1)],
+            )
           }
           return true // Collision detected
         }
@@ -2171,7 +2363,10 @@
     }
 
     if (collisionDebugCount <= 10) {
-      console.log('No collision at:', newPosition.toArray().map(v => v.toFixed(1)))
+      console.log(
+        "No collision at:",
+        newPosition.toArray().map((v) => v.toFixed(1)),
+      )
     }
 
     return false // No collision
@@ -2207,14 +2402,14 @@
     })
 
     // Scale down slightly
-    const scaleReduction = 1 - ((1 - healthPercent) * 0.3)
+    const scaleReduction = 1 - (1 - healthPercent) * 0.3
     enemy.mesh.scale.setScalar(scaleReduction)
   }
 
   function updateMovement(delta: number) {
     if (!controls.isLocked) return
 
-    const isFlying = activePowerUps.has('flying')
+    const isFlying = activePowerUps.has("flying")
 
     if (isFlying) {
       // FLYING MODE: Full 3D movement in the direction the camera is looking
@@ -2310,9 +2505,9 @@
   function updateProjectiles(delta: number) {
     projectiles = projectiles.filter((projectile) => {
       // Heat-seeking missile behavior
-      if (projectile.type === 'missile' && projectile.target) {
+      if (projectile.type === "missile" && projectile.target) {
         // Check if target still exists in enemies array
-        const targetExists = enemies.some(e => e.mesh === projectile.target)
+        const targetExists = enemies.some((e) => e.mesh === projectile.target)
 
         if (!targetExists) {
           // Target was destroyed, remove missile with explosion
@@ -2323,14 +2518,19 @@
 
         // Steer towards target
         const directionToTarget = new THREE.Vector3()
-        directionToTarget.subVectors(projectile.target.position, projectile.mesh.position)
+        directionToTarget.subVectors(
+          projectile.target.position,
+          projectile.mesh.position,
+        )
         directionToTarget.normalize()
 
         // Blend current velocity with direction to target
         projectile.velocity.lerp(directionToTarget.multiplyScalar(35), 0.1)
 
         // Orient missile towards movement direction
-        projectile.mesh.lookAt(projectile.mesh.position.clone().add(projectile.velocity))
+        projectile.mesh.lookAt(
+          projectile.mesh.position.clone().add(projectile.velocity),
+        )
         projectile.mesh.rotateX(Math.PI / 2) // Adjust for cone geometry
       }
 
@@ -2340,7 +2540,7 @@
       )
 
       // Grenade has gravity
-      if (projectile.type === 'grenade') {
+      if (projectile.type === "grenade") {
         projectile.velocity.y -= 20.0 * delta
         projectile.mesh.rotation.x += delta * 10
         projectile.mesh.rotation.y += delta * 5
@@ -2377,7 +2577,7 @@
         // Check if bounding boxes intersect
         if (enemyBox.intersectsBox(projectileBox)) {
           // Handle grenade area damage
-          if (projectile.type === 'grenade') {
+          if (projectile.type === "grenade") {
             createExplosion(projectile.mesh.position.clone())
             scene.remove(projectile.mesh)
 
@@ -2389,7 +2589,7 @@
                 e.health -= gameConfig.playerDamage * 2 // Double damage for grenades
 
                 // Update boss health display if this is the boss
-                if (e.type === 'boss' && bossEnemy) {
+                if (e.type === "boss" && bossEnemy) {
                   bossHealth = e.health
                 }
 
@@ -2398,7 +2598,7 @@
                   scene.remove(e.mesh)
                   enemiesToRemove.push(idx)
 
-                  const wasBoss = e.type === 'boss'
+                  const wasBoss = e.type === "boss"
                   score += wasBoss ? 500 : 50
 
                   // If boss was killed, complete the level
@@ -2416,7 +2616,7 @@
             })
 
             // Remove dead enemies (in reverse to avoid index issues)
-            enemiesToRemove.reverse().forEach(idx => enemies.splice(idx, 1))
+            enemiesToRemove.reverse().forEach((idx) => enemies.splice(idx, 1))
 
             // Spawn new enemies if needed (but not on boss levels)
             if (!isBossLevel && enemies.length < gameConfig.enemyCount) {
@@ -2430,7 +2630,7 @@
           enemy.health -= gameConfig.playerDamage
 
           // Update boss health display if this is the boss
-          if (enemy.type === 'boss' && bossEnemy) {
+          if (enemy.type === "boss" && bossEnemy) {
             bossHealth = enemy.health
           }
 
@@ -2440,7 +2640,7 @@
             scene.remove(enemy.mesh)
 
             // Check if this was the boss
-            const wasBoss = enemy.type === 'boss'
+            const wasBoss = enemy.type === "boss"
 
             enemies.splice(i, 1)
             score += wasBoss ? 500 : 50 // Big score bonus for boss
@@ -2466,7 +2666,7 @@
       }
 
       // Grenade ground collision
-      if (projectile.type === 'grenade' && projectile.mesh.position.y <= 0.5) {
+      if (projectile.type === "grenade" && projectile.mesh.position.y <= 0.5) {
         createExplosion(projectile.mesh.position.clone())
         scene.remove(projectile.mesh)
 
@@ -2478,7 +2678,7 @@
             e.health -= gameConfig.playerDamage * 2
 
             // Update boss health display if this is the boss
-            if (e.type === 'boss' && bossEnemy) {
+            if (e.type === "boss" && bossEnemy) {
               bossHealth = e.health
             }
 
@@ -2487,7 +2687,7 @@
               scene.remove(e.mesh)
               enemiesToRemove.push(idx)
 
-              const wasBoss = e.type === 'boss'
+              const wasBoss = e.type === "boss"
               score += wasBoss ? 500 : 50
 
               // If boss was killed, complete the level
@@ -2502,7 +2702,7 @@
         })
 
         // Remove dead enemies (in reverse to avoid index issues)
-        enemiesToRemove.reverse().forEach(idx => enemies.splice(idx, 1))
+        enemiesToRemove.reverse().forEach((idx) => enemies.splice(idx, 1))
 
         // Spawn new enemies if needed (but not on boss levels)
         if (!isBossLevel && enemies.length < gameConfig.enemyCount) {
@@ -2546,50 +2746,67 @@
       enemy.mesh.lookAt(camera.position)
 
       // Different behavior based on enemy type
-      if (enemy.type === 'fast') {
+      if (enemy.type === "fast") {
         // Fast enemies: circle, strafe, and bob vertically
         const bobSpeed = Math.sin(Date.now() * 0.003) * 0.02
         enemy.mesh.position.y += bobSpeed
 
         if (distanceToPlayer > 12 && distanceToPlayer < 25) {
           // Circle player with vertical movement
-          const tangent = new THREE.Vector3(-directionToPlayer.z, 0, directionToPlayer.x)
+          const tangent = new THREE.Vector3(
+            -directionToPlayer.z,
+            0,
+            directionToPlayer.x,
+          )
           enemy.mesh.position.add(tangent.multiplyScalar(delta * enemy.speed))
           // Add vertical evasion
           enemy.mesh.position.y += Math.sin(Date.now() * 0.005) * delta * 2
         } else if (distanceToPlayer >= 25) {
           // Rush towards player
-          enemy.mesh.position.add(directionToPlayer.multiplyScalar(delta * enemy.speed))
+          enemy.mesh.position.add(
+            directionToPlayer.multiplyScalar(delta * enemy.speed),
+          )
         } else {
           // Back away if too close with upward dodge
-          enemy.mesh.position.sub(directionToPlayer.multiplyScalar(delta * enemy.speed))
+          enemy.mesh.position.sub(
+            directionToPlayer.multiplyScalar(delta * enemy.speed),
+          )
           enemy.mesh.position.y += delta * 3
         }
 
         // Clamp fast enemy height
         enemy.mesh.position.y = Math.max(2, Math.min(8, enemy.mesh.position.y))
-      } else if (enemy.type === 'tank') {
+      } else if (enemy.type === "tank") {
         // Tank enemies: slow advance, stand ground, gentle hovering
         const hoverSpeed = Math.sin(Date.now() * 0.001) * 0.01
         enemy.mesh.position.y += hoverSpeed
 
         if (distanceToPlayer > 20) {
-          enemy.mesh.position.add(directionToPlayer.multiplyScalar(delta * enemy.speed))
+          enemy.mesh.position.add(
+            directionToPlayer.multiplyScalar(delta * enemy.speed),
+          )
         }
         // Tanks don't retreat but maintain stable height
-        enemy.mesh.position.y = Math.max(2.5, Math.min(4, enemy.mesh.position.y))
+        enemy.mesh.position.y = Math.max(
+          2.5,
+          Math.min(4, enemy.mesh.position.y),
+        )
       } else {
         // Basic enemies: standard behavior with sine wave vertical movement
         const waveHeight = Math.sin(Date.now() * 0.002) * 0.015
         enemy.mesh.position.y += waveHeight
 
         if (distanceToPlayer > 15) {
-          enemy.mesh.position.add(directionToPlayer.multiplyScalar(delta * enemy.speed))
+          enemy.mesh.position.add(
+            directionToPlayer.multiplyScalar(delta * enemy.speed),
+          )
           // Add slight vertical approach
           enemy.mesh.position.y += delta * 0.5
         } else if (distanceToPlayer < 10) {
           // Move away if too close
-          enemy.mesh.position.sub(directionToPlayer.multiplyScalar(delta * (enemy.speed / 2)))
+          enemy.mesh.position.sub(
+            directionToPlayer.multiplyScalar(delta * (enemy.speed / 2)),
+          )
           enemy.mesh.position.y -= delta * 0.5
         }
 
@@ -2598,7 +2815,10 @@
       }
 
       // Shoot at player based on individual fire rate if within range
-      if (distanceToPlayer < 40 && currentTime - enemy.lastShot > enemy.fireRate) {
+      if (
+        distanceToPlayer < 40 &&
+        currentTime - enemy.lastShot > enemy.fireRate
+      ) {
         shootEnemyBullet(enemy)
         enemy.lastShot = currentTime
       }
@@ -2607,8 +2827,14 @@
 
   function shootEnemyBullet(enemy: Enemy) {
     // Create enemy bullet with type-specific color
-    const size = enemy.type === 'tank' ? 0.25 : enemy.type === 'fast' ? 0.1 : 0.15
-    const color = enemy.type === 'tank' ? 0xff8800 : enemy.type === 'fast' ? 0x00ffff : 0xff0000
+    const size =
+      enemy.type === "tank" ? 0.25 : enemy.type === "fast" ? 0.1 : 0.15
+    const color =
+      enemy.type === "tank"
+        ? 0xff8800
+        : enemy.type === "fast"
+          ? 0x00ffff
+          : 0xff0000
 
     const bulletGeometry = new THREE.SphereGeometry(size, 8, 8)
     const bulletMaterial = new THREE.MeshStandardMaterial({
@@ -2629,16 +2855,16 @@
     const direction = new THREE.Vector3()
     direction.subVectors(camera.position, enemy.mesh.position)
     direction.normalize()
-    const speed = enemy.type === 'fast' ? 40 : enemy.type === 'tank' ? 25 : 30
+    const speed = enemy.type === "fast" ? 40 : enemy.type === "tank" ? 25 : 30
     const velocity = direction.multiplyScalar(speed)
 
     scene.add(bullet)
-    enemyBullets.push({ mesh: bullet, velocity, type: 'laser' })
+    enemyBullets.push({ mesh: bullet, velocity, type: "laser" })
   }
 
   // Player hit effect
   let isPlayerHit = false
-  
+
   function playHitSound() {
     if (!audioContext) {
       audioContext = new AudioContext()
@@ -2651,13 +2877,13 @@
     oscillator.frequency.setValueAtTime(100, audioContext.currentTime)
     oscillator.frequency.exponentialRampToValueAtTime(
       50,
-      audioContext.currentTime + 0.2
+      audioContext.currentTime + 0.2,
     )
 
     gainNode.gain.setValueAtTime(0.4, audioContext.currentTime)
     gainNode.gain.exponentialRampToValueAtTime(
       0.01,
-      audioContext.currentTime + 0.2
+      audioContext.currentTime + 0.2,
     )
 
     oscillator.connect(gainNode)
@@ -2717,9 +2943,9 @@
     })
   }
 
-  let lastCollectedPowerUp = ''
+  let lastCollectedPowerUp = ""
   let showCollectionMessage = false
-  let lastWeaponChange = ''
+  let lastWeaponChange = ""
   let showWeaponChangeMessage = false
   let weaponChangeKey = 0
 
@@ -2729,11 +2955,11 @@
 
     // Show collection message
     const names = {
-      health: 'Health Pack',
-      ammo: 'Ammo Box',
-      flying: 'Jetpack',
-      'weapon-missile': 'Missiles',
-      'weapon-grenade': 'Grenades'
+      health: "Health Pack",
+      ammo: "Ammo Box",
+      flying: "Jetpack",
+      "weapon-missile": "Missiles",
+      "weapon-grenade": "Grenades",
     }
     lastCollectedPowerUp = names[powerUp.type] || powerUp.type
     showCollectionMessage = true
@@ -2761,8 +2987,12 @@
     }, 1200)
   }
 
-  function addWeaponToInventory(type: WeaponType, ammoAmount: number, name: string) {
-    const existingWeapon = weaponInventory.find(w => w.type === type)
+  function addWeaponToInventory(
+    type: WeaponType,
+    ammoAmount: number,
+    name: string,
+  ) {
+    const existingWeapon = weaponInventory.find((w) => w.type === type)
 
     if (existingWeapon) {
       // Add ammo to existing weapon
@@ -2775,7 +3005,7 @@
     }
   }
 
-  function switchWeapon(direction: 'next' | 'prev') {
+  function switchWeapon(direction: "next" | "prev") {
     if (weaponInventory.length === 0) return
 
     if (weaponInventory.length === 1) {
@@ -2784,10 +3014,12 @@
       return
     }
 
-    if (direction === 'next') {
+    if (direction === "next") {
       currentWeaponIndex = (currentWeaponIndex + 1) % weaponInventory.length
     } else {
-      currentWeaponIndex = (currentWeaponIndex - 1 + weaponInventory.length) % weaponInventory.length
+      currentWeaponIndex =
+        (currentWeaponIndex - 1 + weaponInventory.length) %
+        weaponInventory.length
     }
 
     currentWeapon = weaponInventory[currentWeaponIndex].type
@@ -2833,9 +3065,9 @@
             showMapSelector = true
             clearEnvironment()
             resetGameState()
-            weaponInventory = [{ type: 'laser', ammo: -1, name: 'Laser Gun' }]
+            weaponInventory = [{ type: "laser", ammo: -1, name: "Laser Gun" }]
             currentWeaponIndex = 0
-            currentWeapon = 'laser'
+            currentWeapon = "laser"
             lastEscapeTime = 0 // Reset timer
           } else {
             // More than 2s passed - treat as first press, update timer
@@ -2845,26 +3077,26 @@
         break
       case "ArrowLeft":
         event.preventDefault()
-        switchWeapon('prev')
+        switchWeapon("prev")
         break
       case "ArrowRight":
         event.preventDefault()
-        switchWeapon('next')
+        switchWeapon("next")
         break
       case "ArrowUp":
         event.preventDefault()
-        switchWeapon('prev')
+        switchWeapon("prev")
         break
       case "ArrowDown":
         event.preventDefault()
-        switchWeapon('next')
+        switchWeapon("next")
         break
       case "Digit1":
       case "Digit2":
       case "Digit3":
       case "Digit4":
       case "Digit5":
-        const index = parseInt(event.code.replace('Digit', '')) - 1
+        const index = parseInt(event.code.replace("Digit", "")) - 1
         if (index < weaponInventory.length) {
           currentWeaponIndex = index
           currentWeapon = weaponInventory[index].type
@@ -2913,8 +3145,8 @@
     }
 
     // Check if flying mode expired
-    if (activePowerUps.has('flying') && Date.now() > flyingModeEndTime) {
-      activePowerUps.delete('flying')
+    if (activePowerUps.has("flying") && Date.now() > flyingModeEndTime) {
+      activePowerUps.delete("flying")
     }
   }
 
@@ -2940,11 +3172,13 @@
 
       if (distance < STUCK_THRESHOLD && isTryingToMove) {
         stuckCounter++
-        console.log(`Player may be stuck (${stuckCounter}/${STUCK_COUNT_LIMIT}). Distance moved: ${distance.toFixed(3)}`)
+        console.log(
+          `Player may be stuck (${stuckCounter}/${STUCK_COUNT_LIMIT}). Distance moved: ${distance.toFixed(3)}`,
+        )
 
         if (stuckCounter >= STUCK_COUNT_LIMIT) {
           // Player is stuck, try to unstuck them
-          console.log('Player stuck! Attempting to unstuck...')
+          console.log("Player stuck! Attempting to unstuck...")
 
           // Try shifting the player in different directions
           const shiftAmount = 2
@@ -2966,11 +3200,14 @@
             // Test if this position is better by checking if we can move
             const raycaster = new THREE.Raycaster()
             raycaster.set(camera.position, new THREE.Vector3(0, -1, 0))
-            const downIntersects = raycaster.intersectObjects(scene.children, true)
+            const downIntersects = raycaster.intersectObjects(
+              scene.children,
+              true,
+            )
 
             if (downIntersects.length > 0 && downIntersects[0].distance > 1) {
               // Found a valid position
-              console.log('Unstuck successful!')
+              console.log("Unstuck successful!")
               stuckCounter = 0
               lastPosition.copy(camera.position)
               return
@@ -3008,7 +3245,7 @@
       updateEnemies(delta)
       updateEnemyBullets(delta)
       updatePowerUps(delta)
-      
+
       // Animate weather particles
       if (rainSystem || snowSystem) {
         animateWeatherShared(delta, rainSystem, snowSystem, camera.position)
@@ -3061,30 +3298,23 @@
   <title>Blocky Shooter | Dougie's Game Hub</title>
 </svelte:head>
 
-<style>
-  @keyframes flash {
-    0% { opacity: 1; }
-    100% { opacity: 0; }
-  }
-
-  .animate-flash {
-    animation: flash 0.1s linear;
-  }
-</style>
-
-<div class="h-screen overflow-hidden"
-     class:flex={!isPlaying || !hasStartedGame || isGameOver}
-     class:flex-col={!isPlaying || !hasStartedGame || isGameOver}
-     class:md:flex-row={!isPlaying || !hasStartedGame || isGameOver}
-     class:fixed={isPlaying && hasStartedGame && !isGameOver}
-     class:inset-0={isPlaying && hasStartedGame && !isGameOver}
-     class:z-[9999]={isPlaying && hasStartedGame && !isGameOver}>
+<div
+  class="h-screen overflow-hidden"
+  class:flex={!isPlaying || !hasStartedGame || isGameOver}
+  class:flex-col={!isPlaying || !hasStartedGame || isGameOver}
+  class:md:flex-row={!isPlaying || !hasStartedGame || isGameOver}
+  class:fixed={isPlaying && hasStartedGame && !isGameOver}
+  class:inset-0={isPlaying && hasStartedGame && !isGameOver}
+  class:z-[9999]={isPlaying && hasStartedGame && !isGameOver}
+>
   <!-- Game Container -->
-  <div class="relative"
-       class:min-w-0={!isPlaying || !hasStartedGame || isGameOver}
-       class:flex-1={!isPlaying || isGameOver}
-       class:w-full={isPlaying && hasStartedGame && !isGameOver}
-       class:h-full={isPlaying && hasStartedGame && !isGameOver}>
+  <div
+    class="relative"
+    class:min-w-0={!isPlaying || !hasStartedGame || isGameOver}
+    class:flex-1={!isPlaying || isGameOver}
+    class:w-full={isPlaying && hasStartedGame && !isGameOver}
+    class:h-full={isPlaying && hasStartedGame && !isGameOver}
+  >
     <div
       bind:this={container}
       class="w-full h-full bg-black"
@@ -3093,7 +3323,9 @@
     >
       {#if isLoadingMap}
         <!-- Loading Screen -->
-        <div class="absolute inset-0 z-40 flex items-center justify-center bg-black">
+        <div
+          class="absolute inset-0 z-40 flex items-center justify-center bg-black"
+        >
           <div class="text-center text-white">
             <div class="text-6xl mb-4">🎮</div>
             <h2 class="text-4xl font-bold mb-4">Loading Map...</h2>
@@ -3107,8 +3339,17 @@
         <div class="absolute inset-0 z-30 p-4 flex flex-col">
           <!-- Header with title and start button -->
           <div class="flex justify-between items-center mb-4">
-            <h1 class="text-4xl font-bold" style="color: #660460;">🎯 Blocky Shooter</h1>
-            <button class="btn text-white border-0 hover:opacity-90" style="background-color: #660460;" on:click={() => { if (selectedMap) selectMapAndStart(selectedMap); else startWithDefaultMap() }}>
+            <h1 class="text-4xl font-bold" style="color: #660460;">
+              🎯 Blocky Shooter
+            </h1>
+            <button
+              class="btn text-white border-0 hover:opacity-90"
+              style="background-color: #660460;"
+              on:click={() => {
+                if (selectedMap) selectMapAndStart(selectedMap)
+                else startWithDefaultMap()
+              }}
+            >
               Start Game
             </button>
           </div>
@@ -3116,178 +3357,299 @@
           <!-- Main content area with center setup and right sidebar -->
           <div class="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
             <!-- Center content - Game Setup -->
-            <div class="flex-1 flex items-center justify-center overflow-y-auto">
+            <div
+              class="flex-1 flex items-center justify-center overflow-y-auto"
+            >
               <div class="max-w-4xl w-full pb-8">
-              <!-- Difficulty Settings -->
-              <div class="card-standard p-6 mb-6">
-              <h3 class="text-2xl font-bold text-gray-900 mb-4">Difficulty & Settings</h3>
+                <!-- Difficulty Settings -->
+                <div class="card-standard p-6 mb-6">
+                  <h3 class="text-2xl font-bold text-gray-900 mb-4">
+                    Difficulty & Settings
+                  </h3>
 
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <button
-                  class="btn {gameConfig.difficulty === 'easy' ? 'btn-success' : 'btn-outline'}"
-                  on:click={() => applyDifficultyPreset('easy')}
-                >
-                  Easy
-                  <div class="text-xs">More ammo, less enemies</div>
-                </button>
-                <button
-                  class="btn {gameConfig.difficulty === 'normal' ? 'btn-primary' : 'btn-outline'}"
-                  on:click={() => applyDifficultyPreset('normal')}
-                >
-                  Normal
-                  <div class="text-xs">Balanced gameplay</div>
-                </button>
-                <button
-                  class="btn {gameConfig.difficulty === 'hard' ? 'btn-error' : 'btn-outline'}"
-                  on:click={() => applyDifficultyPreset('hard')}
-                >
-                  Hard
-                  <div class="text-xs">More enemies, less health</div>
-                </button>
-              </div>
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <button
+                      class="btn {gameConfig.difficulty === 'easy'
+                        ? 'btn-success'
+                        : 'btn-outline'}"
+                      on:click={() => applyDifficultyPreset("easy")}
+                    >
+                      Easy
+                      <div class="text-xs">More ammo, less enemies</div>
+                    </button>
+                    <button
+                      class="btn {gameConfig.difficulty === 'normal'
+                        ? 'btn-primary'
+                        : 'btn-outline'}"
+                      on:click={() => applyDifficultyPreset("normal")}
+                    >
+                      Normal
+                      <div class="text-xs">Balanced gameplay</div>
+                    </button>
+                    <button
+                      class="btn {gameConfig.difficulty === 'hard'
+                        ? 'btn-error'
+                        : 'btn-outline'}"
+                      on:click={() => applyDifficultyPreset("hard")}
+                    >
+                      Hard
+                      <div class="text-xs">More enemies, less health</div>
+                    </button>
+                  </div>
 
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
-                <div>
-                  <label class="label text-xs">Starting Ammo: {gameConfig.startingAmmo}</label>
-                  <input type="range" min="10" max="100" bind:value={gameConfig.startingAmmo} class="range range-xs range-primary" />
+                  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
+                    <div>
+                      <label class="label text-xs"
+                        >Starting Ammo: {gameConfig.startingAmmo}</label
+                      >
+                      <input
+                        type="range"
+                        min="10"
+                        max="100"
+                        bind:value={gameConfig.startingAmmo}
+                        class="range range-xs range-primary"
+                      />
+                    </div>
+                    <div>
+                      <label class="label text-xs"
+                        >Starting Health: {gameConfig.startingHealth}</label
+                      >
+                      <input
+                        type="range"
+                        min="25"
+                        max="200"
+                        bind:value={gameConfig.startingHealth}
+                        class="range range-xs range-accent"
+                      />
+                    </div>
+                    <div>
+                      <label class="label text-xs"
+                        >Enemy Count: {gameConfig.enemyCount}</label
+                      >
+                      <input
+                        type="range"
+                        min="1"
+                        max="15"
+                        bind:value={gameConfig.enemyCount}
+                        class="range range-xs range-secondary"
+                      />
+                    </div>
+                    <div>
+                      <label class="label text-xs"
+                        >Target Count: {gameConfig.targetCount}</label
+                      >
+                      <input
+                        type="range"
+                        min="5"
+                        max="20"
+                        bind:value={gameConfig.targetCount}
+                        class="range range-xs range-info"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label class="label text-xs">Starting Health: {gameConfig.startingHealth}</label>
-                  <input type="range" min="25" max="200" bind:value={gameConfig.startingHealth} class="range range-xs range-accent" />
-                </div>
-                <div>
-                  <label class="label text-xs">Enemy Count: {gameConfig.enemyCount}</label>
-                  <input type="range" min="1" max="15" bind:value={gameConfig.enemyCount} class="range range-xs range-secondary" />
-                </div>
-                <div>
-                  <label class="label text-xs">Target Count: {gameConfig.targetCount}</label>
-                  <input type="range" min="5" max="20" bind:value={gameConfig.targetCount} class="range range-xs range-info" />
-                </div>
-              </div>
-            </div>
 
-            <!-- Select a Map -->
-            <div class="bg-white rounded-lg p-6 mb-6 border-2 border-gray-200 shadow-lg">
-              <div class="flex justify-between items-center mb-4">
-                <h3 class="text-2xl font-bold text-gray-900">Select a Map</h3>
-                <a class="text-blue-600 font-semibold underline text-sm" href="/world-builder">
-                  Build a Map →
-                </a>
-              </div>
-
-              <!-- Horizontal scrolling map carousel -->
-              <div class="relative">
-                <!-- Left Arrow -->
-                <button
-                  class="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-full w-10 h-10 flex items-center justify-center shadow-lg -ml-2 transition-all"
-                  on:click={() => {
-                    const container = document.getElementById('fps-map-carousel')
-                    if (container) container.scrollBy({ left: -220, behavior: 'smooth' })
-                  }}
-                >
-                  <span class="text-xl font-bold">‹</span>
-                </button>
-
-
-                <!-- Map Cards Container -->
+                <!-- Select a Map -->
                 <div
-                  id="fps-map-carousel"
-                  class="flex gap-4 overflow-x-auto scroll-smooth px-8 py-2"
-                  style="scrollbar-width: none; -ms-overflow-style: none;"
+                  class="bg-white rounded-lg p-6 mb-6 border-2 border-gray-200 shadow-lg"
                 >
-                  {#if mapsLoading}
-                    <!-- Loading Placeholder Cards -->
-                    {#each [1, 2, 3] as i}
-                      <div class="flex-shrink-0 w-52 card bg-gray-100 border-2 border-gray-300 shadow-lg">
-                        <div class="card-body p-3">
-                          <div class="w-full h-24 rounded mb-2 bg-gray-200 flex items-center justify-center animate-pulse">
-                            <div class="loading loading-spinner loading-md text-gray-400"></div>
+                  <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-2xl font-bold text-gray-900">
+                      Select a Map
+                    </h3>
+                    <a
+                      class="text-blue-600 font-semibold underline text-sm"
+                      href="/world-builder"
+                    >
+                      Build a Map →
+                    </a>
+                  </div>
+
+                  <!-- Horizontal scrolling map carousel -->
+                  <div class="relative">
+                    <!-- Left Arrow -->
+                    <button
+                      class="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-full w-10 h-10 flex items-center justify-center shadow-lg -ml-2 transition-all"
+                      on:click={() => {
+                        const container =
+                          document.getElementById("fps-map-carousel")
+                        if (container)
+                          container.scrollBy({ left: -220, behavior: "smooth" })
+                      }}
+                    >
+                      <span class="text-xl font-bold">‹</span>
+                    </button>
+
+                    <!-- Map Cards Container -->
+                    <div
+                      id="fps-map-carousel"
+                      class="flex gap-4 overflow-x-auto scroll-smooth px-8 py-2"
+                      style="scrollbar-width: none; -ms-overflow-style: none;"
+                    >
+                      {#if mapsLoading}
+                        <!-- Loading Placeholder Cards -->
+                        {#each [1, 2, 3] as i}
+                          <div
+                            class="flex-shrink-0 w-52 card bg-gray-100 border-2 border-gray-300 shadow-lg"
+                          >
+                            <div class="card-body p-3">
+                              <div
+                                class="w-full h-24 rounded mb-2 bg-gray-200 flex items-center justify-center animate-pulse"
+                              >
+                                <div
+                                  class="loading loading-spinner loading-md text-gray-400"
+                                ></div>
+                              </div>
+                              <div
+                                class="h-4 bg-gray-200 rounded animate-pulse mb-1"
+                              ></div>
+                              <div
+                                class="h-3 bg-gray-200 rounded animate-pulse w-2/3"
+                              ></div>
+                            </div>
                           </div>
-                          <div class="h-4 bg-gray-200 rounded animate-pulse mb-1"></div>
-                          <div class="h-3 bg-gray-200 rounded animate-pulse w-2/3"></div>
-                        </div>
-                      </div>
-                    {/each}
-                  {:else}
-                    <!-- Default Map - Always First -->
-                    <button
-                      class="flex-shrink-0 w-52 card bg-green-50 hover:bg-green-100 transition-all duration-200 cursor-pointer border-2 {selectedMap === null ? 'border-green-500 ring-2 ring-green-400' : 'border-green-300 hover:border-green-500'} shadow-lg hover:shadow-xl"
-                      on:click={() => { selectedMap = null }}
-                    >
-                      <div class="card-body p-3">
-                        <div class="w-full h-24 rounded mb-2 overflow-hidden bg-gradient-to-br from-green-700 to-blue-800 flex items-center justify-center border border-green-300">
-                          {#if defaultMapThumbnail}
-                            <img src={defaultMapThumbnail} alt="Default Map" class="w-full h-full object-cover" />
-                          {:else}
-                            <div class="text-3xl opacity-70">🌍</div>
-                          {/if}
-                        </div>
-                        <h4 class="font-bold text-sm text-gray-900 truncate">Default Map</h4>
-                        <div class="text-xs text-gray-500">Procedural</div>
-                      </div>
-                    </button>
+                        {/each}
+                      {:else}
+                        <!-- Default Map - Always First -->
+                        <button
+                          class="flex-shrink-0 w-52 card bg-green-50 hover:bg-green-100 transition-all duration-200 cursor-pointer border-2 {selectedMap ===
+                          null
+                            ? 'border-green-500 ring-2 ring-green-400'
+                            : 'border-green-300 hover:border-green-500'} shadow-lg hover:shadow-xl"
+                          on:click={() => {
+                            selectedMap = null
+                          }}
+                        >
+                          <div class="card-body p-3">
+                            <div
+                              class="w-full h-24 rounded mb-2 overflow-hidden bg-gradient-to-br from-green-700 to-blue-800 flex items-center justify-center border border-green-300"
+                            >
+                              {#if defaultMapThumbnail}
+                                <img
+                                  src={defaultMapThumbnail}
+                                  alt="Default Map"
+                                  class="w-full h-full object-cover"
+                                />
+                              {:else}
+                                <div class="text-3xl opacity-70">🌍</div>
+                              {/if}
+                            </div>
+                            <h4
+                              class="font-bold text-sm text-gray-900 truncate"
+                            >
+                              Default Map
+                            </h4>
+                            <div class="text-xs text-gray-500">Procedural</div>
+                          </div>
+                        </button>
 
-                  <!-- Custom Maps -->
-                  {#each customMaps as map}
-                    <button
-                      class="flex-shrink-0 w-52 card bg-purple-50 hover:bg-purple-100 transition-all duration-200 cursor-pointer border-2 {selectedMap?.id === map.id ? 'border-purple-500 ring-2 ring-purple-400' : 'border-purple-300 hover:border-purple-500'} shadow-lg hover:shadow-xl"
-                      on:click={() => { selectedMap = map }}
-                    >
-                      <div class="card-body p-3">
-                        <div class="absolute top-2 right-2 bg-purple-500 text-white text-xs px-2 py-0.5 rounded">Custom</div>
-                        <div class="w-full h-24 rounded mb-2 overflow-hidden bg-purple-100 flex items-center justify-center border border-purple-300">
-                          {#if map.thumbnail}
-                            <img src={map.thumbnail} alt={map.name} class="w-full h-full object-cover" />
-                          {:else}
-                            <div class="text-3xl opacity-50">🗺️</div>
-                          {/if}
-                        </div>
-                        <h4 class="font-bold text-sm text-gray-900 truncate">{map.name}</h4>
-                        <div class="text-xs text-gray-500 truncate">{map.stats.objectCount} objects</div>
-                      </div>
-                    </button>
-                  {/each}
+                        <!-- Custom Maps -->
+                        {#each customMaps as map}
+                          <button
+                            class="flex-shrink-0 w-52 card bg-purple-50 hover:bg-purple-100 transition-all duration-200 cursor-pointer border-2 {selectedMap?.id ===
+                            map.id
+                              ? 'border-purple-500 ring-2 ring-purple-400'
+                              : 'border-purple-300 hover:border-purple-500'} shadow-lg hover:shadow-xl"
+                            on:click={() => {
+                              selectedMap = map
+                            }}
+                          >
+                            <div class="card-body p-3">
+                              <div
+                                class="absolute top-2 right-2 bg-purple-500 text-white text-xs px-2 py-0.5 rounded"
+                              >
+                                Custom
+                              </div>
+                              <div
+                                class="w-full h-24 rounded mb-2 overflow-hidden bg-purple-100 flex items-center justify-center border border-purple-300"
+                              >
+                                {#if map.thumbnail}
+                                  <img
+                                    src={map.thumbnail}
+                                    alt={map.name}
+                                    class="w-full h-full object-cover"
+                                  />
+                                {:else}
+                                  <div class="text-3xl opacity-50">🗺️</div>
+                                {/if}
+                              </div>
+                              <h4
+                                class="font-bold text-sm text-gray-900 truncate"
+                              >
+                                {map.name}
+                              </h4>
+                              <div class="text-xs text-gray-500 truncate">
+                                {map.stats.objectCount} objects
+                              </div>
+                            </div>
+                          </button>
+                        {/each}
 
-                  <!-- Built-in Maps -->
-                  {#each builtInMaps as map}
+                        <!-- Built-in Maps -->
+                        {#each builtInMaps as map}
+                          <button
+                            class="flex-shrink-0 w-52 card bg-yellow-50 hover:bg-yellow-100 transition-all duration-200 cursor-pointer border-2 {selectedMap?.id ===
+                            map.id
+                              ? 'border-yellow-500 ring-2 ring-yellow-400'
+                              : 'border-yellow-300 hover:border-yellow-500'} shadow-lg hover:shadow-xl"
+                            on:click={() => {
+                              selectedMap = map
+                            }}
+                          >
+                            <div class="card-body p-3">
+                              <div
+                                class="absolute top-2 right-2 bg-yellow-500 text-gray-900 text-xs px-2 py-0.5 rounded"
+                              >
+                                Built-in
+                              </div>
+                              <div
+                                class="w-full h-24 rounded mb-2 overflow-hidden bg-yellow-100 flex items-center justify-center border border-yellow-300"
+                              >
+                                {#if map.thumbnail}
+                                  <img
+                                    src={map.thumbnail}
+                                    alt={map.name}
+                                    class="w-full h-full object-cover"
+                                  />
+                                {:else}
+                                  <div class="text-3xl opacity-50">🗺️</div>
+                                {/if}
+                              </div>
+                              <h4
+                                class="font-bold text-sm text-gray-900 truncate"
+                              >
+                                {map.name}
+                              </h4>
+                              <div class="text-xs text-gray-500 truncate">
+                                {map.stats.objectCount} objects
+                              </div>
+                            </div>
+                          </button>
+                        {/each}
+                      {/if}
+                    </div>
+
+                    <!-- Right Arrow -->
                     <button
-                      class="flex-shrink-0 w-52 card bg-yellow-50 hover:bg-yellow-100 transition-all duration-200 cursor-pointer border-2 {selectedMap?.id === map.id ? 'border-yellow-500 ring-2 ring-yellow-400' : 'border-yellow-300 hover:border-yellow-500'} shadow-lg hover:shadow-xl"
-                      on:click={() => { selectedMap = map }}
+                      class="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-full w-10 h-10 flex items-center justify-center shadow-lg -mr-2 transition-all"
+                      on:click={() => {
+                        const container =
+                          document.getElementById("fps-map-carousel")
+                        if (container)
+                          container.scrollBy({ left: 220, behavior: "smooth" })
+                      }}
                     >
-                      <div class="card-body p-3">
-                        <div class="absolute top-2 right-2 bg-yellow-500 text-gray-900 text-xs px-2 py-0.5 rounded">Built-in</div>
-                        <div class="w-full h-24 rounded mb-2 overflow-hidden bg-yellow-100 flex items-center justify-center border border-yellow-300">
-                          {#if map.thumbnail}
-                            <img src={map.thumbnail} alt={map.name} class="w-full h-full object-cover" />
-                          {:else}
-                            <div class="text-3xl opacity-50">🗺️</div>
-                          {/if}
-                        </div>
-                        <h4 class="font-bold text-sm text-gray-900 truncate">{map.name}</h4>
-                        <div class="text-xs text-gray-500 truncate">{map.stats.objectCount} objects</div>
-                      </div>
+                      <span class="text-xl font-bold">›</span>
                     </button>
-                  {/each}
-                  {/if}
+                  </div>
                 </div>
-
-                <!-- Right Arrow -->
-                <button
-                  class="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-full w-10 h-10 flex items-center justify-center shadow-lg -mr-2 transition-all"
-                  on:click={() => {
-                    const container = document.getElementById('fps-map-carousel')
-                    if (container) container.scrollBy({ left: 220, behavior: 'smooth' })
-                  }}
-                >
-                  <span class="text-xl font-bold">›</span>
-                </button>
-              </div>
-            </div>
               </div>
             </div>
 
             <!-- Right Sidebar - Controls & Info -->
-            <div class="w-full lg:w-1/4 flex flex-col gap-4 lg:min-w-[280px] overflow-y-auto">
+            <div
+              class="w-full lg:w-1/4 flex flex-col gap-4 lg:min-w-[280px] overflow-y-auto"
+            >
               <!-- Controls Card -->
               <div class="card-standard">
                 <div class="card-body p-4">
@@ -3296,7 +3658,9 @@
                     <li><kbd class="kbd-custom">W/A/S/D</kbd> - Move</li>
                     <li><kbd class="kbd-custom">Mouse</kbd> - Look around</li>
                     <li><kbd class="kbd-custom">Click</kbd> - Shoot</li>
-                    <li><kbd class="kbd-custom">←/→ or ↑/↓</kbd> - Switch weapons</li>
+                    <li>
+                      <kbd class="kbd-custom">←/→ or ↑/↓</kbd> - Switch weapons
+                    </li>
                     <li><kbd class="kbd-custom">1-5</kbd> - Select weapon</li>
                     <li><kbd class="kbd-custom">Space</kbd> - Jump</li>
                     <li><kbd class="kbd-custom">ESC</kbd> - Pause</li>
@@ -3307,13 +3671,35 @@
               <!-- Power-Ups Card -->
               <div class="card-standard">
                 <div class="card-body p-4">
-                  <h3 class="font-semibold mb-2 text-sm">Power-Ups (auto-apply):</h3>
+                  <h3 class="font-semibold mb-2 text-sm">
+                    Power-Ups (auto-apply):
+                  </h3>
                   <ul class="space-y-1 text-xs">
-                    <li><span class="inline-block w-3 h-3 rounded-full bg-red-500 mr-1"></span> Health - +30 HP</li>
-                    <li><span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span> Ammo - +20 rounds to weapon</li>
-                    <li><span class="inline-block w-3 h-3 rounded-full bg-cyan-500 mr-1"></span> Jetpack - Fly for 60s</li>
-                    <li><span class="inline-block w-3 h-3 rounded-full bg-yellow-500 mr-1"></span> Missiles - +10 heat-seeking rockets</li>
-                    <li><span class="inline-block w-3 h-3 rounded-full bg-orange-500 mr-1"></span> Grenades - +5 area damage</li>
+                    <li>
+                      <span
+                        class="inline-block w-3 h-3 rounded-full bg-red-500 mr-1"
+                      ></span> Health - +30 HP
+                    </li>
+                    <li>
+                      <span
+                        class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"
+                      ></span> Ammo - +20 rounds to weapon
+                    </li>
+                    <li>
+                      <span
+                        class="inline-block w-3 h-3 rounded-full bg-cyan-500 mr-1"
+                      ></span> Jetpack - Fly for 60s
+                    </li>
+                    <li>
+                      <span
+                        class="inline-block w-3 h-3 rounded-full bg-yellow-500 mr-1"
+                      ></span> Missiles - +10 heat-seeking rockets
+                    </li>
+                    <li>
+                      <span
+                        class="inline-block w-3 h-3 rounded-full bg-orange-500 mr-1"
+                      ></span> Grenades - +5 area damage
+                    </li>
                   </ul>
                 </div>
               </div>
@@ -3323,9 +3709,17 @@
                 <div class="card-body p-4">
                   <h3 class="font-semibold mb-2 text-sm">Enemies:</h3>
                   <ul class="space-y-1 text-xs">
-                    <li><span class="text-red-500">Red</span> - Basic (50 HP)</li>
-                    <li><span class="text-cyan-500">Cyan</span> - Fast (30 HP, circles you)</li>
-                    <li><span class="text-orange-600">Brown</span> - Tank (100 HP, heavy damage)</li>
+                    <li>
+                      <span class="text-red-500">Red</span> - Basic (50 HP)
+                    </li>
+                    <li>
+                      <span class="text-cyan-500">Cyan</span> - Fast (30 HP, circles
+                      you)
+                    </li>
+                    <li>
+                      <span class="text-orange-600">Brown</span> - Tank (100 HP,
+                      heavy damage)
+                    </li>
                   </ul>
                 </div>
               </div>
@@ -3335,9 +3729,9 @@
                 <div class="card-body p-4">
                   <h3 class="font-semibold mb-2 text-sm">Tips:</h3>
                   <p class="text-xs">
-                    Collect power-ups to gain advantages! Level up every 500 points.
-                    Different weapons have different ammo. Navigate through obstacles
-                    to find the best vantage points.
+                    Collect power-ups to gain advantages! Level up every 500
+                    points. Different weapons have different ammo. Navigate
+                    through obstacles to find the best vantage points.
                   </p>
                 </div>
               </div>
@@ -3348,16 +3742,20 @@
         <!-- Pause menu (only shown if game was started then paused) -->
         <div class="absolute inset-0 z-10">
           {#if selectedMap?.thumbnail}
-            <div class="absolute inset-0" style="background-image: url({selectedMap.thumbnail}); background-size: cover; background-position: center;"></div>
+            <div
+              class="absolute inset-0"
+              style="background-image: url({selectedMap.thumbnail}); background-size: cover; background-position: center;"
+            ></div>
           {/if}
           <div class="absolute inset-0 bg-white/50"></div>
         </div>
-        <div
-          class="absolute inset-0 flex items-center justify-center z-10"
-        >
+        <div class="absolute inset-0 flex items-center justify-center z-10">
           <div class="text-center space-y-4">
             <h2 class="text-3xl font-bold text-gray-900 mb-6">Paused</h2>
-            <button class="btn btn-primary btn-lg text-white" on:click={startGame}>
+            <button
+              class="btn btn-primary btn-lg text-white"
+              on:click={startGame}
+            >
               Resume Game
             </button>
             <button
@@ -3366,9 +3764,11 @@
                 isGameOver = false
                 clearEnvironment()
                 resetGameState()
-                weaponInventory = [{ type: 'laser', ammo: -1, name: 'Laser Gun' }]
+                weaponInventory = [
+                  { type: "laser", ammo: -1, name: "Laser Gun" },
+                ]
                 currentWeaponIndex = 0
-                currentWeapon = 'laser'
+                currentWeapon = "laser"
                 // Restart with same map
                 if (selectedMap) {
                   selectMapAndStart(selectedMap)
@@ -3385,9 +3785,11 @@
                 showMapSelector = true
                 clearEnvironment()
                 resetGameState()
-                weaponInventory = [{ type: 'laser', ammo: -1, name: 'Laser Gun' }]
+                weaponInventory = [
+                  { type: "laser", ammo: -1, name: "Laser Gun" },
+                ]
                 currentWeaponIndex = 0
-                currentWeapon = 'laser'
+                currentWeapon = "laser"
               }}
             >
               Main Menu
@@ -3398,155 +3800,215 @@
           </div>
         </div>
       {/if}
-      
+
       {#if isPlayerHit}
         <div
           class="absolute inset-0 bg-red-500/30 animate-flash pointer-events-none z-20"
         />
       {/if}
 
-        <!-- Game Over Screen -->
-        {#if isGameOver}
-          <div class="absolute inset-0 z-20 flex items-center justify-center bg-black/80">
-            <div class="text-center text-white">
-              <h1 class="text-6xl font-bold mb-4 text-red-500">GAME OVER</h1>
-              <div class="text-3xl mb-6">Final Score: {score}</div>
-              <div class="text-xl mb-8">Level Reached: {level}</div>
-              <button
-                class="btn btn-primary btn-lg"
-                on:click={() => {
-                  isGameOver = false
-                  hasStartedGame = false // Reset so pause screen doesn't show
-                  showMapSelector = true
-                  clearEnvironment()
-                  resetGameState()
-                  weaponInventory = [{ type: 'laser', ammo: -1, name: 'Laser Gun' }]
-                  currentWeaponIndex = 0
-                  currentWeapon = 'laser'
-                }}
-              >
-                Play Again
-              </button>
-            </div>
+      <!-- Game Over Screen -->
+      {#if isGameOver}
+        <div
+          class="absolute inset-0 z-20 flex items-center justify-center bg-black/80"
+        >
+          <div class="text-center text-white">
+            <h1 class="text-6xl font-bold mb-4 text-red-500">GAME OVER</h1>
+            <div class="text-3xl mb-6">Final Score: {score}</div>
+            <div class="text-xl mb-8">Level Reached: {level}</div>
+            <button
+              class="btn btn-primary btn-lg"
+              on:click={() => {
+                isGameOver = false
+                hasStartedGame = false // Reset so pause screen doesn't show
+                showMapSelector = true
+                clearEnvironment()
+                resetGameState()
+                weaponInventory = [
+                  { type: "laser", ammo: -1, name: "Laser Gun" },
+                ]
+                currentWeaponIndex = 0
+                currentWeapon = "laser"
+              }}
+            >
+              Play Again
+            </button>
           </div>
-        {/if}
+        </div>
+      {/if}
 
-        <!-- HUD -->
-        {#if isPlaying && !isGameOver}
-          <div
-            class="absolute top-4 left-4 text-white font-bold z-10 bg-black/70 p-4 rounded-lg space-y-2"
-          >
-            <div class="text-3xl text-white">Score: {score}</div>
-            <div class="text-xl">Level: {level} {#if isBossLevel}<span class="text-error animate-pulse">⚡ BOSS LEVEL ⚡</span>{/if}</div>
-            <div class="text-xl text-accent">Health: {health}</div>
-
-            {#if isBossLevel && bossEnemy && bossMaxHealth > 0}
-              <div class="mt-3 pt-3 border-t border-red-500">
-                <div class="text-sm text-red-400 mb-1">BOSS HEALTH</div>
-                <div class="w-full bg-gray-700 h-3 rounded-full overflow-hidden">
-                  <div
-                    class="bg-gradient-to-r from-red-500 to-purple-500 h-full transition-all duration-300"
-                    style="width: {Math.max(0, (bossHealth / bossMaxHealth) * 100)}%"
-                  ></div>
-                </div>
-                <div class="text-xs text-center mt-1">{Math.max(0, Math.floor(bossHealth))} / {bossMaxHealth}</div>
-              </div>
-            {/if}
-
-            <!-- Weapon Inventory -->
-            <div class="mt-3 pt-3 border-t border-white/30">
-              <div class="text-sm opacity-80 mb-2">Weapons (← → ↑ ↓ or 1-5)</div>
-              {#each weaponInventory as weapon, index}
-                <div
-                  class="text-sm {index === currentWeaponIndex ? 'text-warning font-bold' : 'opacity-60'}"
-                  style={showWeaponChangeMessage && index === currentWeaponIndex
-                    ? 'animation: flash 0.3s ease-in-out 6;'
-                    : ''}
-                >
-                  {index + 1}. {weapon.name} {weapon.ammo === -1 ? '∞' : `(${weapon.ammo})`}
-                </div>
-              {/each}
-            </div>
+      <!-- HUD -->
+      {#if isPlaying && !isGameOver}
+        <div
+          class="absolute top-4 left-4 text-white font-bold z-10 bg-black/70 p-4 rounded-lg space-y-2"
+        >
+          <div class="text-3xl text-white">Score: {score}</div>
+          <div class="text-xl">
+            Level: {level}
+            {#if isBossLevel}<span class="text-error animate-pulse"
+                >⚡ BOSS LEVEL ⚡</span
+              >{/if}
           </div>
+          <div class="text-xl text-accent">Health: {health}</div>
 
-          <!-- Jetpack HUD (Below main HUD on left side) -->
-          {#if activePowerUps.has('flying') && currentTime < flyingModeEndTime}
-            <div class="absolute left-4 top-[280px] z-10 bg-black/90 p-4 rounded-lg border-2 border-cyan-500 w-64">
-              <div class="text-xl font-bold text-cyan-400 animate-pulse mb-2 text-center">
-                🚀 JETPACK ACTIVE
-              </div>
-              <div class="text-4xl font-bold text-yellow-300 mb-3 text-center">
-                {Math.max(0, Math.ceil((flyingModeEndTime - currentTime) / 1000))}s
-              </div>
-              <!-- Visual countdown bar -->
-              <div class="w-full bg-gray-700 h-4 rounded-full overflow-hidden mb-1">
+          {#if isBossLevel && bossEnemy && bossMaxHealth > 0}
+            <div class="mt-3 pt-3 border-t border-red-500">
+              <div class="text-sm text-red-400 mb-1">BOSS HEALTH</div>
+              <div class="w-full bg-gray-700 h-3 rounded-full overflow-hidden">
                 <div
-                  class="bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 h-full transition-all duration-100"
-                  style="width: {Math.max(0, Math.min(100, ((flyingModeEndTime - currentTime) / 30000) * 100))}%"
+                  class="bg-gradient-to-r from-red-500 to-purple-500 h-full transition-all duration-300"
+                  style="width: {Math.max(
+                    0,
+                    (bossHealth / bossMaxHealth) * 100,
+                  )}%"
                 ></div>
               </div>
-              <div class="text-xs text-center text-cyan-300 font-bold">FUEL REMAINING</div>
-            </div>
-          {/if}
-
-          <!-- Level Complete Splash -->
-          {#if showLevelComplete}
-            <div class="absolute inset-0 z-30 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-              <div class="text-center text-white animate-bounce">
-                <div class="text-8xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500">
-                  LEVEL {level}
-                </div>
-                <div class="text-6xl font-bold mb-4 text-green-400">
-                  COMPLETE!
-                </div>
-                <div class="text-3xl mb-2">Score: {score}</div>
-                <div class="text-2xl text-cyan-400 animate-pulse">
-                  {isBossLevel ? '⚡ BOSS LEVEL NEXT ⚡' : 'Loading Next Level...'}
-                </div>
+              <div class="text-xs text-center mt-1">
+                {Math.max(0, Math.floor(bossHealth))} / {bossMaxHealth}
               </div>
             </div>
           {/if}
 
-          <!-- Crosshair -->
+          <!-- Weapon Inventory -->
+          <div class="mt-3 pt-3 border-t border-white/30">
+            <div class="text-sm opacity-80 mb-2">Weapons (← → ↑ ↓ or 1-5)</div>
+            {#each weaponInventory as weapon, index}
+              <div
+                class="text-sm {index === currentWeaponIndex
+                  ? 'text-warning font-bold'
+                  : 'opacity-60'}"
+                style={showWeaponChangeMessage && index === currentWeaponIndex
+                  ? "animation: flash 0.3s ease-in-out 6;"
+                  : ""}
+              >
+                {index + 1}. {weapon.name}
+                {weapon.ammo === -1 ? "∞" : `(${weapon.ammo})`}
+              </div>
+            {/each}
+          </div>
+        </div>
+
+        <!-- Jetpack HUD (Below main HUD on left side) -->
+        {#if activePowerUps.has("flying") && currentTime < flyingModeEndTime}
           <div
-            class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10"
+            class="absolute left-4 top-[280px] z-10 bg-black/90 p-4 rounded-lg border-2 border-cyan-500 w-64"
           >
-            <div class="w-8 h-8">
+            <div
+              class="text-xl font-bold text-cyan-400 animate-pulse mb-2 text-center"
+            >
+              🚀 JETPACK ACTIVE
+            </div>
+            <div class="text-4xl font-bold text-yellow-300 mb-3 text-center">
+              {Math.max(
+                0,
+                Math.ceil((flyingModeEndTime - currentTime) / 1000),
+              )}s
+            </div>
+            <!-- Visual countdown bar -->
+            <div
+              class="w-full bg-gray-700 h-4 rounded-full overflow-hidden mb-1"
+            >
               <div
-                class="absolute top-1/2 left-0 w-full h-0.5 bg-white -translate-y-1/2"
+                class="bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 h-full transition-all duration-100"
+                style="width: {Math.max(
+                  0,
+                  Math.min(
+                    100,
+                    ((flyingModeEndTime - currentTime) / 30000) * 100,
+                  ),
+                )}%"
               ></div>
-              <div
-                class="absolute top-0 left-1/2 w-0.5 h-full bg-white -translate-x-1/2"
-              ></div>
+            </div>
+            <div class="text-xs text-center text-cyan-300 font-bold">
+              FUEL REMAINING
             </div>
           </div>
+        {/if}
 
-          <!-- Collection Notification - centered screen with flashing animation -->
-          {#if showCollectionMessage}
-            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none" style="margin-top: 100px;">
+        <!-- Level Complete Splash -->
+        {#if showLevelComplete}
+          <div
+            class="absolute inset-0 z-30 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          >
+            <div class="text-center text-white animate-bounce">
               <div
-                class="bg-green-500/95 text-white px-8 py-4 rounded-xl shadow-2xl text-2xl font-bold border-4 border-green-300"
-                style="animation: flash 0.3s ease-in-out 6;"
+                class="text-8xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500"
               >
-                + {lastCollectedPowerUp}
+                LEVEL {level}
+              </div>
+              <div class="text-6xl font-bold mb-4 text-green-400">
+                COMPLETE!
+              </div>
+              <div class="text-3xl mb-2">Score: {score}</div>
+              <div class="text-2xl text-cyan-400 animate-pulse">
+                {isBossLevel
+                  ? "⚡ BOSS LEVEL NEXT ⚡"
+                  : "Loading Next Level..."}
               </div>
             </div>
-          {/if}
-
-          {#if showWeaponChangeMessage}
-            {#key weaponChangeKey}
-              <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none" style="margin-top: 40px;">
-                <div
-                  class="bg-purple-600/95 text-white px-6 py-3 rounded-xl shadow-2xl text-xl font-bold border-4 border-purple-300"
-                  style="animation: flash 0.3s ease-in-out 6;"
-                >
-                  Weapon: {lastWeaponChange}
-                </div>
-              </div>
-            {/key}
-          {/if}
+          </div>
         {/if}
-      </div>
-    </div>
 
+        <!-- Crosshair -->
+        <div
+          class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10"
+        >
+          <div class="w-8 h-8">
+            <div
+              class="absolute top-1/2 left-0 w-full h-0.5 bg-white -translate-y-1/2"
+            ></div>
+            <div
+              class="absolute top-0 left-1/2 w-0.5 h-full bg-white -translate-x-1/2"
+            ></div>
+          </div>
+        </div>
+
+        <!-- Collection Notification - centered screen with flashing animation -->
+        {#if showCollectionMessage}
+          <div
+            class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none"
+            style="margin-top: 100px;"
+          >
+            <div
+              class="bg-green-500/95 text-white px-8 py-4 rounded-xl shadow-2xl text-2xl font-bold border-4 border-green-300"
+              style="animation: flash 0.3s ease-in-out 6;"
+            >
+              + {lastCollectedPowerUp}
+            </div>
+          </div>
+        {/if}
+
+        {#if showWeaponChangeMessage}
+          {#key weaponChangeKey}
+            <div
+              class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none"
+              style="margin-top: 40px;"
+            >
+              <div
+                class="bg-purple-600/95 text-white px-6 py-3 rounded-xl shadow-2xl text-xl font-bold border-4 border-purple-300"
+                style="animation: flash 0.3s ease-in-out 6;"
+              >
+                Weapon: {lastWeaponChange}
+              </div>
+            </div>
+          {/key}
+        {/if}
+      {/if}
+    </div>
   </div>
+</div>
+
+<style>
+  @keyframes flash {
+    0% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  .animate-flash {
+    animation: flash 0.1s linear;
+  }
+</style>

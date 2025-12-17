@@ -15,7 +15,7 @@
   let enabledPowerUps = $state({
     freeze: true,
     lightning: true,
-    shrinker: true
+    shrinker: true,
   })
   let soundEnabled = $state(true)
 
@@ -31,7 +31,14 @@
 
   // Fireworks
   type Firework = { x: number; y: number; particles: Particle[] }
-  type Particle = { x: number; y: number; vx: number; vy: number; color: string; life: number }
+  type Particle = {
+    x: number
+    y: number
+    vx: number
+    vy: number
+    color: string
+    life: number
+  }
   let fireworks = $state<Firework[]>([])
 
   // Stars for space background
@@ -48,7 +55,7 @@
   // Power-up effects
   let slowedUntil = $state({ player: 0, computer: 0 })
   let paddleSizes = $state({ player: 80, computer: 80 })
-  let multiBalls = $state<typeof ball[]>([])
+  let multiBalls = $state<(typeof ball)[]>([])
 
   // Ball properties
   const baseBallSpeed = { easy: 2.5, medium: 3.5, hard: 5 }
@@ -88,7 +95,11 @@
   }
 
   // Sound effects
-  const playSound = (frequency: number, duration: number, type: OscillatorType = "sine") => {
+  const playSound = (
+    frequency: number,
+    duration: number,
+    type: OscillatorType = "sine",
+  ) => {
     if (!soundEnabled) return
     try {
       const audioContext = new AudioContext()
@@ -99,7 +110,10 @@
       oscillator.frequency.value = frequency
       oscillator.type = type
       gainNode.gain.setValueAtTime(0.15, audioContext.currentTime)
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration)
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.01,
+        audioContext.currentTime + duration,
+      )
       oscillator.start(audioContext.currentTime)
       oscillator.stop(audioContext.currentTime + duration)
     } catch (e) {}
@@ -114,7 +128,7 @@
       playSound(523, 0.2, "sine")
       setTimeout(() => playSound(659, 0.2, "sine"), 150)
       setTimeout(() => playSound(784, 0.4, "sine"), 300)
-    }
+    },
   }
 
   onMount(() => {
@@ -137,7 +151,7 @@
         x: Math.random() * 800,
         y: Math.random() * 600,
         size: Math.random() * 2 + 0.5,
-        opacity: Math.random() * 0.5 + 0.3
+        opacity: Math.random() * 0.5 + 0.3,
       })
     }
   }
@@ -226,7 +240,10 @@
           x = 450 + Math.random() * 300 // 450-750 (right side)
         } else {
           // Tied, spawn randomly on either side
-          x = Math.random() < 0.5 ? 50 + Math.random() * 300 : 450 + Math.random() * 300
+          x =
+            Math.random() < 0.5
+              ? 50 + Math.random() * 300
+              : 450 + Math.random() * 300
         }
         y = 100 + Math.random() * 400
       }
@@ -235,7 +252,7 @@
         x,
         y,
         type,
-        icon: icons[type]
+        icon: icons[type],
       })
     }
   }
@@ -244,7 +261,7 @@
     for (let i = activePowerUps.length - 1; i >= 0; i--) {
       const powerUp = activePowerUps[i]
       const dist = Math.sqrt(
-        Math.pow(ballObj.x - powerUp.x, 2) + Math.pow(ballObj.y - powerUp.y, 2)
+        Math.pow(ballObj.x - powerUp.x, 2) + Math.pow(ballObj.y - powerUp.y, 2),
       )
 
       if (dist < 35) {
@@ -335,7 +352,8 @@
       ballObj.speedX < 0 // Only if moving toward paddle
     ) {
       sounds.paddleHit()
-      const hitPos = (ballObj.y - (playerPaddle.y + playerHeight / 2)) / (playerHeight / 2)
+      const hitPos =
+        (ballObj.y - (playerPaddle.y + playerHeight / 2)) / (playerHeight / 2)
       const angle = hitPos * (Math.PI / 3)
 
       // Increment hit counter for power-up spawning
@@ -367,7 +385,9 @@
       ballObj.speedX > 0 // Only if moving toward paddle
     ) {
       sounds.paddleHit()
-      const hitPos = (ballObj.y - (computerPaddle.y + computerHeight / 2)) / (computerHeight / 2)
+      const hitPos =
+        (ballObj.y - (computerPaddle.y + computerHeight / 2)) /
+        (computerHeight / 2)
       const angle = hitPos * (Math.PI / 3)
 
       // Increment hit counter for power-up spawning
@@ -442,14 +462,22 @@
         for (let j = 0; j < 30; j++) {
           const angle = (Math.PI * 2 * j) / 30
           const speed = 2 + Math.random() * 3
-          const colors = ["#ff0", "#f0f", "#0ff", "#f00", "#0f0", "#00f", "#fff"]
+          const colors = [
+            "#ff0",
+            "#f0f",
+            "#0ff",
+            "#f00",
+            "#0f0",
+            "#00f",
+            "#fff",
+          ]
           particles.push({
             x,
             y,
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed,
             color: colors[Math.floor(Math.random() * colors.length)],
-            life: 1
+            life: 1,
           })
         }
 
@@ -459,16 +487,16 @@
   }
 
   function updateFireworks() {
-    fireworks.forEach(fw => {
-      fw.particles.forEach(p => {
+    fireworks.forEach((fw) => {
+      fw.particles.forEach((p) => {
         p.x += p.vx
         p.y += p.vy
         p.vy += 0.1 // gravity
         p.life -= 0.02
       })
-      fw.particles = fw.particles.filter(p => p.life > 0)
+      fw.particles = fw.particles.filter((p) => p.life > 0)
     })
-    fireworks = fireworks.filter(fw => fw.particles.length > 0)
+    fireworks = fireworks.filter((fw) => fw.particles.length > 0)
   }
 
   function update() {
@@ -483,10 +511,12 @@
     const playerSpeed = isSlowed ? 3 : 6
     if (vsMode === "human") {
       if (keys.w && playerPaddle.y > 0) playerPaddle.y -= playerSpeed
-      if (keys.s && playerPaddle.y < 600 - playerHeight) playerPaddle.y += playerSpeed
+      if (keys.s && playerPaddle.y < 600 - playerHeight)
+        playerPaddle.y += playerSpeed
     } else {
       if (keys.up && playerPaddle.y > 0) playerPaddle.y -= playerSpeed
-      if (keys.down && playerPaddle.y < 600 - playerHeight) playerPaddle.y += playerSpeed
+      if (keys.down && playerPaddle.y < 600 - playerHeight)
+        playerPaddle.y += playerSpeed
     }
 
     // Move player 2 paddle (right - red)
@@ -494,13 +524,15 @@
     const computerSpeed = isComputerSlowed ? 3 : 6
     if (vsMode === "human") {
       if (keys.up && computerPaddle.y > 0) computerPaddle.y -= computerSpeed
-      if (keys.down && computerPaddle.y < 600 - computerHeight) computerPaddle.y += computerSpeed
+      if (keys.down && computerPaddle.y < 600 - computerHeight)
+        computerPaddle.y += computerSpeed
     } else {
       // Computer AI
       const baseSpeed = aiSpeed[difficulty]
       const speed = isComputerSlowed ? baseSpeed * 0.5 : baseSpeed
       const computerCenter = computerPaddle.y + computerHeight / 2
-      const deadzone = difficulty === "easy" ? 50 : difficulty === "medium" ? 35 : 20
+      const deadzone =
+        difficulty === "easy" ? 50 : difficulty === "medium" ? 35 : 20
 
       if (computerCenter < ball.y - deadzone) {
         computerPaddle.y += speed
@@ -509,14 +541,15 @@
       }
 
       if (computerPaddle.y < 0) computerPaddle.y = 0
-      if (computerPaddle.y > 600 - computerHeight) computerPaddle.y = 600 - computerHeight
+      if (computerPaddle.y > 600 - computerHeight)
+        computerPaddle.y = 600 - computerHeight
     }
 
     // Update main ball
     updateBall(ball, true)
 
     // Update multi-balls
-    multiBalls = multiBalls.filter(b => updateBall(b, false))
+    multiBalls = multiBalls.filter((b) => updateBall(b, false))
   }
 
   function draw() {
@@ -525,7 +558,7 @@
     ctx.fillRect(0, 0, 800, 600)
 
     // Draw stars
-    stars.forEach(star => {
+    stars.forEach((star) => {
       ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`
       ctx.beginPath()
       ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2)
@@ -554,14 +587,32 @@
 
     // Cockpit window
     ctx.fillStyle = "#1e40af"
-    ctx.fillRect(playerPaddle.x + 2, playerPaddle.y + playerHeight / 2 - 8, paddleWidth - 4, 16)
+    ctx.fillRect(
+      playerPaddle.x + 2,
+      playerPaddle.y + playerHeight / 2 - 8,
+      paddleWidth - 4,
+      16,
+    )
 
     // Engine glow (right side)
-    const engineGlow = ctx.createLinearGradient(playerPaddle.x + paddleWidth, playerPaddle.y, playerPaddle.x + paddleWidth + 8, playerPaddle.y)
-    engineGlow.addColorStop(0, playerSlowed ? "rgba(96, 165, 250, 0.6)" : "rgba(59, 130, 246, 0.8)")
+    const engineGlow = ctx.createLinearGradient(
+      playerPaddle.x + paddleWidth,
+      playerPaddle.y,
+      playerPaddle.x + paddleWidth + 8,
+      playerPaddle.y,
+    )
+    engineGlow.addColorStop(
+      0,
+      playerSlowed ? "rgba(96, 165, 250, 0.6)" : "rgba(59, 130, 246, 0.8)",
+    )
     engineGlow.addColorStop(1, "rgba(59, 130, 246, 0)")
     ctx.fillStyle = engineGlow
-    ctx.fillRect(playerPaddle.x + paddleWidth, playerPaddle.y + 5, 8, playerHeight - 10)
+    ctx.fillRect(
+      playerPaddle.x + paddleWidth,
+      playerPaddle.y + 5,
+      8,
+      playerHeight - 10,
+    )
 
     // Wing tips
     ctx.fillStyle = playerSlowed ? "#93c5fd" : "#60a5fa"
@@ -579,7 +630,11 @@
     if (playerSlowed) {
       ctx.font = "20px sans-serif"
       ctx.fillStyle = "rgba(96, 165, 250, 0.8)"
-      ctx.fillText("❄️", playerPaddle.x - 15, playerPaddle.y + playerHeight / 2 + 7)
+      ctx.fillText(
+        "❄️",
+        playerPaddle.x - 15,
+        playerPaddle.y + playerHeight / 2 + 7,
+      )
     }
 
     // Draw computer paddle (right - red spaceship)
@@ -588,18 +643,41 @@
 
     // Main body
     ctx.fillStyle = computerSlowed ? "#f87171" : "#ef4444"
-    ctx.fillRect(computerPaddle.x, computerPaddle.y, paddleWidth, computerHeight)
+    ctx.fillRect(
+      computerPaddle.x,
+      computerPaddle.y,
+      paddleWidth,
+      computerHeight,
+    )
 
     // Cockpit window
     ctx.fillStyle = "#7f1d1d"
-    ctx.fillRect(computerPaddle.x + 2, computerPaddle.y + computerHeight / 2 - 8, paddleWidth - 4, 16)
+    ctx.fillRect(
+      computerPaddle.x + 2,
+      computerPaddle.y + computerHeight / 2 - 8,
+      paddleWidth - 4,
+      16,
+    )
 
     // Engine glow (left side)
-    const computerEngineGlow = ctx.createLinearGradient(computerPaddle.x, computerPaddle.y, computerPaddle.x - 8, computerPaddle.y)
-    computerEngineGlow.addColorStop(0, computerSlowed ? "rgba(248, 113, 113, 0.6)" : "rgba(239, 68, 68, 0.8)")
+    const computerEngineGlow = ctx.createLinearGradient(
+      computerPaddle.x,
+      computerPaddle.y,
+      computerPaddle.x - 8,
+      computerPaddle.y,
+    )
+    computerEngineGlow.addColorStop(
+      0,
+      computerSlowed ? "rgba(248, 113, 113, 0.6)" : "rgba(239, 68, 68, 0.8)",
+    )
     computerEngineGlow.addColorStop(1, "rgba(239, 68, 68, 0)")
     ctx.fillStyle = computerEngineGlow
-    ctx.fillRect(computerPaddle.x - 8, computerPaddle.y + 5, 8, computerHeight - 10)
+    ctx.fillRect(
+      computerPaddle.x - 8,
+      computerPaddle.y + 5,
+      8,
+      computerHeight - 10,
+    )
 
     // Wing tips
     ctx.fillStyle = computerSlowed ? "#fca5a5" : "#f87171"
@@ -609,20 +687,40 @@
     ctx.lineTo(computerPaddle.x + paddleWidth, computerPaddle.y + 10)
     ctx.fill()
     ctx.beginPath()
-    ctx.moveTo(computerPaddle.x + paddleWidth, computerPaddle.y + computerHeight)
-    ctx.lineTo(computerPaddle.x + paddleWidth + 4, computerPaddle.y + computerHeight - 5)
-    ctx.lineTo(computerPaddle.x + paddleWidth, computerPaddle.y + computerHeight - 10)
+    ctx.moveTo(
+      computerPaddle.x + paddleWidth,
+      computerPaddle.y + computerHeight,
+    )
+    ctx.lineTo(
+      computerPaddle.x + paddleWidth + 4,
+      computerPaddle.y + computerHeight - 5,
+    )
+    ctx.lineTo(
+      computerPaddle.x + paddleWidth,
+      computerPaddle.y + computerHeight - 10,
+    )
     ctx.fill()
 
     if (computerSlowed) {
       ctx.font = "20px sans-serif"
       ctx.fillStyle = "rgba(248, 113, 113, 0.8)"
-      ctx.fillText("❄️", computerPaddle.x + paddleWidth + 5, computerPaddle.y + computerHeight / 2 + 7)
+      ctx.fillText(
+        "❄️",
+        computerPaddle.x + paddleWidth + 5,
+        computerPaddle.y + computerHeight / 2 + 7,
+      )
     }
 
     // Draw ball trail (comet effect)
     ballTrail.forEach((point, i) => {
-      const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, 8)
+      const gradient = ctx.createRadialGradient(
+        point.x,
+        point.y,
+        0,
+        point.x,
+        point.y,
+        8,
+      )
       gradient.addColorStop(0, `rgba(255, 200, 100, ${point.alpha})`)
       gradient.addColorStop(0.5, `rgba(255, 150, 50, ${point.alpha * 0.5})`)
       gradient.addColorStop(1, `rgba(255, 100, 0, 0)`)
@@ -633,7 +731,14 @@
     })
 
     // Draw main ball (comet head)
-    const ballGradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 0, ball.x, ball.y, ball.radius)
+    const ballGradient = ctx.createRadialGradient(
+      ball.x - 2,
+      ball.y - 2,
+      0,
+      ball.x,
+      ball.y,
+      ball.radius,
+    )
     ballGradient.addColorStop(0, "#ffffff")
     ballGradient.addColorStop(0.5, "#ffcc00")
     ballGradient.addColorStop(1, "#ff6600")
@@ -650,7 +755,7 @@
     ctx.stroke()
 
     // Draw multi-balls
-    multiBalls.forEach(b => {
+    multiBalls.forEach((b) => {
       ctx.fillStyle = "#00ffff"
       ctx.beginPath()
       ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2)
@@ -658,7 +763,7 @@
     })
 
     // Draw power-ups
-    activePowerUps.forEach(powerUp => {
+    activePowerUps.forEach((powerUp) => {
       // Pulsing glow
       const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.7
       ctx.shadowBlur = 20 * pulse
@@ -675,9 +780,9 @@
     ctx.fillText(score.computer.toString(), 480, 80)
 
     // Draw fireworks
-    fireworks.forEach(fw => {
-      fw.particles.forEach(p => {
-        ctx.fillStyle = p.color.replace(')', `, ${p.life})`)
+    fireworks.forEach((fw) => {
+      fw.particles.forEach((p) => {
+        ctx.fillStyle = p.color.replace(")", `, ${p.life})`)
         ctx.beginPath()
         ctx.arc(p.x, p.y, 3, 0, Math.PI * 2)
         ctx.fill()
@@ -693,9 +798,12 @@
       ctx.fillStyle = winner === "player" ? "#3b82f6" : "#ef4444"
       ctx.font = "bold 72px sans-serif"
       ctx.textAlign = "center"
-      const winText = vsMode === "human"
-        ? `${winner === "player" ? "Player 1" : "Player 2"} Wins!`
-        : winner === "player" ? "You Win!" : "Computer Wins!"
+      const winText =
+        vsMode === "human"
+          ? `${winner === "player" ? "Player 1" : "Player 2"} Wins!`
+          : winner === "player"
+            ? "You Win!"
+            : "Computer Wins!"
       ctx.fillText(winText, 400, 280)
 
       ctx.fillStyle = "#ffffff"
@@ -777,17 +885,17 @@
     <h1 class="text-4xl font-bold" style="color: #660460;">🏓 Cosmic Pong</h1>
     <div class="flex gap-2">
       {#if !gameRunning || gameOver}
-        <button class="btn text-white border-0 hover:opacity-90" style="background-color: #660460;" onclick={startGame}>
+        <button
+          class="btn text-white border-0 hover:opacity-90"
+          style="background-color: #660460;"
+          onclick={startGame}
+        >
           {gameOver ? "New Game" : "Start Game"}
         </button>
       {:else}
-        <button class="btn btn-warning" onclick={pauseGame}>
-          Pause
-        </button>
+        <button class="btn btn-warning" onclick={pauseGame}> Pause </button>
       {/if}
-      <button class="btn btn-outline" onclick={resetGame}>
-        Reset
-      </button>
+      <button class="btn btn-outline" onclick={resetGame}> Reset </button>
     </div>
   </div>
 
@@ -817,197 +925,254 @@
           <h2 class="card-title" style="color: #660460;">Settings</h2>
 
           <div class="space-y-4">
-          <!-- Versus Mode Toggle -->
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text font-semibold">Game Mode</span>
-            </label>
-            <div class="flex gap-2">
-              <button
-                class="btn btn-sm flex-1 {vsMode === 'computer' ? 'btn-primary' : 'btn-outline'}"
-                onclick={() => (vsMode = 'computer')}
-                disabled={gameRunning}
-              >
-                vs Computer
-              </button>
-              <button
-                class="btn btn-sm flex-1 {vsMode === 'human' ? 'btn-primary' : 'btn-outline'}"
-                onclick={() => (vsMode = 'human')}
-                disabled={gameRunning}
-              >
-                vs Human
-              </button>
-            </div>
-          </div>
-
-          <!-- Difficulty -->
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text font-semibold">Difficulty</span>
-            </label>
-            <div class="flex gap-2">
-              <button
-                class="btn btn-xs flex-1 {difficulty === 'easy' ? 'btn-success' : 'btn-outline'}"
-                onclick={() => (difficulty = 'easy')}
-                disabled={gameRunning}
-              >
-                Easy
-              </button>
-              <button
-                class="btn btn-xs flex-1 {difficulty === 'medium' ? 'btn-warning' : 'btn-outline'}"
-                onclick={() => (difficulty = 'medium')}
-                disabled={gameRunning}
-              >
-                Medium
-              </button>
-              <button
-                class="btn btn-xs flex-1 {difficulty === 'hard' ? 'btn-error' : 'btn-outline'}"
-                onclick={() => (difficulty = 'hard')}
-                disabled={gameRunning}
-              >
-                Hard
-              </button>
-            </div>
-          </div>
-
-          <!-- Options Section -->
-          <div class="divider my-2"></div>
-          <div class="mb-2">
-            <span class="label-text font-semibold">Options</span>
-          </div>
-
-          <!-- Game Options -->
-          <div class="form-control">
-            <label class="label cursor-pointer">
-              <span class="label-text">Speed Increase (5% per hit)</span>
-              <input type="checkbox" class="checkbox" bind:checked={speedIncrease} disabled={gameRunning} />
-            </label>
-          </div>
-
-          <div class="form-control">
-            <label class="label cursor-pointer">
-              <span class="label-text">English Spin</span>
-              <input type="checkbox" class="checkbox" bind:checked={englishSpin} disabled={gameRunning} />
-            </label>
-          </div>
-
-          <div class="form-control">
-            <label class="label cursor-pointer">
-              <span class="label-text">Power-Ups</span>
-              <input type="checkbox" class="checkbox" bind:checked={powerUpsEnabled} disabled={gameRunning} />
-            </label>
-          </div>
-
-          {#if powerUpsEnabled}
-            <div class="form-control ml-6">
+            <!-- Versus Mode Toggle -->
+            <div class="form-control">
               <label class="label">
-                <span class="label-text text-sm">Power-Up Mode</span>
+                <span class="label-text font-semibold">Game Mode</span>
               </label>
-              <div class="flex flex-col gap-2">
-                <label class="label cursor-pointer justify-start gap-2">
-                  <input
-                    type="radio"
-                    name="powerUpMode"
-                    class="radio radio-sm"
-                    value="bySide"
-                    bind:group={powerUpMode}
-                    disabled={gameRunning}
-                  />
-                  <span class="label-text text-sm">By Side (helps loser)</span>
-                </label>
-                <label class="label cursor-pointer justify-start gap-2">
-                  <input
-                    type="radio"
-                    name="powerUpMode"
-                    class="radio radio-sm"
-                    value="byHit"
-                    bind:group={powerUpMode}
-                    disabled={gameRunning}
-                  />
-                  <span class="label-text text-sm">By Hit (skill-based)</span>
-                </label>
+              <div class="flex gap-2">
+                <button
+                  class="btn btn-sm flex-1 {vsMode === 'computer'
+                    ? 'btn-primary'
+                    : 'btn-outline'}"
+                  onclick={() => (vsMode = "computer")}
+                  disabled={gameRunning}
+                >
+                  vs Computer
+                </button>
+                <button
+                  class="btn btn-sm flex-1 {vsMode === 'human'
+                    ? 'btn-primary'
+                    : 'btn-outline'}"
+                  onclick={() => (vsMode = "human")}
+                  disabled={gameRunning}
+                >
+                  vs Human
+                </button>
               </div>
             </div>
 
+            <!-- Difficulty -->
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-semibold">Difficulty</span>
+              </label>
+              <div class="flex gap-2">
+                <button
+                  class="btn btn-xs flex-1 {difficulty === 'easy'
+                    ? 'btn-success'
+                    : 'btn-outline'}"
+                  onclick={() => (difficulty = "easy")}
+                  disabled={gameRunning}
+                >
+                  Easy
+                </button>
+                <button
+                  class="btn btn-xs flex-1 {difficulty === 'medium'
+                    ? 'btn-warning'
+                    : 'btn-outline'}"
+                  onclick={() => (difficulty = "medium")}
+                  disabled={gameRunning}
+                >
+                  Medium
+                </button>
+                <button
+                  class="btn btn-xs flex-1 {difficulty === 'hard'
+                    ? 'btn-error'
+                    : 'btn-outline'}"
+                  onclick={() => (difficulty = "hard")}
+                  disabled={gameRunning}
+                >
+                  Hard
+                </button>
+              </div>
+            </div>
+
+            <!-- Options Section -->
             <div class="divider my-2"></div>
-
-            <div class="form-control ml-6">
-              <label class="label">
-                <span class="label-text text-sm font-semibold">Enabled Power-Ups</span>
-              </label>
-              <div class="flex flex-col gap-2">
-                <label class="label cursor-pointer justify-start gap-2 py-1">
-                  <input
-                    type="checkbox"
-                    class="checkbox checkbox-xs"
-                    bind:checked={enabledPowerUps.freeze}
-                    disabled={gameRunning}
-                  />
-                  <div class="flex flex-col">
-                    <span class="label-text text-sm font-medium">❄️ Freeze</span>
-                    <span class="label-text text-xs opacity-70">Slows opponent's paddle</span>
-                  </div>
-                </label>
-                <label class="label cursor-pointer justify-start gap-2 py-1">
-                  <input
-                    type="checkbox"
-                    class="checkbox checkbox-xs"
-                    bind:checked={enabledPowerUps.lightning}
-                    disabled={gameRunning}
-                  />
-                  <div class="flex flex-col">
-                    <span class="label-text text-sm font-medium">⚡ Lightning</span>
-                    <span class="label-text text-xs opacity-70">Splits ball into two</span>
-                  </div>
-                </label>
-                <label class="label cursor-pointer justify-start gap-2 py-1">
-                  <input
-                    type="checkbox"
-                    class="checkbox checkbox-xs"
-                    bind:checked={enabledPowerUps.shrinker}
-                    disabled={gameRunning}
-                  />
-                  <div class="flex flex-col">
-                    <span class="label-text text-sm font-medium">🔻 Shrinker</span>
-                    <span class="label-text text-xs opacity-70">Shrinks opponent's paddle</span>
-                  </div>
-                </label>
-              </div>
+            <div class="mb-2">
+              <span class="label-text font-semibold">Options</span>
             </div>
-          {/if}
 
-          <div class="form-control">
-            <label class="label cursor-pointer">
-              <span class="label-text">Sound Effects</span>
-              <input type="checkbox" class="checkbox" bind:checked={soundEnabled} />
-            </label>
-          </div>
+            <!-- Game Options -->
+            <div class="form-control">
+              <label class="label cursor-pointer">
+                <span class="label-text">Speed Increase (5% per hit)</span>
+                <input
+                  type="checkbox"
+                  class="checkbox"
+                  bind:checked={speedIncrease}
+                  disabled={gameRunning}
+                />
+              </label>
+            </div>
 
-          <!-- Instructions -->
-          <div class="divider"></div>
-          <div>
-            <h3 class="font-semibold mb-2">How to Play:</h3>
-            {#if vsMode === "computer"}
-              <ul class="list-disc list-inside space-y-1 text-sm">
-                <li>Use <kbd class="kbd kbd-sm">↑</kbd> <kbd class="kbd kbd-sm">↓</kbd> arrow keys</li>
-                <li>Press <kbd class="kbd kbd-sm">Space</kbd> or click canvas to pause</li>
-                <li>First to 10 points wins!</li>
-                <li>Collect power-ups: ❄️ Freeze, ⚡ Split, 🔻 Shrink</li>
-              </ul>
-            {:else}
-              <ul class="list-disc list-inside space-y-1 text-sm">
-                <li>P1 (Blue): <kbd class="kbd kbd-sm">W</kbd> <kbd class="kbd kbd-sm">S</kbd></li>
-                <li>P2 (Red): <kbd class="kbd kbd-sm">↑</kbd> <kbd class="kbd kbd-sm">↓</kbd></li>
-                <li>Press <kbd class="kbd kbd-sm">Space</kbd> or click canvas to pause</li>
-                <li>First to 10 points wins!</li>
-              </ul>
+            <div class="form-control">
+              <label class="label cursor-pointer">
+                <span class="label-text">English Spin</span>
+                <input
+                  type="checkbox"
+                  class="checkbox"
+                  bind:checked={englishSpin}
+                  disabled={gameRunning}
+                />
+              </label>
+            </div>
+
+            <div class="form-control">
+              <label class="label cursor-pointer">
+                <span class="label-text">Power-Ups</span>
+                <input
+                  type="checkbox"
+                  class="checkbox"
+                  bind:checked={powerUpsEnabled}
+                  disabled={gameRunning}
+                />
+              </label>
+            </div>
+
+            {#if powerUpsEnabled}
+              <div class="form-control ml-6">
+                <label class="label">
+                  <span class="label-text text-sm">Power-Up Mode</span>
+                </label>
+                <div class="flex flex-col gap-2">
+                  <label class="label cursor-pointer justify-start gap-2">
+                    <input
+                      type="radio"
+                      name="powerUpMode"
+                      class="radio radio-sm"
+                      value="bySide"
+                      bind:group={powerUpMode}
+                      disabled={gameRunning}
+                    />
+                    <span class="label-text text-sm">By Side (helps loser)</span
+                    >
+                  </label>
+                  <label class="label cursor-pointer justify-start gap-2">
+                    <input
+                      type="radio"
+                      name="powerUpMode"
+                      class="radio radio-sm"
+                      value="byHit"
+                      bind:group={powerUpMode}
+                      disabled={gameRunning}
+                    />
+                    <span class="label-text text-sm">By Hit (skill-based)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="divider my-2"></div>
+
+              <div class="form-control ml-6">
+                <label class="label">
+                  <span class="label-text text-sm font-semibold"
+                    >Enabled Power-Ups</span
+                  >
+                </label>
+                <div class="flex flex-col gap-2">
+                  <label class="label cursor-pointer justify-start gap-2 py-1">
+                    <input
+                      type="checkbox"
+                      class="checkbox checkbox-xs"
+                      bind:checked={enabledPowerUps.freeze}
+                      disabled={gameRunning}
+                    />
+                    <div class="flex flex-col">
+                      <span class="label-text text-sm font-medium"
+                        >❄️ Freeze</span
+                      >
+                      <span class="label-text text-xs opacity-70"
+                        >Slows opponent's paddle</span
+                      >
+                    </div>
+                  </label>
+                  <label class="label cursor-pointer justify-start gap-2 py-1">
+                    <input
+                      type="checkbox"
+                      class="checkbox checkbox-xs"
+                      bind:checked={enabledPowerUps.lightning}
+                      disabled={gameRunning}
+                    />
+                    <div class="flex flex-col">
+                      <span class="label-text text-sm font-medium"
+                        >⚡ Lightning</span
+                      >
+                      <span class="label-text text-xs opacity-70"
+                        >Splits ball into two</span
+                      >
+                    </div>
+                  </label>
+                  <label class="label cursor-pointer justify-start gap-2 py-1">
+                    <input
+                      type="checkbox"
+                      class="checkbox checkbox-xs"
+                      bind:checked={enabledPowerUps.shrinker}
+                      disabled={gameRunning}
+                    />
+                    <div class="flex flex-col">
+                      <span class="label-text text-sm font-medium"
+                        >🔻 Shrinker</span
+                      >
+                      <span class="label-text text-xs opacity-70"
+                        >Shrinks opponent's paddle</span
+                      >
+                    </div>
+                  </label>
+                </div>
+              </div>
             {/if}
-          </div>
 
+            <div class="form-control">
+              <label class="label cursor-pointer">
+                <span class="label-text">Sound Effects</span>
+                <input
+                  type="checkbox"
+                  class="checkbox"
+                  bind:checked={soundEnabled}
+                />
+              </label>
+            </div>
+
+            <!-- Instructions -->
+            <div class="divider"></div>
+            <div>
+              <h3 class="font-semibold mb-2">How to Play:</h3>
+              {#if vsMode === "computer"}
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                  <li>
+                    Use <kbd class="kbd kbd-sm">↑</kbd>
+                    <kbd class="kbd kbd-sm">↓</kbd> arrow keys
+                  </li>
+                  <li>
+                    Press <kbd class="kbd kbd-sm">Space</kbd> or click canvas to
+                    pause
+                  </li>
+                  <li>First to 10 points wins!</li>
+                  <li>Collect power-ups: ❄️ Freeze, ⚡ Split, 🔻 Shrink</li>
+                </ul>
+              {:else}
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                  <li>
+                    P1 (Blue): <kbd class="kbd kbd-sm">W</kbd>
+                    <kbd class="kbd kbd-sm">S</kbd>
+                  </li>
+                  <li>
+                    P2 (Red): <kbd class="kbd kbd-sm">↑</kbd>
+                    <kbd class="kbd kbd-sm">↓</kbd>
+                  </li>
+                  <li>
+                    Press <kbd class="kbd kbd-sm">Space</kbd> or click canvas to
+                    pause
+                  </li>
+                  <li>First to 10 points wins!</li>
+                </ul>
+              {/if}
+            </div>
           </div>
         </div>
       </div>
-
     </div>
   </div>
 </div>

@@ -36,7 +36,13 @@
   })
 
   // Bullets
-  type Bullet = { x: number; y: number; width: number; height: number; fromPowerUp?: string }
+  type Bullet = {
+    x: number
+    y: number
+    width: number
+    height: number
+    fromPowerUp?: string
+  }
   let bullets = $state<Bullet[]>([])
   let bulletSpeed = $state(8)
 
@@ -72,7 +78,13 @@
   let alienBulletSpeed = $state(4)
 
   // Power-ups
-  type PowerUpType = "rapidfire" | "shield" | "spreadshot" | "laser" | "star" | "missile"
+  type PowerUpType =
+    | "rapidfire"
+    | "shield"
+    | "spreadshot"
+    | "laser"
+    | "star"
+    | "missile"
   type PowerUp = {
     x: number
     y: number
@@ -87,7 +99,9 @@
   let powerUpTotalDuration = $state(0)
   let activePowerUpEmoji = $state("")
   let queuePowerUps = $state(false)
-  let powerUpQueue = $state<Array<{type: PowerUpType, emoji: string, duration: number}>>([])
+  let powerUpQueue = $state<
+    Array<{ type: PowerUpType; emoji: string; duration: number }>
+  >([])
 
   // Laser beam state
   let laserBeamActive = $state(false)
@@ -112,7 +126,13 @@
   let fps = 0
 
   // UFO
-  let ufo = $state<{ x: number; y: number; width: number; height: number; active: boolean } | null>(null)
+  let ufo = $state<{
+    x: number
+    y: number
+    width: number
+    height: number
+    active: boolean
+  } | null>(null)
   let lastUfoSpawn = $state(0)
 
   // Shields/Bunkers
@@ -145,7 +165,15 @@
   let scorePopups = $state<ScorePopup[]>([])
 
   // Stars (background)
-  type Star = { x: number; y: number; speed: number; size: number; brightness: number; twinkleSpeed: number; twinklePhase: number }
+  type Star = {
+    x: number
+    y: number
+    speed: number
+    size: number
+    brightness: number
+    twinkleSpeed: number
+    twinklePhase: number
+  }
   let stars = $state<Star[]>([])
 
   // Muzzle flashes
@@ -257,7 +285,11 @@
     if (e.key === "ArrowDown") keys.down = false
   }
 
-  function getDifficultyMultiplier(): { speed: number; fireRate: number; health: number } {
+  function getDifficultyMultiplier(): {
+    speed: number
+    fireRate: number
+    health: number
+  } {
     switch (difficulty) {
       case "easy":
         return { speed: 0.7, fireRate: 0.5, health: 0.8 }
@@ -364,8 +396,13 @@
         // Classic formation - 4 rows x 10 columns
         for (let row = 0; row < 4; row++) {
           for (let col = 0; col < 10; col++) {
-            const alienType: AlienType = row === 0 ? "elite" : row === 1 ? "soldier" : "grunt"
-            const colors = { elite: "#ff00ff", soldier: "#00ffff", grunt: "#00ff00" }
+            const alienType: AlienType =
+              row === 0 ? "elite" : row === 1 ? "soldier" : "grunt"
+            const colors = {
+              elite: "#ff00ff",
+              soldier: "#00ffff",
+              grunt: "#00ff00",
+            }
             const healthMult = { elite: 2, soldier: 1, grunt: 1 }
             const pointsMult = { elite: 30, soldier: 20, grunt: 10 }
 
@@ -393,8 +430,13 @@
           const totalWidth = (cols - 1) * spacing + alienWidth
           const startX = (CANVAS_WIDTH - totalWidth) / 2
           for (let col = 0; col < cols; col++) {
-            const alienType: AlienType = row < 2 ? "elite" : row < 4 ? "soldier" : "grunt"
-            const colors = { elite: "#ff00ff", soldier: "#00ffff", grunt: "#00ff00" }
+            const alienType: AlienType =
+              row < 2 ? "elite" : row < 4 ? "soldier" : "grunt"
+            const colors = {
+              elite: "#ff00ff",
+              soldier: "#00ffff",
+              grunt: "#00ff00",
+            }
             const healthMult = { elite: 2, soldier: 1, grunt: 1 }
             const pointsMult = { elite: 30, soldier: 20, grunt: 10 }
 
@@ -423,8 +465,13 @@
           const totalWidth = (cols - 1) * spacing + alienWidth
           const startX = (CANVAS_WIDTH - totalWidth) / 2
           for (let col = 0; col < cols; col++) {
-            const alienType: AlienType = row < 2 ? "elite" : row < 5 ? "soldier" : "grunt"
-            const colors = { elite: "#ff00ff", soldier: "#00ffff", grunt: "#00ff00" }
+            const alienType: AlienType =
+              row < 2 ? "elite" : row < 5 ? "soldier" : "grunt"
+            const colors = {
+              elite: "#ff00ff",
+              soldier: "#00ffff",
+              grunt: "#00ff00",
+            }
             const healthMult = { elite: 2, soldier: 1, grunt: 1 }
             const pointsMult = { elite: 30, soldier: 20, grunt: 10 }
 
@@ -446,8 +493,13 @@
       } else {
         // Scattered formation
         for (let i = 0; i < 35; i++) {
-          const alienType: AlienType = i < 10 ? "elite" : i < 25 ? "soldier" : "grunt"
-          const colors = { elite: "#ff00ff", soldier: "#00ffff", grunt: "#00ff00" }
+          const alienType: AlienType =
+            i < 10 ? "elite" : i < 25 ? "soldier" : "grunt"
+          const colors = {
+            elite: "#ff00ff",
+            soldier: "#00ffff",
+            grunt: "#00ff00",
+          }
           const healthMult = { elite: 2, soldier: 1, grunt: 1 }
           const pointsMult = { elite: 30, soldier: 20, grunt: 10 }
 
@@ -478,11 +530,20 @@
       const spacing = Math.floor(totalAliens / powerUpCount)
 
       // All available power-up types
-      const allTypes: PowerUpType[] = ["shield", "missile", "spreadshot", "rapidfire", "star", "laser"]
+      const allTypes: PowerUpType[] = [
+        "shield",
+        "missile",
+        "spreadshot",
+        "rapidfire",
+        "star",
+        "laser",
+      ]
 
       for (let i = 0; i < powerUpCount; i++) {
         // Evenly distribute power-ups across aliens
-        const alienIndex = Math.floor((i * totalAliens) / powerUpCount) + Math.floor(Math.random() * spacing / 2)
+        const alienIndex =
+          Math.floor((i * totalAliens) / powerUpCount) +
+          Math.floor((Math.random() * spacing) / 2)
         powerUpDropIndices.push(Math.min(alienIndex, totalAliens - 1))
 
         // Randomly select a power-up type
@@ -628,7 +689,10 @@
 
       const alienCenterX = alien.x + alien.width / 2
       const alienCenterY = alien.y + alien.height / 2
-      const distance = Math.hypot(alienCenterX - missileX, alienCenterY - missileY)
+      const distance = Math.hypot(
+        alienCenterX - missileX,
+        alienCenterY - missileY,
+      )
 
       if (distance <= explosionRadius) {
         alien.alive = false
@@ -703,7 +767,14 @@
   let powerUpsDroppedThisLevel = $state(0)
 
   function dropPowerUp(x: number, y: number) {
-    const emojis = { rapidfire: "⚡", shield: "🛡️", spreadshot: "💥", laser: "🔫", star: "⭐", missile: "🚀" }
+    const emojis = {
+      rapidfire: "⚡",
+      shield: "🛡️",
+      spreadshot: "💥",
+      laser: "🔫",
+      star: "⭐",
+      missile: "🚀",
+    }
 
     // Check if this alien should drop a power-up
     const alienIndex = powerUpsDroppedThisLevel
@@ -740,7 +811,14 @@
     }
 
     // Determine duration and emoji
-    const emojis = { rapidfire: "⚡", shield: "🛡️", spreadshot: "💥", laser: "🔫", star: "⭐", missile: "🚀" }
+    const emojis = {
+      rapidfire: "⚡",
+      shield: "🛡️",
+      spreadshot: "💥",
+      laser: "🔫",
+      star: "⭐",
+      missile: "🚀",
+    }
     const emojiToUse = emoji || emojis[type]
     let duration: number
 
@@ -765,7 +843,12 @@
       // If currently invincible (star effect active), keep invincibility and add shooting upgrade
       if (isCurrentlyInvincible && activePowerUp === "star") {
         // Keep invincibility timer running, just add the new weapon type
-        if (type === "rapidfire" || type === "spreadshot" || type === "laser" || type === "shield") {
+        if (
+          type === "rapidfire" ||
+          type === "spreadshot" ||
+          type === "laser" ||
+          type === "shield"
+        ) {
           activePowerUp = type
           activePowerUpEmoji = emojiToUse
           powerUpTimeLeft = duration
@@ -793,7 +876,7 @@
       // If picking up invincible while having a weapon, keep weapon and add invincibility
       if (type === "star") {
         // Keep current weapon active, add invincibility on top
-        player.invincibleUntil = Date.now() + (powerUpDuration * 1000)
+        player.invincibleUntil = Date.now() + powerUpDuration * 1000
         // Boost current weapon to 3x speed
         shootCooldown = BASE_SHOOT_COOLDOWN / 3
         // activePowerUp stays as current weapon type, don't change it
@@ -810,7 +893,7 @@
     powerUpTotalDuration = duration
 
     if (type === "star") {
-      player.invincibleUntil = Date.now() + (powerUpDuration * 1000)
+      player.invincibleUntil = Date.now() + powerUpDuration * 1000
       shootCooldown = BASE_SHOOT_COOLDOWN / 3 // 3x speed for invincible
     }
 
@@ -879,7 +962,7 @@
 
     // Apply power-up effects
     if (nextPowerUp.type === "star") {
-      player.invincibleUntil = Date.now() + (powerUpDuration * 1000)
+      player.invincibleUntil = Date.now() + powerUpDuration * 1000
       shootCooldown = BASE_SHOOT_COOLDOWN / 3
     } else if (nextPowerUp.type === "rapidfire") {
       shootCooldown = BASE_SHOOT_COOLDOWN / 3
@@ -966,7 +1049,9 @@
 
         // Log performance warnings
         if (fps < 30) {
-          console.warn(`Low FPS detected: ${fps} fps, Particles: ${particles.length}, Aliens: ${aliens.filter(a => a.alive).length}, Bullets: ${bullets.length}, Alien Bullets: ${alienBullets.length}`)
+          console.warn(
+            `Low FPS detected: ${fps} fps, Particles: ${particles.length}, Aliens: ${aliens.filter((a) => a.alive).length}, Bullets: ${bullets.length}, Alien Bullets: ${alienBullets.length}`,
+          )
         }
       }
     }
@@ -1088,12 +1173,26 @@
             if (combo > 5) {
               const bonus = combo * 2
               score += bonus
-              addScorePopup(alien.x + alien.width / 2, alien.y, alien.points + bonus, "#ffff00")
+              addScorePopup(
+                alien.x + alien.width / 2,
+                alien.y,
+                alien.points + bonus,
+                "#ffff00",
+              )
             } else {
-              addScorePopup(alien.x + alien.width / 2, alien.y, alien.points, alien.color)
+              addScorePopup(
+                alien.x + alien.width / 2,
+                alien.y,
+                alien.points,
+                alien.color,
+              )
             }
 
-            createExplosion(alien.x + alien.width / 2, alien.y + alien.height / 2, alien.color)
+            createExplosion(
+              alien.x + alien.width / 2,
+              alien.y + alien.height / 2,
+              alien.color,
+            )
             dropPowerUp(alien.x, alien.y)
             if (soundEnabled) playExplosionSound()
           }
@@ -1107,7 +1206,11 @@
         const ufoPoints = 100
         score += ufoPoints
         addScorePopup(ufo.x + ufo.width / 2, ufo.y, ufoPoints, "#ff00ff")
-        createExplosion(ufo.x + ufo.width / 2, ufo.y + ufo.height / 2, "#ff00ff")
+        createExplosion(
+          ufo.x + ufo.width / 2,
+          ufo.y + ufo.height / 2,
+          "#ff00ff",
+        )
         ufo = null
         if (soundEnabled) playExplosionSound()
         return false
@@ -1181,12 +1284,26 @@
               if (combo > 5) {
                 const bonus = combo * 2
                 score += bonus
-                addScorePopup(alien.x + alien.width / 2, alien.y, alien.points + bonus, "#ffff00")
+                addScorePopup(
+                  alien.x + alien.width / 2,
+                  alien.y,
+                  alien.points + bonus,
+                  "#ffff00",
+                )
               } else {
-                addScorePopup(alien.x + alien.width / 2, alien.y, alien.points, alien.color)
+                addScorePopup(
+                  alien.x + alien.width / 2,
+                  alien.y,
+                  alien.points,
+                  alien.color,
+                )
               }
 
-              createExplosion(alien.x + alien.width / 2, alien.y + alien.height / 2, alien.color)
+              createExplosion(
+                alien.x + alien.width / 2,
+                alien.y + alien.height / 2,
+                alien.color,
+              )
               dropPowerUp(alien.x, alien.y)
               if (soundEnabled) playExplosionSound()
             }
@@ -1198,7 +1315,11 @@
           const ufoPoints = 100
           score += ufoPoints
           addScorePopup(ufo.x + ufo.width / 2, ufo.y, ufoPoints, "#ff00ff")
-          createExplosion(ufo.x + ufo.width / 2, ufo.y + ufo.height / 2, "#ff00ff")
+          createExplosion(
+            ufo.x + ufo.width / 2,
+            ufo.y + ufo.height / 2,
+            "#ff00ff",
+          )
           ufo = null
           if (soundEnabled) playExplosionSound()
         }
@@ -1247,7 +1368,11 @@
         lives--
         combo = 0 // Reset combo on hit
         player.invincibleUntil = now + 2000 // 2 seconds invincibility
-        createExplosion(player.x + player.width / 2, player.y + player.height / 2, "#ff0000")
+        createExplosion(
+          player.x + player.width / 2,
+          player.y + player.height / 2,
+          "#ff0000",
+        )
 
         if (lives <= 0) {
           gameOver = true
@@ -1270,7 +1395,10 @@
           if (score > highScore) {
             highScore = score
             if (typeof localStorage !== "undefined") {
-              localStorage.setItem("spaceInvadersHighScore", highScore.toString())
+              localStorage.setItem(
+                "spaceInvadersHighScore",
+                highScore.toString(),
+              )
             }
           }
         }
@@ -1300,7 +1428,11 @@
 
     // Move aliens
     const aliveAliens = aliens.filter((a) => a.alive)
-    if (aliveAliens.length === 0 && !showLevelTransition && !levelTransitionTriggered) {
+    if (
+      aliveAliens.length === 0 &&
+      !showLevelTransition &&
+      !levelTransitionTriggered
+    ) {
       console.log("Level complete detected, alive aliens:", aliveAliens.length)
       // Level complete - immediately stop game and start transition
       levelTransitionTriggered = true
@@ -1359,7 +1491,10 @@
 
       // Gradually increase speed but cap it
       const diffMult = getDifficultyMultiplier()
-      alienSpeed = Math.min(alienSpeed + 0.2 * diffMult.speed, 5 * diffMult.speed)
+      alienSpeed = Math.min(
+        alienSpeed + 0.2 * diffMult.speed,
+        5 * diffMult.speed,
+      )
 
       // Reset direction for new wave
       alienDirection = 1
@@ -1404,7 +1539,10 @@
           if (score > highScore) {
             highScore = score
             if (typeof localStorage !== "undefined") {
-              localStorage.setItem("spaceInvadersHighScore", highScore.toString())
+              localStorage.setItem(
+                "spaceInvadersHighScore",
+                highScore.toString(),
+              )
             }
           }
         }
@@ -1444,7 +1582,11 @@
       ctx.fillStyle = "#00ff00"
       ctx.font = "48px monospace"
       ctx.textAlign = "center"
-      ctx.fillText("👾 SPACE INVADERS 👾", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 50)
+      ctx.fillText(
+        "👾 SPACE INVADERS 👾",
+        CANVAS_WIDTH / 2,
+        CANVAS_HEIGHT / 2 - 50,
+      )
       ctx.font = "24px monospace"
       ctx.fillText(
         "Click START to begin",
@@ -1499,7 +1641,7 @@
       // Calculate progress for circular countdown
       const progress = powerUpTimeLeft / powerUpTotalDuration
       const startAngle = -Math.PI / 2 // Start at top
-      const endAngle = startAngle + (2 * Math.PI * progress)
+      const endAngle = startAngle + 2 * Math.PI * progress
 
       // Draw circular progress ring
       ctx.strokeStyle = "#ffff00"
@@ -1526,7 +1668,7 @@
 
       for (let i = 0; i < powerUpQueue.length; i++) {
         const queueItem = powerUpQueue[i]
-        const x = queueStartX - (i * (boxSize + spacing))
+        const x = queueStartX - i * (boxSize + spacing)
         const y = queueStartY
 
         // Draw semi-transparent box
@@ -1603,7 +1745,11 @@
     ctx.font = "20px monospace"
     ctx.textAlign = "center"
     for (let powerUp of powerUps) {
-      ctx.fillText(powerUp.emoji, powerUp.x + powerUp.width / 2, powerUp.y + powerUp.height)
+      ctx.fillText(
+        powerUp.emoji,
+        powerUp.x + powerUp.width / 2,
+        powerUp.y + powerUp.height,
+      )
     }
 
     // Draw UFO
@@ -1629,7 +1775,11 @@
           ctx.fillStyle = "#ff0000"
           ctx.font = "20px monospace"
           ctx.textAlign = "center"
-          ctx.fillText("BOSS", alien.x + alien.width / 2, alien.y + alien.height / 2 + 7)
+          ctx.fillText(
+            "BOSS",
+            alien.x + alien.width / 2,
+            alien.y + alien.height / 2 + 7,
+          )
 
           // Health bar
           const healthPercent = alien.health / alien.maxHealth
@@ -1660,7 +1810,11 @@
             ctx.fillStyle = "#ffffff"
             ctx.font = "10px monospace"
             ctx.textAlign = "center"
-            ctx.fillText(alien.health.toString(), alien.x + alien.width / 2, alien.y - 5)
+            ctx.fillText(
+              alien.health.toString(),
+              alien.x + alien.width / 2,
+              alien.y - 5,
+            )
           }
         }
       }
@@ -1720,7 +1874,11 @@
       ctx.fillStyle = "#00ffff"
       ctx.font = "16px monospace"
       ctx.textAlign = "right"
-      ctx.fillText(`${powerUpNames[activePowerUp]}: ${powerUpTimeLeft.toFixed(1)}s`, CANVAS_WIDTH - 20, 55)
+      ctx.fillText(
+        `${powerUpNames[activePowerUp]}: ${powerUpTimeLeft.toFixed(1)}s`,
+        CANVAS_WIDTH - 20,
+        55,
+      )
     }
 
     // Draw missile counter (more visible)
@@ -1932,10 +2090,16 @@
 <div class="h-[calc(100vh-2rem)] p-4 flex flex-col">
   <!-- Header with title and game controls -->
   <div class="flex justify-between items-center mb-4">
-    <h1 class="text-4xl font-bold" style="color: #660460;">👾 Space Invaders</h1>
+    <h1 class="text-4xl font-bold" style="color: #660460;">
+      👾 Space Invaders
+    </h1>
     <div class="flex gap-2">
       {#if !gameStarted}
-        <button class="btn text-white border-0 hover:opacity-90" style="background-color: #660460;" onclick={initGame}>
+        <button
+          class="btn text-white border-0 hover:opacity-90"
+          style="background-color: #660460;"
+          onclick={initGame}
+        >
           Start Game
         </button>
       {:else if !gameRunning && !showLevelTransition && !gameOver}
@@ -1943,17 +2107,23 @@
           Resume
         </button>
       {:else if gameOver}
-        <button class="btn text-white border-0 hover:opacity-90" style="background-color: #660460;" onclick={initGame}>
+        <button
+          class="btn text-white border-0 hover:opacity-90"
+          style="background-color: #660460;"
+          onclick={initGame}
+        >
           Play Again
         </button>
       {:else if gameRunning && !gameOver}
-        <button class="btn btn-warning" onclick={() => (gameRunning = false)} disabled={showLevelTransition}>
+        <button
+          class="btn btn-warning"
+          onclick={() => (gameRunning = false)}
+          disabled={showLevelTransition}
+        >
           Pause
         </button>
       {/if}
-      <button class="btn btn-outline" onclick={resetGame}>
-        Reset
-      </button>
+      <button class="btn btn-outline" onclick={resetGame}> Reset </button>
     </div>
   </div>
 
@@ -1977,22 +2147,32 @@
       <!-- Stats Container -->
       <div class="card-standard">
         <div class="card-body p-4">
-          <div class="stats stats-vertical lg:stats-horizontal shadow w-full overflow-visible flex-wrap">
+          <div
+            class="stats stats-vertical lg:stats-horizontal shadow w-full overflow-visible flex-wrap"
+          >
             <div class="stat py-2 px-2 min-w-0">
               <div class="stat-title text-xs">Score</div>
-              <div class="stat-value text-lg lg:text-xl text-primary">{score}</div>
+              <div class="stat-value text-lg lg:text-xl text-primary">
+                {score}
+              </div>
             </div>
             <div class="stat py-2 px-2 min-w-0">
               <div class="stat-title text-xs">High Score</div>
-              <div class="stat-value text-lg lg:text-xl text-secondary">{highScore}</div>
+              <div class="stat-value text-lg lg:text-xl text-secondary">
+                {highScore}
+              </div>
             </div>
             <div class="stat py-2 px-2 min-w-0">
               <div class="stat-title text-xs">Lives</div>
-              <div class="stat-value text-lg lg:text-xl text-error">{lives}</div>
+              <div class="stat-value text-lg lg:text-xl text-error">
+                {lives}
+              </div>
             </div>
             <div class="stat py-2 px-2 min-w-0">
               <div class="stat-title text-xs">Level</div>
-              <div class="stat-value text-lg lg:text-xl text-accent">{level}</div>
+              <div class="stat-value text-lg lg:text-xl text-accent">
+                {level}
+              </div>
             </div>
           </div>
 
@@ -2017,7 +2197,9 @@
 
           {#if missileAvailable > 0}
             <div class="alert alert-error mt-2">
-              <span class="font-bold text-lg">🚀 Missiles: {missileAvailable} (Press ↑)</span>
+              <span class="font-bold text-lg"
+                >🚀 Missiles: {missileAvailable} (Press ↑)</span
+              >
             </div>
           {/if}
         </div>
@@ -2036,22 +2218,28 @@
               </div>
               <div class="flex gap-2">
                 <button
-                  class="btn btn-xs flex-1 {difficulty === 'easy' ? 'btn-success' : 'btn-outline'}"
-                  onclick={() => (difficulty = 'easy')}
+                  class="btn btn-xs flex-1 {difficulty === 'easy'
+                    ? 'btn-success'
+                    : 'btn-outline'}"
+                  onclick={() => (difficulty = "easy")}
                   disabled={gameRunning || gameOver}
                 >
                   Easy
                 </button>
                 <button
-                  class="btn btn-xs flex-1 {difficulty === 'normal' ? 'btn-warning' : 'btn-outline'}"
-                  onclick={() => (difficulty = 'normal')}
+                  class="btn btn-xs flex-1 {difficulty === 'normal'
+                    ? 'btn-warning'
+                    : 'btn-outline'}"
+                  onclick={() => (difficulty = "normal")}
                   disabled={gameRunning || gameOver}
                 >
                   Normal
                 </button>
                 <button
-                  class="btn btn-xs flex-1 {difficulty === 'hard' ? 'btn-error' : 'btn-outline'}"
-                  onclick={() => (difficulty = 'hard')}
+                  class="btn btn-xs flex-1 {difficulty === 'hard'
+                    ? 'btn-error'
+                    : 'btn-outline'}"
+                  onclick={() => (difficulty = "hard")}
                   disabled={gameRunning || gameOver}
                 >
                   Hard
@@ -2063,7 +2251,11 @@
             <div class="form-control">
               <label class="label cursor-pointer">
                 <span class="label-text">Sound Effects</span>
-                <input type="checkbox" class="checkbox" bind:checked={soundEnabled} />
+                <input
+                  type="checkbox"
+                  class="checkbox"
+                  bind:checked={soundEnabled}
+                />
               </label>
             </div>
 
@@ -2071,14 +2263,20 @@
             <div class="form-control">
               <label class="label cursor-pointer">
                 <span class="label-text">Queue Power-ups</span>
-                <input type="checkbox" class="checkbox" bind:checked={queuePowerUps} />
+                <input
+                  type="checkbox"
+                  class="checkbox"
+                  bind:checked={queuePowerUps}
+                />
               </label>
             </div>
 
             <!-- Power-Up Count Slider -->
             <div class="form-control">
               <div class="label">
-                <span class="label-text font-semibold">Power-ups per Level: {powerUpCount}</span>
+                <span class="label-text font-semibold"
+                  >Power-ups per Level: {powerUpCount}</span
+                >
               </div>
               <input
                 type="range"
@@ -2098,7 +2296,9 @@
             <!-- Lives Count Slider -->
             <div class="form-control">
               <div class="label">
-                <span class="label-text font-semibold">Starting Lives: {startingLives}</span>
+                <span class="label-text font-semibold"
+                  >Starting Lives: {startingLives}</span
+                >
               </div>
               <input
                 type="range"
@@ -2118,7 +2318,9 @@
             <!-- Power-Up Duration Slider -->
             <div class="form-control">
               <div class="label">
-                <span class="label-text font-semibold">Power-up Duration: {powerUpDuration}s</span>
+                <span class="label-text font-semibold"
+                  >Power-up Duration: {powerUpDuration}s</span
+                >
               </div>
               <input
                 type="range"
@@ -2146,7 +2348,9 @@
                 </li>
                 <li>Press <kbd class="kbd kbd-sm">SPACE</kbd> to shoot</li>
                 <li>Press <kbd class="kbd kbd-sm">↑</kbd> to fire missile</li>
-                <li>Press <kbd class="kbd kbd-sm">↓</kbd> to deploy next queued power-up</li>
+                <li>
+                  Press <kbd class="kbd kbd-sm">↓</kbd> to deploy next queued power-up
+                </li>
                 <li>Destroy all aliens to advance levels</li>
                 <li>Avoid alien bullets and use shields</li>
                 <li>Collect power-ups for special abilities</li>
@@ -2182,7 +2386,6 @@
           </div>
         </div>
       </div>
-
     </div>
   </div>
 </div>

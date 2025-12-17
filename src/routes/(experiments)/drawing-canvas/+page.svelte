@@ -111,7 +111,9 @@
 </svelte:head>
 
 <div class="container mx-auto max-w-6xl">
-  <h1 class="mb-6 text-3xl font-bold" style="color: #660460;">🎨 Drawing Canvas</h1>
+  <h1 class="mb-6 text-3xl font-bold" style="color: #660460;">
+    🎨 Drawing Canvas
+  </h1>
 
   <div class="flex flex-col lg:flex-row gap-6">
     <!-- Tools Panel -->

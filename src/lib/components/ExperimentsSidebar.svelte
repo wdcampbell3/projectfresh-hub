@@ -44,7 +44,7 @@
         <span class="text-xl font-bold">Experiments</span>
       </div>
     </div>
-    <div class="{$hideSidebar ? '' : 'p-4'}">
+    <div class={$hideSidebar ? "" : "p-4"}>
       <slot />
     </div>
   </div>
@@ -54,7 +54,9 @@
       aria-label="close sidebar"
       class="drawer-overlay"
     ></label>
-    <aside class="min-h-screen w-64 bg-base-200 text-base-content sidebar-border">
+    <aside
+      class="min-h-screen w-64 bg-base-200 text-base-content sidebar-border"
+    >
       <div class="p-4">
         <h2 class="text-2xl font-bold mb-6">🧪 Experiments</h2>
 

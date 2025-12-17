@@ -3,7 +3,14 @@
 
   type Position = { x: number; y: number }
   type Direction = "UP" | "DOWN" | "LEFT" | "RIGHT"
-  type PowerUpType = "invincible" | "diet" | "binge" | "turtle" | "ruler" | "lightning" | "cow"
+  type PowerUpType =
+    | "invincible"
+    | "diet"
+    | "binge"
+    | "turtle"
+    | "ruler"
+    | "lightning"
+    | "cow"
   type PowerUp = { x: number; y: number; type: PowerUpType; emoji: string }
 
   // Game settings
@@ -18,12 +25,12 @@
     invincible: true,
     diet: true,
     binge: true,
-    turtle: true
+    turtle: true,
   })
   let enabledObstacles = $state({
     ruler: true,
     lightning: true,
-    cow: true
+    cow: true,
   })
 
   // Game state
@@ -61,44 +68,61 @@
   // Grid dimensions based on size setting (more cells = smaller cell size)
   function getGridWidth(): number {
     switch (gridSize) {
-      case "small": return 25  // Fewer cells (larger cells: 32px)
-      case "medium": return 40 // Medium cells (20px)
-      case "large": return 50  // More cells (smaller cells: 16px)
+      case "small":
+        return 25 // Fewer cells (larger cells: 32px)
+      case "medium":
+        return 40 // Medium cells (20px)
+      case "large":
+        return 50 // More cells (smaller cells: 16px)
     }
   }
 
   function getGridHeight(): number {
     switch (gridSize) {
-      case "small": return 19  // Fewer cells (larger cells: 32px)
-      case "medium": return 30 // Medium cells (~20px)
-      case "large": return 38  // More cells (smaller cells: 16px)
+      case "small":
+        return 19 // Fewer cells (larger cells: 32px)
+      case "medium":
+        return 30 // Medium cells (~20px)
+      case "large":
+        return 38 // More cells (smaller cells: 16px)
     }
   }
 
   function getCellSize(): number {
     switch (gridSize) {
-      case "small": return 32   // Larger cells, fewer of them
-      case "medium": return 20  // Medium cells
-      case "large": return 16   // Smaller cells, more of them
+      case "small":
+        return 32 // Larger cells, fewer of them
+      case "medium":
+        return 20 // Medium cells
+      case "large":
+        return 16 // Smaller cells, more of them
     }
   }
 
   // Speed settings
   function getInitialSpeed(): number {
     switch (gameSpeed) {
-      case "slow": return 250
-      case "normal": return 150
-      case "fast": return 100
-      case "insane": return 50
+      case "slow":
+        return 250
+      case "normal":
+        return 150
+      case "fast":
+        return 100
+      case "insane":
+        return 50
     }
   }
 
   function getSpeedIncrement(): number {
     switch (gameSpeed) {
-      case "slow": return 8
-      case "normal": return 5
-      case "fast": return 3
-      case "insane": return 1
+      case "slow":
+        return 8
+      case "normal":
+        return 5
+      case "fast":
+        return 3
+      case "insane":
+        return 1
     }
   }
 
@@ -110,7 +134,7 @@
     "#00FF00", // Green
     "#0000FF", // Blue
     "#4B0082", // Indigo
-    "#9400D3"  // Violet
+    "#9400D3", // Violet
   ]
 
   // Get rainbow color for segment based on position
@@ -171,22 +195,22 @@
         const stops = []
         for (let i = 0; i <= 6; i++) {
           const position = i * (100 / 6)
-          const hue = (centerHue + (i * 270 / 6)) % 360
+          const hue = (centerHue + (i * 270) / 6) % 360
           // Brighter colors (60% lightness instead of 25%)
           stops.push(`hsl(${hue}, 85%, 45%) ${position}%`)
         }
 
-        return `radial-gradient(circle at center, ${stops.join(', ')})`
+        return `radial-gradient(circle at center, ${stops.join(", ")})`
       case "radial":
         // Gray gradient with morphing effect - dramatic shifts between dark/light
-        const radialMorph = Math.sin(rainbowZoom * Math.PI / 50) * 0.5 + 0.5 // 0 to 1
+        const radialMorph = Math.sin((rainbowZoom * Math.PI) / 50) * 0.5 + 0.5 // 0 to 1
         const centerBrightness = Math.floor(5 + radialMorph * 55) // 5-60 (wider range)
         const edgeBrightness = Math.floor(30 + radialMorph * 70) // 30-100 (wider range)
         // Ellipse size variation ±40% and center position ±20% for more dramatic movement
-        return `radial-gradient(ellipse ${Math.floor(100 + Math.sin(rainbowZoom * Math.PI / 33) * 40)}% ${Math.floor(100 + Math.cos(rainbowZoom * Math.PI / 33) * 40)}% at ${50 + Math.sin(rainbowZoom * Math.PI / 40) * 20}% ${50 + Math.cos(rainbowZoom * Math.PI / 40) * 20}%, rgb(${centerBrightness}, ${centerBrightness}, ${centerBrightness}) 0%, rgb(${edgeBrightness}, ${edgeBrightness}, ${edgeBrightness}) 100%)`
+        return `radial-gradient(ellipse ${Math.floor(100 + Math.sin((rainbowZoom * Math.PI) / 33) * 40)}% ${Math.floor(100 + Math.cos((rainbowZoom * Math.PI) / 33) * 40)}% at ${50 + Math.sin((rainbowZoom * Math.PI) / 40) * 20}% ${50 + Math.cos((rainbowZoom * Math.PI) / 40) * 20}%, rgb(${centerBrightness}, ${centerBrightness}, ${centerBrightness}) 0%, rgb(${edgeBrightness}, ${edgeBrightness}, ${edgeBrightness}) 100%)`
       case "deepspace":
         // Deep space gradient with continuous slow rotation and morphing colors
-        const spaceMorph = Math.sin(rainbowZoom * Math.PI / 50) * 0.5 + 0.5 // 0 to 1
+        const spaceMorph = Math.sin((rainbowZoom * Math.PI) / 50) * 0.5 + 0.5 // 0 to 1
         const angle = (rainbowZoom * 1.8) % 360 // Continuous 360° rotation, slower speed
         const blue1 = Math.floor(0 + spaceMorph * 20) // 0-20
         const blue2 = Math.floor(51 + spaceMorph * 30) // 51-81
@@ -203,7 +227,22 @@
   }
 
   // Random animal emojis for food
-  const animalEmojis = ["🐭", "🐹", "🐰", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🐔", "🐧", "🐦", "🐤"]
+  const animalEmojis = [
+    "🐭",
+    "🐹",
+    "🐰",
+    "🐨",
+    "🐯",
+    "🦁",
+    "🐮",
+    "🐷",
+    "🐸",
+    "🐵",
+    "🐔",
+    "🐧",
+    "🐦",
+    "🐤",
+  ]
 
   function getRandomAnimal(): string {
     return animalEmojis[Math.floor(Math.random() * animalEmojis.length)]
@@ -219,7 +258,9 @@
         y: Math.floor(Math.random() * height),
       }
     } while (
-      worm.some((segment) => segment.x === newFood.x && segment.y === newFood.y) ||
+      worm.some(
+        (segment) => segment.x === newFood.x && segment.y === newFood.y,
+      ) ||
       powerUps.some((pu) => pu.x === newFood.x && pu.y === newFood.y)
     )
     food = [newFood]
@@ -270,7 +311,7 @@
       turtle: "🐢",
       ruler: "📏",
       lightning: "⚡",
-      cow: "🐮"
+      cow: "🐮",
     }
 
     const width = getGridWidth()
@@ -286,8 +327,8 @@
     } while (
       attempts < 50 &&
       (worm.some((segment) => segment.x === pos.x && segment.y === pos.y) ||
-       food.some((f) => f.x === pos.x && f.y === pos.y) ||
-       powerUps.some((pu) => pu.x === pos.x && pu.y === pos.y))
+        food.some((f) => f.x === pos.x && f.y === pos.y) ||
+        powerUps.some((pu) => pu.x === pos.x && pu.y === pos.y))
     )
 
     if (attempts < 50) {
@@ -340,8 +381,10 @@
             attempts++
           } while (
             attempts < 50 &&
-            (worm.some((segment) => segment.x === newFood.x && segment.y === newFood.y) ||
-             food.some((f) => f.x === newFood.x && f.y === newFood.y))
+            (worm.some(
+              (segment) => segment.x === newFood.x && segment.y === newFood.y,
+            ) ||
+              food.some((f) => f.x === newFood.x && f.y === newFood.y))
           )
           if (attempts < 50) {
             food.push(newFood)
@@ -438,7 +481,9 @@
     // Check self collision (unless invincible)
     if (invincibleUntil < now) {
       if (
-        worm.some((segment) => segment.x === newHead.x && segment.y === newHead.y)
+        worm.some(
+          (segment) => segment.x === newHead.x && segment.y === newHead.y,
+        )
       ) {
         endGame()
         return
@@ -461,7 +506,10 @@
           speed -= getSpeedIncrement()
           clearInterval(gameInterval)
           // Apply speed modifier to maintain turtle/lightning effects
-          gameInterval = setInterval(moveWorm, Math.floor(speed / speedModifier))
+          gameInterval = setInterval(
+            moveWorm,
+            Math.floor(speed / speedModifier),
+          )
         }
       }
     }
@@ -549,25 +597,29 @@
       case "ArrowUp":
       case "w":
       case "W":
-        if (nextDirection !== "DOWN" && nextDirection !== "UP") nextDirection = "UP"
+        if (nextDirection !== "DOWN" && nextDirection !== "UP")
+          nextDirection = "UP"
         event.preventDefault()
         break
       case "ArrowDown":
       case "s":
       case "S":
-        if (nextDirection !== "UP" && nextDirection !== "DOWN") nextDirection = "DOWN"
+        if (nextDirection !== "UP" && nextDirection !== "DOWN")
+          nextDirection = "DOWN"
         event.preventDefault()
         break
       case "ArrowLeft":
       case "a":
       case "A":
-        if (nextDirection !== "RIGHT" && nextDirection !== "LEFT") nextDirection = "LEFT"
+        if (nextDirection !== "RIGHT" && nextDirection !== "LEFT")
+          nextDirection = "LEFT"
         event.preventDefault()
         break
       case "ArrowRight":
       case "d":
       case "D":
-        if (nextDirection !== "LEFT" && nextDirection !== "RIGHT") nextDirection = "RIGHT"
+        if (nextDirection !== "LEFT" && nextDirection !== "RIGHT")
+          nextDirection = "RIGHT"
         event.preventDefault()
         break
     }
@@ -584,7 +636,10 @@
       oscillator.frequency.value = 440
       oscillator.type = "sine"
       gainNode.gain.setValueAtTime(0.1, audioContext.currentTime)
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1)
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.01,
+        audioContext.currentTime + 0.1,
+      )
       oscillator.start(audioContext.currentTime)
       oscillator.stop(audioContext.currentTime + 0.1)
     } catch (e) {}
@@ -601,7 +656,10 @@
       oscillator.frequency.value = 880
       oscillator.type = "square"
       gainNode.gain.setValueAtTime(0.1, audioContext.currentTime)
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2)
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.01,
+        audioContext.currentTime + 0.2,
+      )
       oscillator.start(audioContext.currentTime)
       oscillator.stop(audioContext.currentTime + 0.2)
     } catch (e) {}
@@ -644,17 +702,17 @@
     <h1 class="text-4xl font-bold" style="color: #660460;">🐍 Snake-adelic</h1>
     <div class="flex gap-2">
       {#if !gameStarted}
-        <button class="btn text-white border-0 hover:opacity-90" style="background-color: #660460;" onclick={startGame}>
+        <button
+          class="btn text-white border-0 hover:opacity-90"
+          style="background-color: #660460;"
+          onclick={startGame}
+        >
           {gameOver ? "Play Again" : "Start Game"}
         </button>
       {:else}
-        <button class="btn btn-warning" onclick={endGame}>
-          End Game
-        </button>
+        <button class="btn btn-warning" onclick={endGame}> End Game </button>
       {/if}
-      <button class="btn btn-outline" onclick={resetGame}>
-        Reset
-      </button>
+      <button class="btn btn-outline" onclick={resetGame}> Reset </button>
     </div>
   </div>
 
@@ -693,11 +751,13 @@
                 class="cell"
                 style="
                   background: {isWorm
-                    ? getSegmentColor(wormSegmentIndex, worm.length)
-                    : isFood
-                      ? getFoodColor()
-                      : getCellBackground(isWorm, isFood)};
-                  border-radius: {showGridDots && !isWorm && !isFood ? '50%' : '2px'};
+                  ? getSegmentColor(wormSegmentIndex, worm.length)
+                  : isFood
+                    ? getFoodColor()
+                    : getCellBackground(isWorm, isFood)};
+                  border-radius: {showGridDots && !isWorm && !isFood
+                  ? '50%'
+                  : '2px'};
                   display: flex;
                   align-items: center;
                   justify-content: center;
@@ -722,7 +782,9 @@
               <div class="text-center">
                 <h2 class="text-3xl font-bold text-error mb-4">Game Over!</h2>
                 <p class="text-xl mb-6">Final Score: {score}</p>
-                <button onclick={startGame} class="btn btn-primary">Play Again</button>
+                <button onclick={startGame} class="btn btn-primary"
+                  >Play Again</button
+                >
               </div>
             </div>
           {/if}
@@ -735,14 +797,20 @@
       <!-- Stats Container -->
       <div class="card-standard">
         <div class="card-body p-4">
-          <div class="stats stats-vertical lg:stats-horizontal shadow w-full overflow-visible flex-wrap">
+          <div
+            class="stats stats-vertical lg:stats-horizontal shadow w-full overflow-visible flex-wrap"
+          >
             <div class="stat py-2 px-2 min-w-0">
               <div class="stat-title text-xs">Score</div>
-              <div class="stat-value text-lg lg:text-xl text-primary">{score}</div>
+              <div class="stat-value text-lg lg:text-xl text-primary">
+                {score}
+              </div>
             </div>
             <div class="stat py-2 px-2 min-w-0">
               <div class="stat-title text-xs">High Score</div>
-              <div class="stat-value text-lg lg:text-xl text-secondary">{highScore}</div>
+              <div class="stat-value text-lg lg:text-xl text-secondary">
+                {highScore}
+              </div>
             </div>
           </div>
         </div>
@@ -761,29 +829,37 @@
               </label>
               <div class="flex gap-2">
                 <button
-                  class="btn btn-xs flex-1 {gameSpeed === 'slow' ? 'btn-success' : 'btn-outline'}"
-                  onclick={() => (gameSpeed = 'slow')}
+                  class="btn btn-xs flex-1 {gameSpeed === 'slow'
+                    ? 'btn-success'
+                    : 'btn-outline'}"
+                  onclick={() => (gameSpeed = "slow")}
                   disabled={gameStarted}
                 >
                   Slow
                 </button>
                 <button
-                  class="btn btn-xs flex-1 {gameSpeed === 'normal' ? 'btn-warning' : 'btn-outline'}"
-                  onclick={() => (gameSpeed = 'normal')}
+                  class="btn btn-xs flex-1 {gameSpeed === 'normal'
+                    ? 'btn-warning'
+                    : 'btn-outline'}"
+                  onclick={() => (gameSpeed = "normal")}
                   disabled={gameStarted}
                 >
                   Normal
                 </button>
                 <button
-                  class="btn btn-xs flex-1 {gameSpeed === 'fast' ? 'btn-error' : 'btn-outline'}"
-                  onclick={() => (gameSpeed = 'fast')}
+                  class="btn btn-xs flex-1 {gameSpeed === 'fast'
+                    ? 'btn-error'
+                    : 'btn-outline'}"
+                  onclick={() => (gameSpeed = "fast")}
                   disabled={gameStarted}
                 >
                   Fast
                 </button>
                 <button
-                  class="btn btn-xs flex-1 {gameSpeed === 'insane' ? 'btn-error' : 'btn-outline'}"
-                  onclick={() => (gameSpeed = 'insane')}
+                  class="btn btn-xs flex-1 {gameSpeed === 'insane'
+                    ? 'btn-error'
+                    : 'btn-outline'}"
+                  onclick={() => (gameSpeed = "insane")}
                   disabled={gameStarted}
                 >
                   Insane
@@ -798,22 +874,28 @@
               </label>
               <div class="flex gap-2">
                 <button
-                  class="btn btn-xs flex-1 {gridSize === 'small' ? 'btn-success' : 'btn-outline'}"
-                  onclick={() => (gridSize = 'small')}
+                  class="btn btn-xs flex-1 {gridSize === 'small'
+                    ? 'btn-success'
+                    : 'btn-outline'}"
+                  onclick={() => (gridSize = "small")}
                   disabled={gameStarted}
                 >
                   Small
                 </button>
                 <button
-                  class="btn btn-xs flex-1 {gridSize === 'medium' ? 'btn-warning' : 'btn-outline'}"
-                  onclick={() => (gridSize = 'medium')}
+                  class="btn btn-xs flex-1 {gridSize === 'medium'
+                    ? 'btn-warning'
+                    : 'btn-outline'}"
+                  onclick={() => (gridSize = "medium")}
                   disabled={gameStarted}
                 >
                   Medium
                 </button>
                 <button
-                  class="btn btn-xs flex-1 {gridSize === 'large' ? 'btn-error' : 'btn-outline'}"
-                  onclick={() => (gridSize = 'large')}
+                  class="btn btn-xs flex-1 {gridSize === 'large'
+                    ? 'btn-error'
+                    : 'btn-outline'}"
+                  onclick={() => (gridSize = "large")}
                   disabled={gameStarted}
                 >
                   Large
@@ -835,7 +917,10 @@
                   type="checkbox"
                   class="checkbox"
                   checked={wallMode === "wraparound"}
-                  onchange={(e: Event) => (wallMode = (e.currentTarget as HTMLInputElement).checked ? "wraparound" : "solid")}
+                  onchange={(e: Event) =>
+                    (wallMode = (e.currentTarget as HTMLInputElement).checked
+                      ? "wraparound"
+                      : "solid")}
                   disabled={gameStarted}
                 />
               </label>
@@ -872,7 +957,11 @@
             <div class="form-control">
               <label class="label cursor-pointer">
                 <span class="label-text">Sound Effects</span>
-                <input type="checkbox" class="checkbox" bind:checked={soundEnabled} />
+                <input
+                  type="checkbox"
+                  class="checkbox"
+                  bind:checked={soundEnabled}
+                />
               </label>
             </div>
 
@@ -894,7 +983,9 @@
               <div class="divider my-2"></div>
               <div class="form-control ml-6">
                 <label class="label">
-                  <span class="label-text text-sm font-semibold">Enabled Power-Ups</span>
+                  <span class="label-text text-sm font-semibold"
+                    >Enabled Power-Ups</span
+                  >
                 </label>
                 <div class="flex flex-col gap-2">
                   <label class="label cursor-pointer justify-start gap-2 py-1">
@@ -902,12 +993,19 @@
                       type="checkbox"
                       class="checkbox checkbox-xs"
                       checked={enabledPowerUps.invincible}
-                      onchange={(e: Event) => enabledPowerUps.invincible = (e.currentTarget as HTMLInputElement).checked}
+                      onchange={(e: Event) =>
+                        (enabledPowerUps.invincible = (
+                          e.currentTarget as HTMLInputElement
+                        ).checked)}
                       disabled={gameStarted}
                     />
                     <div class="flex flex-col">
-                      <span class="label-text text-sm font-medium">⭐ Invincible</span>
-                      <span class="label-text text-xs opacity-70">No self-collision for 5s</span>
+                      <span class="label-text text-sm font-medium"
+                        >⭐ Invincible</span
+                      >
+                      <span class="label-text text-xs opacity-70"
+                        >No self-collision for 5s</span
+                      >
                     </div>
                   </label>
                   <label class="label cursor-pointer justify-start gap-2 py-1">
@@ -915,12 +1013,18 @@
                       type="checkbox"
                       class="checkbox checkbox-xs"
                       checked={enabledPowerUps.diet}
-                      onchange={(e: Event) => enabledPowerUps.diet = (e.currentTarget as HTMLInputElement).checked}
+                      onchange={(e: Event) =>
+                        (enabledPowerUps.diet = (
+                          e.currentTarget as HTMLInputElement
+                        ).checked)}
                       disabled={gameStarted}
                     />
                     <div class="flex flex-col">
-                      <span class="label-text text-sm font-medium">💊 Diet</span>
-                      <span class="label-text text-xs opacity-70">Cut length in half</span>
+                      <span class="label-text text-sm font-medium">💊 Diet</span
+                      >
+                      <span class="label-text text-xs opacity-70"
+                        >Cut length in half</span
+                      >
                     </div>
                   </label>
                   <label class="label cursor-pointer justify-start gap-2 py-1">
@@ -928,12 +1032,19 @@
                       type="checkbox"
                       class="checkbox checkbox-xs"
                       checked={enabledPowerUps.binge}
-                      onchange={(e: Event) => enabledPowerUps.binge = (e.currentTarget as HTMLInputElement).checked}
+                      onchange={(e: Event) =>
+                        (enabledPowerUps.binge = (
+                          e.currentTarget as HTMLInputElement
+                        ).checked)}
                       disabled={gameStarted}
                     />
                     <div class="flex flex-col">
-                      <span class="label-text text-sm font-medium">🍪 Binge</span>
-                      <span class="label-text text-xs opacity-70">Add 5 extra food items</span>
+                      <span class="label-text text-sm font-medium"
+                        >🍪 Binge</span
+                      >
+                      <span class="label-text text-xs opacity-70"
+                        >Add 5 extra food items</span
+                      >
                     </div>
                   </label>
                   <label class="label cursor-pointer justify-start gap-2 py-1">
@@ -941,12 +1052,19 @@
                       type="checkbox"
                       class="checkbox checkbox-xs"
                       checked={enabledPowerUps.turtle}
-                      onchange={(e: Event) => enabledPowerUps.turtle = (e.currentTarget as HTMLInputElement).checked}
+                      onchange={(e: Event) =>
+                        (enabledPowerUps.turtle = (
+                          e.currentTarget as HTMLInputElement
+                        ).checked)}
                       disabled={gameStarted}
                     />
                     <div class="flex flex-col">
-                      <span class="label-text text-sm font-medium">🐢 Turtle</span>
-                      <span class="label-text text-xs opacity-70">Slow down by 20% for 5s</span>
+                      <span class="label-text text-sm font-medium"
+                        >🐢 Turtle</span
+                      >
+                      <span class="label-text text-xs opacity-70"
+                        >Slow down by 20% for 5s</span
+                      >
                     </div>
                   </label>
                 </div>
@@ -956,7 +1074,8 @@
               <div class="divider my-2"></div>
               <div class="form-control ml-6">
                 <label class="label">
-                  <span class="label-text text-sm font-semibold">Obstacles</span>
+                  <span class="label-text text-sm font-semibold">Obstacles</span
+                  >
                 </label>
                 <div class="flex flex-col gap-2">
                   <label class="label cursor-pointer justify-start gap-2 py-1">
@@ -964,12 +1083,19 @@
                       type="checkbox"
                       class="checkbox checkbox-xs"
                       checked={enabledObstacles.ruler}
-                      onchange={(e: Event) => enabledObstacles.ruler = (e.currentTarget as HTMLInputElement).checked}
+                      onchange={(e: Event) =>
+                        (enabledObstacles.ruler = (
+                          e.currentTarget as HTMLInputElement
+                        ).checked)}
                       disabled={gameStarted}
                     />
                     <div class="flex flex-col">
-                      <span class="label-text text-sm font-medium">📏 Ruler</span>
-                      <span class="label-text text-xs opacity-70">Grow by 1/3 length</span>
+                      <span class="label-text text-sm font-medium"
+                        >📏 Ruler</span
+                      >
+                      <span class="label-text text-xs opacity-70"
+                        >Grow by 1/3 length</span
+                      >
                     </div>
                   </label>
                   <label class="label cursor-pointer justify-start gap-2 py-1">
@@ -977,12 +1103,19 @@
                       type="checkbox"
                       class="checkbox checkbox-xs"
                       checked={enabledObstacles.lightning}
-                      onchange={(e: Event) => enabledObstacles.lightning = (e.currentTarget as HTMLInputElement).checked}
+                      onchange={(e: Event) =>
+                        (enabledObstacles.lightning = (
+                          e.currentTarget as HTMLInputElement
+                        ).checked)}
                       disabled={gameStarted}
                     />
                     <div class="flex flex-col">
-                      <span class="label-text text-sm font-medium">⚡ Lightning</span>
-                      <span class="label-text text-xs opacity-70">Speed up by 20% for 5s</span>
+                      <span class="label-text text-sm font-medium"
+                        >⚡ Lightning</span
+                      >
+                      <span class="label-text text-xs opacity-70"
+                        >Speed up by 20% for 5s</span
+                      >
                     </div>
                   </label>
                   <label class="label cursor-pointer justify-start gap-2 py-1">
@@ -990,12 +1123,17 @@
                       type="checkbox"
                       class="checkbox checkbox-xs"
                       checked={enabledObstacles.cow}
-                      onchange={(e: Event) => enabledObstacles.cow = (e.currentTarget as HTMLInputElement).checked}
+                      onchange={(e: Event) =>
+                        (enabledObstacles.cow = (
+                          e.currentTarget as HTMLInputElement
+                        ).checked)}
                       disabled={gameStarted}
                     />
                     <div class="flex flex-col">
                       <span class="label-text text-sm font-medium">🐮 Cow</span>
-                      <span class="label-text text-xs opacity-70">Grow by exactly 5 squares</span>
+                      <span class="label-text text-xs opacity-70"
+                        >Grow by exactly 5 squares</span
+                      >
                     </div>
                   </label>
                 </div>
@@ -1007,7 +1145,13 @@
             <div>
               <h3 class="font-semibold mb-2">How to Play:</h3>
               <ul class="list-disc list-inside space-y-1 text-sm">
-                <li>Use <kbd class="kbd kbd-sm">↑</kbd> <kbd class="kbd kbd-sm">↓</kbd> <kbd class="kbd kbd-sm">←</kbd> <kbd class="kbd kbd-sm">→</kbd> or <kbd class="kbd kbd-sm">WASD</kbd></li>
+                <li>
+                  Use <kbd class="kbd kbd-sm">↑</kbd>
+                  <kbd class="kbd kbd-sm">↓</kbd>
+                  <kbd class="kbd kbd-sm">←</kbd>
+                  <kbd class="kbd kbd-sm">→</kbd>
+                  or <kbd class="kbd kbd-sm">WASD</kbd>
+                </li>
                 <li>Eat the animal emoji to grow and score points</li>
                 <li>Collect power-ups for special effects!</li>
                 <li>Don't run into yourself!</li>
@@ -1017,7 +1161,6 @@
           </div>
         </div>
       </div>
-
     </div>
   </div>
 </div>

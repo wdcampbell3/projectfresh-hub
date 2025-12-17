@@ -5,12 +5,14 @@ A Minecraft-style 3D world builder with 234+ models!
 ## Features
 
 ### 🎨 Object Palette
+
 - **234 GLB models** automatically loaded from your asset packs
 - **Categorized library**: Nature, Buildings, Animals, Blocks, Enemies
 - **Search functionality** to find models quickly
 - Real-time preview before placement
 
 ### 🎮 Controls
+
 - **Left Click**: Place selected object
 - **Right Click**: Delete object under cursor
 - **Press R**: Rotate object before placing (45° increments)
@@ -19,21 +21,25 @@ A Minecraft-style 3D world builder with 234+ models!
 - **Scroll**: Zoom in/out
 
 ### 🔧 Building System
+
 - **Grid snapping** (optional) - 5x5 unit grid
 - **Free rotation** - 8 rotation angles
 - **Ground plane** with 200x200 build area
 - **Real-time shadows** and lighting
 
 ### 🎬 Animations
+
 - **Animated creatures** (Enemies collection) automatically play animations
 - Animals and enemies come to life when placed!
 
 ### 💾 Save/Load
+
 - Save your creation to localStorage
 - Load previously saved worlds
 - Preserves all object positions, rotations, and model references
 
 ### 🌅 Visuals
+
 - **Sunset gradient sky** matching your FPS game aesthetic
 - **Dynamic shadows** from directional light
 - **Fog effect** for atmosphere
@@ -59,10 +65,11 @@ A Minecraft-style 3D world builder with 234+ models!
 ## Future Enhancements
 
 Possible additions:
+
 - Undo/Redo system
 - Object scaling
 - Copy/paste objects
-- Export to  image/screenshot
+- Export to image/screenshot
 - Day/night cycle toggle
 - Animal wandering AI
 - Multiplayer sharing (export JSON)

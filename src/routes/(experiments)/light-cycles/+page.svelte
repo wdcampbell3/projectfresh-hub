@@ -36,7 +36,7 @@
     shield: true,
     timewarp: true,
     teleport: true,
-    flash: true
+    flash: true,
   })
 
   // Game state
@@ -53,7 +53,12 @@
   let flashTimeoutId: number | null = null
 
   // Teleport indicator
-  let teleportIndicator = $state<{ x: number; y: number; direction: Direction; endTime: number } | null>(null)
+  let teleportIndicator = $state<{
+    x: number
+    y: number
+    direction: Direction
+    endTime: number
+  } | null>(null)
 
   // Power-ups
   let activePowerUps = $state<PowerUp[]>([])
@@ -70,9 +75,12 @@
   // Get cycle speed based on game speed setting
   function getCycleSpeed(): number {
     switch (gameSpeed) {
-      case "practice": return 1
-      case "cruising": return 1.5
-      case "hyper": return 2
+      case "practice":
+        return 1
+      case "cruising":
+        return 1.5
+      case "hyper":
+        return 2
     }
   }
 
@@ -87,7 +95,7 @@
     shieldUntil: 0,
     trailDasherUntil: 0,
     speedMultiplier: 1,
-    timeWarpUntil: 0
+    timeWarpUntil: 0,
   })
 
   let player2 = $state<Cycle>({
@@ -100,7 +108,7 @@
     shieldUntil: 0,
     trailDasherUntil: 0,
     speedMultiplier: 1,
-    timeWarpUntil: 0
+    timeWarpUntil: 0,
   })
 
   // Controls
@@ -118,7 +126,11 @@
   }
 
   // Sound effects
-  const playSound = (frequency: number, duration: number, type: OscillatorType = "sine") => {
+  const playSound = (
+    frequency: number,
+    duration: number,
+    type: OscillatorType = "sine",
+  ) => {
     if (!soundEnabled) return
     try {
       const audioContext = new AudioContext()
@@ -129,7 +141,10 @@
       oscillator.frequency.value = frequency
       oscillator.type = type
       gainNode.gain.setValueAtTime(0.15, audioContext.currentTime)
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration)
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.01,
+        audioContext.currentTime + duration,
+      )
       oscillator.start(audioContext.currentTime)
       oscillator.stop(audioContext.currentTime + duration)
     } catch (e) {}
@@ -146,7 +161,7 @@
       playSound(523, 0.2, "sine")
       setTimeout(() => playSound(659, 0.2, "sine"), 150)
       setTimeout(() => playSound(784, 0.4, "sine"), 300)
-    }
+    },
   }
 
   onMount(() => {
@@ -248,7 +263,8 @@
 
     lastAIDecision = now
 
-    const isDasherActive = player1.trailDasherUntil > now || player2.trailDasherUntil > now
+    const isDasherActive =
+      player1.trailDasherUntil > now || player2.trailDasherUntil > now
     const hasShield = player2.shieldUntil > now
 
     // Skill settings
@@ -271,7 +287,9 @@
       turnThreshold = 70 // Turns when danger is moderate distance
     } else {
       // Expert: longest lookahead, excellent planning, very few random turns
-      lookaheadDistances = isDasherActive ? [20, 40, 60, 80] : [20, 40, 60, 80, 100, 120]
+      lookaheadDistances = isDasherActive
+        ? [20, 40, 60, 80]
+        : [20, 40, 60, 80, 100, 120]
       randomTurnChance = isDasherActive ? 0.002 : 0.005
       maxDistance = isDasherActive ? 140 : 180
       turnThreshold = 90 // Plans far ahead
@@ -318,13 +336,18 @@
     let nearestPowerUp: PowerUp | null = null
     let nearestPowerUpDistance = Infinity
 
-    activePowerUps.forEach(powerUp => {
+    activePowerUps.forEach((powerUp) => {
       const dx = powerUp.x - player2.x
       const dy = powerUp.y - player2.y
       const distance = Math.sqrt(dx * dx + dy * dy)
 
       // Consider power-ups within a certain range based on skill
-      const powerUpRange = computerSkill === "amateur" ? 150 : computerSkill === "normal" ? 200 : 250
+      const powerUpRange =
+        computerSkill === "amateur"
+          ? 150
+          : computerSkill === "normal"
+            ? 200
+            : 250
 
       if (distance < powerUpRange && distance < nearestPowerUpDistance) {
         nearestPowerUpDistance = distance
@@ -337,7 +360,7 @@
     const shieldTurnChance = hasShield ? 0.02 : 0 // 2% extra chance to turn when shielded
     const shouldConsiderTurning =
       (dangerAhead && closestDanger <= turnThreshold) ||
-      Math.random() < (randomTurnChance + shieldTurnChance) ||
+      Math.random() < randomTurnChance + shieldTurnChance ||
       nearestPowerUp !== null
 
     // If danger ahead, occasional random turn, power-up nearby, or shielded, consider turning
@@ -345,12 +368,16 @@
       const possibleDirections: Direction[] = ["up", "down", "left", "right"]
 
       // Score each direction based on how safe it is
-      const directionScores = possibleDirections.map(dir => {
+      const directionScores = possibleDirections.map((dir) => {
         // Don't reverse
-        if (player2.direction === "up" && dir === "down") return { dir, score: -1000 }
-        if (player2.direction === "down" && dir === "up") return { dir, score: -1000 }
-        if (player2.direction === "left" && dir === "right") return { dir, score: -1000 }
-        if (player2.direction === "right" && dir === "left") return { dir, score: -1000 }
+        if (player2.direction === "up" && dir === "down")
+          return { dir, score: -1000 }
+        if (player2.direction === "down" && dir === "up")
+          return { dir, score: -1000 }
+        if (player2.direction === "left" && dir === "right")
+          return { dir, score: -1000 }
+        if (player2.direction === "right" && dir === "left")
+          return { dir, score: -1000 }
 
         // Check how far we can go in this direction before hitting something
         let score = 0
@@ -425,8 +452,12 @@
 
           const futureDx = nearestPowerUp.x - futureX
           const futureDy = nearestPowerUp.y - futureY
-          const currentDistance = Math.sqrt(currentDx * currentDx + currentDy * currentDy)
-          const futureDistance = Math.sqrt(futureDx * futureDx + futureDy * futureDy)
+          const currentDistance = Math.sqrt(
+            currentDx * currentDx + currentDy * currentDy,
+          )
+          const futureDistance = Math.sqrt(
+            futureDx * futureDx + futureDy * futureDy,
+          )
 
           // If this direction gets us closer to the power-up, add modest bonus
           // Reduced from 20 to 5 so safety is prioritized over power-up pursuit
@@ -466,8 +497,15 @@
 
     if (availableTypes.length === 0) return
 
-    const type = availableTypes[Math.floor(Math.random() * availableTypes.length)]
-    const icons = { dasher: "🌀", shield: "🛡️", timewarp: "⏱️", teleport: "🌟", flash: "💫" }
+    const type =
+      availableTypes[Math.floor(Math.random() * availableTypes.length)]
+    const icons = {
+      dasher: "🌀",
+      shield: "🛡️",
+      timewarp: "⏱️",
+      teleport: "🌟",
+      flash: "💫",
+    }
 
     // Find a safe spawn location
     let x, y
@@ -490,14 +528,20 @@
       const collectRadius = 15
 
       // Check if player1 collected it
-      if (Math.abs(player1.x - powerUp.x) < collectRadius && Math.abs(player1.y - powerUp.y) < collectRadius) {
+      if (
+        Math.abs(player1.x - powerUp.x) < collectRadius &&
+        Math.abs(player1.y - powerUp.y) < collectRadius
+      ) {
         applyPowerUp(player1, player2, powerUp.type)
         activePowerUps.splice(i, 1)
         continue
       }
 
       // Check if player2 collected it
-      if (Math.abs(player2.x - powerUp.x) < collectRadius && Math.abs(player2.y - powerUp.y) < collectRadius) {
+      if (
+        Math.abs(player2.x - powerUp.x) < collectRadius &&
+        Math.abs(player2.y - powerUp.y) < collectRadius
+      ) {
         applyPowerUp(player2, player1, powerUp.type)
         activePowerUps.splice(i, 1)
       }
@@ -548,13 +592,17 @@
 
             for (const point of player1.trail) {
               if (isNaN(point.x) || isNaN(point.y)) continue
-              const dist = Math.sqrt((point.x - testX) ** 2 + (point.y - testY) ** 2)
+              const dist = Math.sqrt(
+                (point.x - testX) ** 2 + (point.y - testY) ** 2,
+              )
               minDistance = Math.min(minDistance, dist)
             }
 
             for (const point of player2.trail) {
               if (isNaN(point.x) || isNaN(point.y)) continue
-              const dist = Math.sqrt((point.x - testX) ** 2 + (point.y - testY) ** 2)
+              const dist = Math.sqrt(
+                (point.x - testX) ** 2 + (point.y - testY) ** 2,
+              )
               minDistance = Math.min(minDistance, dist)
             }
 
@@ -572,7 +620,7 @@
           x: bestX,
           y: bestY,
           direction: collector.direction,
-          endTime: now + 1000
+          endTime: now + 1000,
         }
 
         // Add break in trail and teleport
@@ -629,17 +677,24 @@
 
     // Check collision with other cycle's head (body-to-body collision)
     const otherCycle = cycle === player1 ? player2 : player1
-    const distToOtherCycle = Math.sqrt((x - otherCycle.x) ** 2 + (y - otherCycle.y) ** 2)
+    const distToOtherCycle = Math.sqrt(
+      (x - otherCycle.x) ** 2 + (y - otherCycle.y) ** 2,
+    )
 
     // If cycles are touching (within 2x cycle size), it's a collision
     if (distToOtherCycle < CYCLE_SIZE * 3) {
       return true
     }
 
-    const isDasherActive = player1.trailDasherUntil > now || player2.trailDasherUntil > now
+    const isDasherActive =
+      player1.trailDasherUntil > now || player2.trailDasherUntil > now
 
     // Helper function to check if a point is on a solid part of a dashed line
-    const isOnSolidPartOfDash = (trailPoints: Point[], testX: number, testY: number): boolean => {
+    const isOnSolidPartOfDash = (
+      trailPoints: Point[],
+      testX: number,
+      testY: number,
+    ): boolean => {
       const dashLength = 15
       const gapLength = 30
       const patternLength = dashLength + gapLength
@@ -664,12 +719,21 @@
         if (segmentLength === 0) continue
 
         // Find closest point on line segment to test point
-        const t = Math.max(0, Math.min(1, ((testX - prev.x) * dx + (testY - prev.y) * dy) / (segmentLength * segmentLength)))
+        const t = Math.max(
+          0,
+          Math.min(
+            1,
+            ((testX - prev.x) * dx + (testY - prev.y) * dy) /
+              (segmentLength * segmentLength),
+          ),
+        )
         const closestX = prev.x + t * dx
         const closestY = prev.y + t * dy
 
         // Check if test point is close enough to this segment
-        const distToSegment = Math.sqrt((testX - closestX) ** 2 + (testY - closestY) ** 2)
+        const distToSegment = Math.sqrt(
+          (testX - closestX) ** 2 + (testY - closestY) ** 2,
+        )
 
         if (distToSegment < CYCLE_SIZE * 2) {
           // Point is near this segment - check if it's on solid part of dash pattern
@@ -691,8 +755,14 @@
 
     // Check collision with player1's trail
     // Skip very recent trail points to avoid self-collision (more points when slowed by time warp)
-    const skipPoints = cycle === player1 ? Math.max(5, Math.ceil(20 / player1.speedMultiplier)) : 5
-    const skipPoints2 = cycle === player2 ? Math.max(5, Math.ceil(20 / player2.speedMultiplier)) : 5
+    const skipPoints =
+      cycle === player1
+        ? Math.max(5, Math.ceil(20 / player1.speedMultiplier))
+        : 5
+    const skipPoints2 =
+      cycle === player2
+        ? Math.max(5, Math.ceil(20 / player2.speedMultiplier))
+        : 5
 
     const player1TrailToCheck = player1.trail.slice(0, -skipPoints)
     const player2TrailToCheck = player2.trail.slice(0, -skipPoints2)
@@ -709,14 +779,20 @@
       // Normal collision detection for solid trails
       for (const point of player1TrailToCheck) {
         if (isNaN(point.x) || isNaN(point.y)) continue
-        if (Math.abs(point.x - x) < CYCLE_SIZE * 2 && Math.abs(point.y - y) < CYCLE_SIZE * 2) {
+        if (
+          Math.abs(point.x - x) < CYCLE_SIZE * 2 &&
+          Math.abs(point.y - y) < CYCLE_SIZE * 2
+        ) {
           return true
         }
       }
 
       for (const point of player2TrailToCheck) {
         if (isNaN(point.x) || isNaN(point.y)) continue
-        if (Math.abs(point.x - x) < CYCLE_SIZE * 2 && Math.abs(point.y - y) < CYCLE_SIZE * 2) {
+        if (
+          Math.abs(point.x - x) < CYCLE_SIZE * 2 &&
+          Math.abs(point.y - y) < CYCLE_SIZE * 2
+        ) {
           return true
         }
       }
@@ -1095,7 +1171,12 @@
       ctx.shadowBlur = 20
       ctx.shadowColor = player1.color
       ctx.fillStyle = player1.color
-      ctx.fillRect(player1.x - CYCLE_SIZE, player1.y - CYCLE_SIZE, CYCLE_SIZE * 2, CYCLE_SIZE * 2)
+      ctx.fillRect(
+        player1.x - CYCLE_SIZE,
+        player1.y - CYCLE_SIZE,
+        CYCLE_SIZE * 2,
+        CYCLE_SIZE * 2,
+      )
       ctx.shadowBlur = 0
     }
 
@@ -1104,7 +1185,12 @@
       ctx.shadowBlur = 20
       ctx.shadowColor = player2.color
       ctx.fillStyle = player2.color
-      ctx.fillRect(player2.x - CYCLE_SIZE, player2.y - CYCLE_SIZE, CYCLE_SIZE * 2, CYCLE_SIZE * 2)
+      ctx.fillRect(
+        player2.x - CYCLE_SIZE,
+        player2.y - CYCLE_SIZE,
+        CYCLE_SIZE * 2,
+        CYCLE_SIZE * 2,
+      )
       ctx.shadowBlur = 0
     }
 
@@ -1113,7 +1199,7 @@
       const now = Date.now()
       const pulse = Math.sin(now / 150) * 0.3 + 0.7 // Pulsing between 0.4 and 1.0
 
-      activePowerUps.forEach(powerUp => {
+      activePowerUps.forEach((powerUp) => {
         ctx.save()
         ctx.globalAlpha = pulse
         ctx.font = "32px sans-serif"
@@ -1153,7 +1239,13 @@
       ctx.strokeStyle = "#ffffff"
       ctx.lineWidth = 3
       ctx.beginPath()
-      ctx.arc(indicatorX - 15, indicatorY - 5, radius, -Math.PI / 2, -Math.PI / 2 + (2 * Math.PI * progress))
+      ctx.arc(
+        indicatorX - 15,
+        indicatorY - 5,
+        radius,
+        -Math.PI / 2,
+        -Math.PI / 2 + 2 * Math.PI * progress,
+      )
       ctx.stroke()
 
       ctx.font = "12px sans-serif"
@@ -1173,7 +1265,13 @@
       ctx.strokeStyle = "#00ffff"
       ctx.lineWidth = 3
       ctx.beginPath()
-      ctx.arc(indicatorX - 15, indicatorY - 5, radius, -Math.PI / 2, -Math.PI / 2 + (2 * Math.PI * progress))
+      ctx.arc(
+        indicatorX - 15,
+        indicatorY - 5,
+        radius,
+        -Math.PI / 2,
+        -Math.PI / 2 + 2 * Math.PI * progress,
+      )
       ctx.stroke()
 
       ctx.font = "12px sans-serif"
@@ -1194,7 +1292,13 @@
       ctx.strokeStyle = player1.speedMultiplier < 1 ? "#ffaa00" : "#ffff00"
       ctx.lineWidth = 3
       ctx.beginPath()
-      ctx.arc(indicatorX - 15, indicatorY - 5, radius, -Math.PI / 2, -Math.PI / 2 + (2 * Math.PI * progress))
+      ctx.arc(
+        indicatorX - 15,
+        indicatorY - 5,
+        radius,
+        -Math.PI / 2,
+        -Math.PI / 2 + 2 * Math.PI * progress,
+      )
       ctx.stroke()
 
       ctx.font = "12px sans-serif"
@@ -1218,7 +1322,13 @@
       ctx.strokeStyle = "#ffffff"
       ctx.lineWidth = 3
       ctx.beginPath()
-      ctx.arc(indicatorX + 15, indicatorY - 5, radius, -Math.PI / 2, -Math.PI / 2 + (2 * Math.PI * progress))
+      ctx.arc(
+        indicatorX + 15,
+        indicatorY - 5,
+        radius,
+        -Math.PI / 2,
+        -Math.PI / 2 + 2 * Math.PI * progress,
+      )
       ctx.stroke()
 
       ctx.font = "12px sans-serif"
@@ -1238,7 +1348,13 @@
       ctx.strokeStyle = "#ff6600"
       ctx.lineWidth = 3
       ctx.beginPath()
-      ctx.arc(indicatorX + 15, indicatorY - 5, radius, -Math.PI / 2, -Math.PI / 2 + (2 * Math.PI * progress))
+      ctx.arc(
+        indicatorX + 15,
+        indicatorY - 5,
+        radius,
+        -Math.PI / 2,
+        -Math.PI / 2 + 2 * Math.PI * progress,
+      )
       ctx.stroke()
 
       ctx.font = "12px sans-serif"
@@ -1259,7 +1375,13 @@
       ctx.strokeStyle = player2.speedMultiplier < 1 ? "#ffaa00" : "#ffff00"
       ctx.lineWidth = 3
       ctx.beginPath()
-      ctx.arc(indicatorX + 15, indicatorY - 5, radius, -Math.PI / 2, -Math.PI / 2 + (2 * Math.PI * progress))
+      ctx.arc(
+        indicatorX + 15,
+        indicatorY - 5,
+        radius,
+        -Math.PI / 2,
+        -Math.PI / 2 + 2 * Math.PI * progress,
+      )
       ctx.stroke()
 
       ctx.font = "12px sans-serif"
@@ -1289,18 +1411,36 @@
 
       if (!player1.alive && player2.alive) {
         ctx.fillStyle = player2.color
-        ctx.fillText(vsMode === "computer" ? "Computer Wins Round!" : "Player 2 Wins Round!", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20)
+        ctx.fillText(
+          vsMode === "computer"
+            ? "Computer Wins Round!"
+            : "Player 2 Wins Round!",
+          CANVAS_WIDTH / 2,
+          CANVAS_HEIGHT / 2 - 20,
+        )
       } else if (!player2.alive && player1.alive) {
         ctx.fillStyle = player1.color
-        ctx.fillText("Player 1 Wins Round!", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20)
+        ctx.fillText(
+          "Player 1 Wins Round!",
+          CANVAS_WIDTH / 2,
+          CANVAS_HEIGHT / 2 - 20,
+        )
       } else {
         ctx.fillStyle = "#ffff00"
-        ctx.fillText("Double Crash! No Points", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20)
+        ctx.fillText(
+          "Double Crash! No Points",
+          CANVAS_WIDTH / 2,
+          CANVAS_HEIGHT / 2 - 20,
+        )
       }
 
       ctx.fillStyle = "#ffffff"
       ctx.font = "24px sans-serif"
-      ctx.fillText("Click 'Next Round' to continue", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30)
+      ctx.fillText(
+        "Click 'Next Round' to continue",
+        CANVAS_WIDTH / 2,
+        CANVAS_HEIGHT / 2 + 30,
+      )
     }
 
     // Draw game over screen
@@ -1309,19 +1449,36 @@
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
 
       const winnerColor = winner === "player1" ? player1.color : player2.color
-      const winnerName = winner === "player1" ? "Player 1" : vsMode === "computer" ? "Computer" : "Player 2"
+      const winnerName =
+        winner === "player1"
+          ? "Player 1"
+          : vsMode === "computer"
+            ? "Computer"
+            : "Player 2"
 
       ctx.fillStyle = winnerColor
       ctx.font = "bold 64px sans-serif"
       ctx.textAlign = "center"
-      ctx.fillText(`${winnerName} Wins!`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40)
+      ctx.fillText(
+        `${winnerName} Wins!`,
+        CANVAS_WIDTH / 2,
+        CANVAS_HEIGHT / 2 - 40,
+      )
 
       ctx.fillStyle = "#ffffff"
       ctx.font = "32px sans-serif"
-      ctx.fillText(`Final Score: ${score.player1} - ${score.player2}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20)
+      ctx.fillText(
+        `Final Score: ${score.player1} - ${score.player2}`,
+        CANVAS_WIDTH / 2,
+        CANVAS_HEIGHT / 2 + 20,
+      )
 
       ctx.font = "24px sans-serif"
-      ctx.fillText("Click 'New Game' to play again", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 70)
+      ctx.fillText(
+        "Click 'New Game' to play again",
+        CANVAS_WIDTH / 2,
+        CANVAS_HEIGHT / 2 + 70,
+      )
     }
 
     update()
@@ -1354,7 +1511,7 @@
       shieldUntil: 0,
       trailDasherUntil: 0,
       speedMultiplier: 1,
-      timeWarpUntil: 0
+      timeWarpUntil: 0,
     }
 
     player2 = {
@@ -1367,7 +1524,7 @@
       shieldUntil: 0,
       trailDasherUntil: 0,
       speedMultiplier: 1,
-      timeWarpUntil: 0
+      timeWarpUntil: 0,
     }
 
     // Clear active power-ups and flash state
@@ -1406,28 +1563,38 @@
 <div class="h-[calc(100vh-2rem)] p-4 flex flex-col">
   <!-- Header with title and game controls -->
   <div class="flex justify-between items-center mb-4">
-    <h1 class="text-4xl font-bold" style="color: #660460;">💡 Light Particles</h1>
+    <h1 class="text-4xl font-bold" style="color: #660460;">
+      💡 Light Particles
+    </h1>
     <div class="flex gap-2">
       {#if !gameRunning && !roundOver && !gameOver}
-        <button class="btn text-white border-0 hover:opacity-90" style="background-color: #660460;" onclick={startGame}>
+        <button
+          class="btn text-white border-0 hover:opacity-90"
+          style="background-color: #660460;"
+          onclick={startGame}
+        >
           Start Game
         </button>
       {:else if roundOver && !gameOver}
-        <button class="btn text-white border-0 hover:opacity-90" style="background-color: #660460;" onclick={nextRound}>
+        <button
+          class="btn text-white border-0 hover:opacity-90"
+          style="background-color: #660460;"
+          onclick={nextRound}
+        >
           Next Round
         </button>
       {:else if gameOver}
-        <button class="btn text-white border-0 hover:opacity-90" style="background-color: #660460;" onclick={startGame}>
+        <button
+          class="btn text-white border-0 hover:opacity-90"
+          style="background-color: #660460;"
+          onclick={startGame}
+        >
           New Game
         </button>
       {:else}
-        <button class="btn btn-warning" onclick={pauseGame}>
-          Pause
-        </button>
+        <button class="btn btn-warning" onclick={pauseGame}> Pause </button>
       {/if}
-      <button class="btn btn-outline" onclick={resetGame}>
-        Reset
-      </button>
+      <button class="btn btn-outline" onclick={resetGame}> Reset </button>
     </div>
   </div>
 
@@ -1453,212 +1620,272 @@
           <h2 class="card-title" style="color: #660460;">Settings</h2>
 
           <div class="space-y-4">
-          <!-- Game Mode Toggle -->
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text font-semibold">Game Mode</span>
-            </label>
-            <div class="flex gap-2">
-              <button
-                class="btn btn-sm flex-1 {vsMode === 'computer' ? 'btn-primary' : 'btn-outline'}"
-                onclick={() => (vsMode = 'computer')}
-                disabled={gameRunning || roundOver}
-              >
-                vs Computer
-              </button>
-              <button
-                class="btn btn-sm flex-1 {vsMode === 'human' ? 'btn-primary' : 'btn-outline'}"
-                onclick={() => (vsMode = 'human')}
-                disabled={gameRunning || roundOver}
-              >
-                vs Human
-              </button>
-            </div>
-          </div>
-
-          <!-- Computer Skill (only show when playing vs computer) -->
-          {#if vsMode === "computer"}
+            <!-- Game Mode Toggle -->
             <div class="form-control">
               <label class="label">
-                <span class="label-text font-semibold">Computer Skill</span>
+                <span class="label-text font-semibold">Game Mode</span>
               </label>
               <div class="flex gap-2">
                 <button
-                  class="btn btn-xs flex-1 {computerSkill === 'amateur' ? 'btn-success' : 'btn-outline'}"
-                  onclick={() => (computerSkill = 'amateur')}
+                  class="btn btn-sm flex-1 {vsMode === 'computer'
+                    ? 'btn-primary'
+                    : 'btn-outline'}"
+                  onclick={() => (vsMode = "computer")}
                   disabled={gameRunning || roundOver}
                 >
-                  Amateur
+                  vs Computer
                 </button>
                 <button
-                  class="btn btn-xs flex-1 {computerSkill === 'normal' ? 'btn-warning' : 'btn-outline'}"
-                  onclick={() => (computerSkill = 'normal')}
+                  class="btn btn-sm flex-1 {vsMode === 'human'
+                    ? 'btn-primary'
+                    : 'btn-outline'}"
+                  onclick={() => (vsMode = "human")}
                   disabled={gameRunning || roundOver}
                 >
-                  Normal
-                </button>
-                <button
-                  class="btn btn-xs flex-1 {computerSkill === 'expert' ? 'btn-error' : 'btn-outline'}"
-                  onclick={() => (computerSkill = 'expert')}
-                  disabled={gameRunning || roundOver}
-                >
-                  Expert
+                  vs Human
                 </button>
               </div>
             </div>
-          {/if}
 
-          <!-- Speed Setting -->
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text font-semibold">Speed</span>
-            </label>
-            <div class="flex gap-2">
-              <button
-                class="btn btn-xs flex-1 {gameSpeed === 'practice' ? 'btn-success' : 'btn-outline'}"
-                onclick={() => (gameSpeed = 'practice')}
-                disabled={gameRunning || roundOver}
-              >
-                Practice
-              </button>
-              <button
-                class="btn btn-xs flex-1 {gameSpeed === 'cruising' ? 'btn-warning' : 'btn-outline'}"
-                onclick={() => (gameSpeed = 'cruising')}
-                disabled={gameRunning || roundOver}
-              >
-                Cruising
-              </button>
-              <button
-                class="btn btn-xs flex-1 {gameSpeed === 'hyper' ? 'btn-error' : 'btn-outline'}"
-                onclick={() => (gameSpeed = 'hyper')}
-                disabled={gameRunning || roundOver}
-              >
-                Hyper
-              </button>
-            </div>
-          </div>
-
-          <!-- Options Section -->
-          <div class="divider my-2"></div>
-          <div class="mb-2">
-            <span class="label-text font-semibold">Options</span>
-          </div>
-
-          <!-- Sound Toggle -->
-          <div class="form-control">
-            <label class="label cursor-pointer">
-              <span class="label-text">Sound Effects</span>
-              <input type="checkbox" class="checkbox" bind:checked={soundEnabled} />
-            </label>
-          </div>
-
-          <!-- Power-Ups Toggle -->
-          <div class="form-control">
-            <label class="label cursor-pointer">
-              <span class="label-text font-semibold">Power-Ups</span>
-              <input type="checkbox" class="checkbox checkbox-primary" bind:checked={powerUpsEnabled} disabled={gameRunning || roundOver} />
-            </label>
-          </div>
-
-          <!-- Individual Power-Up Checkboxes -->
-          {#if powerUpsEnabled}
-            <div class="divider my-2"></div>
-            <div class="form-control ml-6">
-              <label class="label">
-                <span class="label-text text-sm font-semibold">Enabled Power-Ups</span>
-              </label>
-              <div class="flex flex-col gap-2">
-                <label class="label cursor-pointer justify-start gap-2 py-1">
-                  <input
-                    type="checkbox"
-                    class="checkbox checkbox-xs"
-                    bind:checked={enabledPowerUps.dasher}
-                    disabled={gameRunning || roundOver}
-                  />
-                  <div class="flex flex-col">
-                    <span class="label-text text-sm font-medium">🌀 Trail Dasher</span>
-                    <span class="label-text text-xs opacity-70">Turn all trails to dashes for 5s</span>
-                  </div>
-                </label>
-                <label class="label cursor-pointer justify-start gap-2 py-1">
-                  <input
-                    type="checkbox"
-                    class="checkbox checkbox-xs"
-                    bind:checked={enabledPowerUps.shield}
-                    disabled={gameRunning || roundOver}
-                  />
-                  <div class="flex flex-col">
-                    <span class="label-text text-sm font-medium">🛡️ Shield</span>
-                    <span class="label-text text-xs opacity-70">Invincibility for 5s</span>
-                  </div>
-                </label>
-                <label class="label cursor-pointer justify-start gap-2 py-1">
-                  <input
-                    type="checkbox"
-                    class="checkbox checkbox-xs"
-                    bind:checked={enabledPowerUps.timewarp}
-                    disabled={gameRunning || roundOver}
-                  />
-                  <div class="flex flex-col">
-                    <span class="label-text text-sm font-medium">⏱️ Time Warp</span>
-                    <span class="label-text text-xs opacity-70">Slow yourself, speed opponent</span>
-                  </div>
-                </label>
-                <label class="label cursor-pointer justify-start gap-2 py-1">
-                  <input
-                    type="checkbox"
-                    class="checkbox checkbox-xs"
-                    bind:checked={enabledPowerUps.teleport}
-                    disabled={gameRunning || roundOver}
-                  />
-                  <div class="flex flex-col">
-                    <span class="label-text text-sm font-medium">🌟 Teleport</span>
-                    <span class="label-text text-xs opacity-70">Jump to safest location</span>
-                  </div>
-                </label>
-                <label class="label cursor-pointer justify-start gap-2 py-1">
-                  <input
-                    type="checkbox"
-                    class="checkbox checkbox-xs"
-                    bind:checked={enabledPowerUps.flash}
-                    disabled={gameRunning || roundOver}
-                  />
-                  <div class="flex flex-col">
-                    <span class="label-text text-sm font-medium">💫 Flash</span>
-                    <span class="label-text text-xs opacity-70">Hide trails 3x for 0.5s each</span>
-                  </div>
-                </label>
-              </div>
-            </div>
-          {/if}
-
-          <!-- Instructions -->
-          <div class="divider"></div>
-          <div>
-            <h3 class="font-semibold mb-2">How to Play:</h3>
+            <!-- Computer Skill (only show when playing vs computer) -->
             {#if vsMode === "computer"}
-              <ul class="list-disc list-inside space-y-1 text-sm">
-                <li>Player 1: Use <kbd class="kbd kbd-sm">↑</kbd> <kbd class="kbd kbd-sm">↓</kbd> <kbd class="kbd kbd-sm">←</kbd> <kbd class="kbd kbd-sm">→</kbd> arrow keys</li>
-                <li>Leave a light trail behind you</li>
-                <li>Don't hit any trail (yours or opponent's)</li>
-                <li>Wrap around edges to escape</li>
-                <li>First to 5 rounds wins!</li>
-              </ul>
-            {:else}
-              <ul class="list-disc list-inside space-y-1 text-sm">
-                <li>Player 1 (Cyan): <kbd class="kbd kbd-sm">↑</kbd> <kbd class="kbd kbd-sm">↓</kbd> <kbd class="kbd kbd-sm">←</kbd> <kbd class="kbd kbd-sm">→</kbd></li>
-                <li>Player 2 (Orange): <kbd class="kbd kbd-sm">W</kbd> <kbd class="kbd kbd-sm">A</kbd> <kbd class="kbd kbd-sm">S</kbd> <kbd class="kbd kbd-sm">D</kbd></li>
-                <li>Leave a light trail behind you</li>
-                <li>Don't hit any trail!</li>
-                <li>First to 5 rounds wins!</li>
-              </ul>
+              <div class="form-control">
+                <label class="label">
+                  <span class="label-text font-semibold">Computer Skill</span>
+                </label>
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-xs flex-1 {computerSkill === 'amateur'
+                      ? 'btn-success'
+                      : 'btn-outline'}"
+                    onclick={() => (computerSkill = "amateur")}
+                    disabled={gameRunning || roundOver}
+                  >
+                    Amateur
+                  </button>
+                  <button
+                    class="btn btn-xs flex-1 {computerSkill === 'normal'
+                      ? 'btn-warning'
+                      : 'btn-outline'}"
+                    onclick={() => (computerSkill = "normal")}
+                    disabled={gameRunning || roundOver}
+                  >
+                    Normal
+                  </button>
+                  <button
+                    class="btn btn-xs flex-1 {computerSkill === 'expert'
+                      ? 'btn-error'
+                      : 'btn-outline'}"
+                    onclick={() => (computerSkill = "expert")}
+                    disabled={gameRunning || roundOver}
+                  >
+                    Expert
+                  </button>
+                </div>
+              </div>
             {/if}
-          </div>
 
+            <!-- Speed Setting -->
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-semibold">Speed</span>
+              </label>
+              <div class="flex gap-2">
+                <button
+                  class="btn btn-xs flex-1 {gameSpeed === 'practice'
+                    ? 'btn-success'
+                    : 'btn-outline'}"
+                  onclick={() => (gameSpeed = "practice")}
+                  disabled={gameRunning || roundOver}
+                >
+                  Practice
+                </button>
+                <button
+                  class="btn btn-xs flex-1 {gameSpeed === 'cruising'
+                    ? 'btn-warning'
+                    : 'btn-outline'}"
+                  onclick={() => (gameSpeed = "cruising")}
+                  disabled={gameRunning || roundOver}
+                >
+                  Cruising
+                </button>
+                <button
+                  class="btn btn-xs flex-1 {gameSpeed === 'hyper'
+                    ? 'btn-error'
+                    : 'btn-outline'}"
+                  onclick={() => (gameSpeed = "hyper")}
+                  disabled={gameRunning || roundOver}
+                >
+                  Hyper
+                </button>
+              </div>
+            </div>
+
+            <!-- Options Section -->
+            <div class="divider my-2"></div>
+            <div class="mb-2">
+              <span class="label-text font-semibold">Options</span>
+            </div>
+
+            <!-- Sound Toggle -->
+            <div class="form-control">
+              <label class="label cursor-pointer">
+                <span class="label-text">Sound Effects</span>
+                <input
+                  type="checkbox"
+                  class="checkbox"
+                  bind:checked={soundEnabled}
+                />
+              </label>
+            </div>
+
+            <!-- Power-Ups Toggle -->
+            <div class="form-control">
+              <label class="label cursor-pointer">
+                <span class="label-text font-semibold">Power-Ups</span>
+                <input
+                  type="checkbox"
+                  class="checkbox checkbox-primary"
+                  bind:checked={powerUpsEnabled}
+                  disabled={gameRunning || roundOver}
+                />
+              </label>
+            </div>
+
+            <!-- Individual Power-Up Checkboxes -->
+            {#if powerUpsEnabled}
+              <div class="divider my-2"></div>
+              <div class="form-control ml-6">
+                <label class="label">
+                  <span class="label-text text-sm font-semibold"
+                    >Enabled Power-Ups</span
+                  >
+                </label>
+                <div class="flex flex-col gap-2">
+                  <label class="label cursor-pointer justify-start gap-2 py-1">
+                    <input
+                      type="checkbox"
+                      class="checkbox checkbox-xs"
+                      bind:checked={enabledPowerUps.dasher}
+                      disabled={gameRunning || roundOver}
+                    />
+                    <div class="flex flex-col">
+                      <span class="label-text text-sm font-medium"
+                        >🌀 Trail Dasher</span
+                      >
+                      <span class="label-text text-xs opacity-70"
+                        >Turn all trails to dashes for 5s</span
+                      >
+                    </div>
+                  </label>
+                  <label class="label cursor-pointer justify-start gap-2 py-1">
+                    <input
+                      type="checkbox"
+                      class="checkbox checkbox-xs"
+                      bind:checked={enabledPowerUps.shield}
+                      disabled={gameRunning || roundOver}
+                    />
+                    <div class="flex flex-col">
+                      <span class="label-text text-sm font-medium"
+                        >🛡️ Shield</span
+                      >
+                      <span class="label-text text-xs opacity-70"
+                        >Invincibility for 5s</span
+                      >
+                    </div>
+                  </label>
+                  <label class="label cursor-pointer justify-start gap-2 py-1">
+                    <input
+                      type="checkbox"
+                      class="checkbox checkbox-xs"
+                      bind:checked={enabledPowerUps.timewarp}
+                      disabled={gameRunning || roundOver}
+                    />
+                    <div class="flex flex-col">
+                      <span class="label-text text-sm font-medium"
+                        >⏱️ Time Warp</span
+                      >
+                      <span class="label-text text-xs opacity-70"
+                        >Slow yourself, speed opponent</span
+                      >
+                    </div>
+                  </label>
+                  <label class="label cursor-pointer justify-start gap-2 py-1">
+                    <input
+                      type="checkbox"
+                      class="checkbox checkbox-xs"
+                      bind:checked={enabledPowerUps.teleport}
+                      disabled={gameRunning || roundOver}
+                    />
+                    <div class="flex flex-col">
+                      <span class="label-text text-sm font-medium"
+                        >🌟 Teleport</span
+                      >
+                      <span class="label-text text-xs opacity-70"
+                        >Jump to safest location</span
+                      >
+                    </div>
+                  </label>
+                  <label class="label cursor-pointer justify-start gap-2 py-1">
+                    <input
+                      type="checkbox"
+                      class="checkbox checkbox-xs"
+                      bind:checked={enabledPowerUps.flash}
+                      disabled={gameRunning || roundOver}
+                    />
+                    <div class="flex flex-col">
+                      <span class="label-text text-sm font-medium"
+                        >💫 Flash</span
+                      >
+                      <span class="label-text text-xs opacity-70"
+                        >Hide trails 3x for 0.5s each</span
+                      >
+                    </div>
+                  </label>
+                </div>
+              </div>
+            {/if}
+
+            <!-- Instructions -->
+            <div class="divider"></div>
+            <div>
+              <h3 class="font-semibold mb-2">How to Play:</h3>
+              {#if vsMode === "computer"}
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                  <li>
+                    Player 1: Use <kbd class="kbd kbd-sm">↑</kbd>
+                    <kbd class="kbd kbd-sm">↓</kbd>
+                    <kbd class="kbd kbd-sm">←</kbd>
+                    <kbd class="kbd kbd-sm">→</kbd> arrow keys
+                  </li>
+                  <li>Leave a light trail behind you</li>
+                  <li>Don't hit any trail (yours or opponent's)</li>
+                  <li>Wrap around edges to escape</li>
+                  <li>First to 5 rounds wins!</li>
+                </ul>
+              {:else}
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                  <li>
+                    Player 1 (Cyan): <kbd class="kbd kbd-sm">↑</kbd>
+                    <kbd class="kbd kbd-sm">↓</kbd>
+                    <kbd class="kbd kbd-sm">←</kbd>
+                    <kbd class="kbd kbd-sm">→</kbd>
+                  </li>
+                  <li>
+                    Player 2 (Orange): <kbd class="kbd kbd-sm">W</kbd>
+                    <kbd class="kbd kbd-sm">A</kbd>
+                    <kbd class="kbd kbd-sm">S</kbd>
+                    <kbd class="kbd kbd-sm">D</kbd>
+                  </li>
+                  <li>Leave a light trail behind you</li>
+                  <li>Don't hit any trail!</li>
+                  <li>First to 5 rounds wins!</li>
+                </ul>
+              {/if}
+            </div>
           </div>
         </div>
       </div>
-
     </div>
   </div>
 </div>

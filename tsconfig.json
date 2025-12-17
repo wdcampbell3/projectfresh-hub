@@ -9,10 +9,7 @@
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
-    "types": [
-      "vitest/globals",
-      "@sveltejs/kit"
-    ],
+    "types": ["vitest/globals", "@sveltejs/kit"],
     "moduleResolution": "bundler"
   }
   // Path aliases are handled by https://kit.svelte.dev/docs/configuration#alias and https://kit.svelte.dev/docs/configuration#files

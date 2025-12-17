@@ -10,10 +10,10 @@ declare global {
     website?: string
     email?: string
   }
-  
+
   namespace svelteHTML {
     interface HTMLAttributes<T> {
-      [key: string]: any;
+      [key: string]: any
     }
   }
 }

@@ -1,25 +1,25 @@
-import * as THREE from 'three'
+import * as THREE from "three"
 
 /**
  * Creates a circular texture for round particle effects (like snowflakes)
  * @returns A THREE.CanvasTexture with a radial gradient circle
  */
 export function createCircleTexture(): THREE.CanvasTexture | null {
-  const canvas = document.createElement('canvas')
+  const canvas = document.createElement("canvas")
   canvas.width = 32
   canvas.height = 32
-  const ctx = canvas.getContext('2d')
+  const ctx = canvas.getContext("2d")
   if (!ctx) return null
-  
+
   // Draw a white circle with soft edges
   const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16)
-  gradient.addColorStop(0, 'rgba(255, 255, 255, 1)')
-  gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.8)')
-  gradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
-  
+  gradient.addColorStop(0, "rgba(255, 255, 255, 1)")
+  gradient.addColorStop(0.5, "rgba(255, 255, 255, 0.8)")
+  gradient.addColorStop(1, "rgba(255, 255, 255, 0)")
+
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, 32, 32)
-  
+
   const texture = new THREE.CanvasTexture(canvas)
   texture.needsUpdate = true
   return texture
@@ -34,24 +34,27 @@ export function createRain(scene: THREE.Scene): THREE.Points {
   const particleCount = 20000
   const geometry = new THREE.BufferGeometry()
   const positions = []
-  
+
   for (let i = 0; i < particleCount; i++) {
     const x = Math.random() * 400 - 200
     const y = Math.random() * 200
     const z = Math.random() * 400 - 200
     positions.push(x, y, z)
   }
-  
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-  
+
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(positions, 3),
+  )
+
   const material = new THREE.PointsMaterial({
     color: 0xdddddd, // Lighter rain
     size: 0.3,
     transparent: true,
     opacity: 0.8,
-    map: createCircleTexture() // Use circular texture for round raindrops
+    map: createCircleTexture(), // Use circular texture for round raindrops
   })
-  
+
   const rainSystem = new THREE.Points(geometry, material)
   scene.add(rainSystem)
   return rainSystem
@@ -66,25 +69,28 @@ export function createSnow(scene: THREE.Scene): THREE.Points {
   const particleCount = 60000 // 3x heavier snowfall (was 20000)
   const geometry = new THREE.BufferGeometry()
   const positions = []
-  
+
   for (let i = 0; i < particleCount; i++) {
     const x = Math.random() * 400 - 200
     const y = Math.random() * 200
     const z = Math.random() * 400 - 200
     positions.push(x, y, z)
   }
-  
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-  
+
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(positions, 3),
+  )
+
   const material = new THREE.PointsMaterial({
     color: 0xffffff, // Pure white
     size: 0.15, // Small size (~1/4 of original 0.5)
     transparent: true,
     opacity: 0.9,
     sizeAttenuation: true, // Makes particles scale with distance
-    map: createCircleTexture() // Use circular texture for round snowflakes
+    map: createCircleTexture(), // Use circular texture for round snowflakes
   })
-  
+
   const snowSystem = new THREE.Points(geometry, material)
   scene.add(snowSystem)
   return snowSystem
@@ -101,16 +107,17 @@ export function animateWeather(
   delta: number,
   rainSystem: THREE.Points | null,
   snowSystem: THREE.Points | null,
-  center: THREE.Vector3
+  center: THREE.Vector3,
 ): void {
   // Animate rain
   if (rainSystem) {
-    const positions = rainSystem.geometry.attributes.position.array as Float32Array
+    const positions = rainSystem.geometry.attributes.position
+      .array as Float32Array
     for (let i = 0; i < positions.length; i += 3) {
       // Fall down
       positions[i + 1] -= 50 * delta
       if (positions[i + 1] < 0) positions[i + 1] += 200
-      
+
       // Follow center point (wrap around)
       if (positions[i] < center.x - 200) positions[i] += 400
       if (positions[i] > center.x + 200) positions[i] -= 400
@@ -122,13 +129,14 @@ export function animateWeather(
 
   // Animate snow
   if (snowSystem) {
-    const positions = snowSystem.geometry.attributes.position.array as Float32Array
+    const positions = snowSystem.geometry.attributes.position
+      .array as Float32Array
     for (let i = 0; i < positions.length; i += 3) {
       // Fall down slowly
       positions[i + 1] -= 5 * delta
       // Drift sideways (gentle swaying motion)
       positions[i] += Math.sin(Date.now() * 0.001 + positions[i + 1]) * 0.1
-      
+
       // Reset when reaching ground
       if (positions[i + 1] < 0) positions[i + 1] = 200
 

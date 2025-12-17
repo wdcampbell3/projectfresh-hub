@@ -86,8 +86,8 @@
     // 🎲 Enemy Spawn Probabilities (must add up to 1.0)
     enemySpawnWeights: {
       basic: 0.6, // 60% chance
-      fast: 0.3,  // 30% chance
-      tank: 0.1,  // 10% chance
+      fast: 0.3, // 30% chance
+      tank: 0.1, // 10% chance
     },
 
     // 🏰 Tower Quantities Per Level
@@ -123,27 +123,27 @@
 
   // Load config from localStorage or use defaults
   function loadConfig() {
-    if (typeof localStorage !== 'undefined') {
-      const saved = localStorage.getItem('towerDefenseConfig')
+    if (typeof localStorage !== "undefined") {
+      const saved = localStorage.getItem("towerDefenseConfig")
       if (saved) {
         try {
-          return {...DEFAULT_CONFIG, ...JSON.parse(saved)}
+          return { ...DEFAULT_CONFIG, ...JSON.parse(saved) }
         } catch (e) {
-          return {...DEFAULT_CONFIG}
+          return { ...DEFAULT_CONFIG }
         }
       }
     }
-    return {...DEFAULT_CONFIG}
+    return { ...DEFAULT_CONFIG }
   }
 
   function saveConfig() {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('towerDefenseConfig', JSON.stringify(GAME_CONFIG))
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("towerDefenseConfig", JSON.stringify(GAME_CONFIG))
     }
   }
 
   function resetConfig() {
-    GAME_CONFIG = {...DEFAULT_CONFIG}
+    GAME_CONFIG = { ...DEFAULT_CONFIG }
     saveConfig()
   }
 
@@ -163,7 +163,9 @@
   let enemies = $state<Enemy[]>([])
   let towers = $state<Tower[]>([])
   let projectiles = $state<Projectile[]>([])
-  let selectedTowerType = $state<"basic" | "sniper" | "blast" | "laser" | "freeze" | "missile" | null>(null)
+  let selectedTowerType = $state<
+    "basic" | "sniper" | "blast" | "laser" | "freeze" | "missile" | null
+  >(null)
   let hoveredCell = $state<{ x: number; y: number } | null>(null)
   let nextEnemyId = 0
   let nextTowerId = 0
@@ -186,7 +188,7 @@
   let blockedSquares = $state<Set<string>>(new Set()) // Squares blocked by air attack (stored as "x,y")
 
   // Tower quantity limits (loaded from config)
-  let towerQuantities = $state({...GAME_CONFIG.towerQuantities})
+  let towerQuantities = $state({ ...GAME_CONFIG.towerQuantities })
 
   // Predefined path patterns
   const pathPatterns: Point[][] = [
@@ -269,7 +271,9 @@
     ]
   }
 
-  let secondaryPathPatterns: Point[][] = $state(getSecondaryPathForPrimary(pathPatterns[0]))
+  let secondaryPathPatterns: Point[][] = $state(
+    getSecondaryPathForPrimary(pathPatterns[0]),
+  )
 
   // Current active paths
   let path: Point[] = $state(pathPatterns[0])
@@ -292,7 +296,11 @@
     return audioContext
   }
 
-  const playSound = (frequency: number, duration: number, type: OscillatorType = "sine") => {
+  const playSound = (
+    frequency: number,
+    duration: number,
+    type: OscillatorType = "sine",
+  ) => {
     if (!soundEnabled) return
 
     try {
@@ -309,7 +317,10 @@
       oscillator.type = type
 
       gainNode.gain.setValueAtTime(0.1, ctx.currentTime)
-      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration)
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.01,
+        ctx.currentTime + duration,
+      )
 
       oscillator.start(ctx.currentTime)
       oscillator.stop(ctx.currentTime + duration)
@@ -399,9 +410,24 @@
   // Enemy types (speeds now controlled by config)
   function getEnemyTypes() {
     return {
-      basic: { health: 50, speed: GAME_CONFIG.baseEnemySpeed, reward: 10, color: "#ef4444" },
-      fast: { health: 30, speed: GAME_CONFIG.fastEnemySpeed, reward: 15, color: "#ec4899" },
-      tank: { health: 150, speed: GAME_CONFIG.tankEnemySpeed, reward: 30, color: "#78350f" },
+      basic: {
+        health: 50,
+        speed: GAME_CONFIG.baseEnemySpeed,
+        reward: 10,
+        color: "#ef4444",
+      },
+      fast: {
+        health: 30,
+        speed: GAME_CONFIG.fastEnemySpeed,
+        reward: 15,
+        color: "#ec4899",
+      },
+      tank: {
+        health: 150,
+        speed: GAME_CONFIG.tankEnemySpeed,
+        reward: 30,
+        color: "#78350f",
+      },
     }
   }
 
@@ -424,7 +450,9 @@
     if (secondEntrance) {
       // Regenerate secondary paths based on the selected primary path
       secondaryPathPatterns = getSecondaryPathForPrimary(path)
-      const randomSecondaryIndex = Math.floor(Math.random() * secondaryPathPatterns.length)
+      const randomSecondaryIndex = Math.floor(
+        Math.random() * secondaryPathPatterns.length,
+      )
       secondaryPath = secondaryPathPatterns[randomSecondaryIndex]
       secondaryPathPixels = convertPathToPixels(secondaryPath)
     }
@@ -459,7 +487,7 @@
     nextProjectileId = 0
     enemiesSpawned = 0
     lastSpawnTime = 0
-    towerQuantities = {...GAME_CONFIG.towerQuantities}
+    towerQuantities = { ...GAME_CONFIG.towerQuantities }
     blockedSquares = new Set()
     selectRandomPath()
 
@@ -521,7 +549,7 @@
 
       // Increase enemy speed based on config
       if (GAME_CONFIG.enemySpeedScalingType === "multiplicative") {
-        enemySpeedMultiplier *= (1 + GAME_CONFIG.enemySpeedPerLevel)
+        enemySpeedMultiplier *= 1 + GAME_CONFIG.enemySpeedPerLevel
       } else {
         enemySpeedMultiplier += GAME_CONFIG.enemySpeedPerLevel
       }
@@ -532,7 +560,7 @@
       }
 
       // Restore all tower quantities
-      towerQuantities = {...GAME_CONFIG.towerQuantities}
+      towerQuantities = { ...GAME_CONFIG.towerQuantities }
 
       // Clear blocked squares for new level
       blockedSquares = new Set()
@@ -564,7 +592,7 @@
     const weights = [
       GAME_CONFIG.enemySpawnWeights.basic,
       GAME_CONFIG.enemySpawnWeights.fast,
-      GAME_CONFIG.enemySpawnWeights.tank
+      GAME_CONFIG.enemySpawnWeights.tank,
     ]
     const rand = Math.random()
     let type: "basic" | "fast" | "tank" = "basic"
@@ -598,12 +626,14 @@
 
   function updateEnemies(deltaTime: number) {
     // Spawn enemies for current wave using config
-    const enemyCount = GAME_CONFIG.baseEnemyCount + wave * GAME_CONFIG.enemyCountPerWave
+    const enemyCount =
+      GAME_CONFIG.baseEnemyCount + wave * GAME_CONFIG.enemyCountPerWave
     if (gameRunning && wave > 0 && enemiesSpawned < enemyCount) {
       const now = Date.now()
       const spawnInterval = Math.max(
         GAME_CONFIG.minSpawnInterval,
-        GAME_CONFIG.baseSpawnInterval - (wave - 1) * GAME_CONFIG.spawnIntervalDecrease
+        GAME_CONFIG.baseSpawnInterval -
+          (wave - 1) * GAME_CONFIG.spawnIntervalDecrease,
       )
       if (now - lastSpawnTime > spawnInterval) {
         spawnEnemy()
@@ -627,7 +657,9 @@
         }
 
         // Check if enemy will pass this tower (look ahead on path)
-        const enemyPath = enemy.isSecondaryPath ? secondaryPathPixels : pathPixels
+        const enemyPath = enemy.isSecondaryPath
+          ? secondaryPathPixels
+          : pathPixels
         for (let j = enemy.pathIndex; j < enemyPath.length; j++) {
           const pathPoint = enemyPath[j]
           const pathDx = pathPoint.x - tower.x
@@ -655,7 +687,8 @@
     }
 
     // Enable warp speed if no enemies will pass towers and can't afford more towers
-    const warpSpeed = !anyEnemyInRangeOrWillPass && !canAffordAnyTower && enemies.length > 0
+    const warpSpeed =
+      !anyEnemyInRangeOrWillPass && !canAffordAnyTower && enemies.length > 0
 
     // Move enemies
     for (let i = enemies.length - 1; i >= 0; i--) {
@@ -675,14 +708,20 @@
       let enemyPath = enemy.isSecondaryPath ? secondaryPathPixels : pathPixels
 
       // Check if enemy from secondary path has reached the merge point
-      if (enemy.isSecondaryPath && enemy.pathIndex >= secondaryPathPixels.length - 1) {
+      if (
+        enemy.isSecondaryPath &&
+        enemy.pathIndex >= secondaryPathPixels.length - 1
+      ) {
         // Switch to primary path at the merge point
         const mergePoint = secondaryPathPixels[secondaryPathPixels.length - 1]
 
         // Find the index of this merge point in the primary path
         let mergeIndexInPrimary = -1
         for (let j = 0; j < pathPixels.length; j++) {
-          if (Math.abs(pathPixels[j].x - mergePoint.x) < 5 && Math.abs(pathPixels[j].y - mergePoint.y) < 5) {
+          if (
+            Math.abs(pathPixels[j].x - mergePoint.x) < 5 &&
+            Math.abs(pathPixels[j].y - mergePoint.y) < 5
+          ) {
             mergeIndexInPrimary = j
             break
           }
@@ -785,7 +824,8 @@
           targetX: closestEnemy.x,
           targetY: closestEnemy.y,
           damage: tower.damage,
-          speed: tower.type === "laser" ? 15 : tower.type === "missile" ? 8 : 10,
+          speed:
+            tower.type === "laser" ? 15 : tower.type === "missile" ? 8 : 10,
           target: closestEnemy,
           type: tower.type,
         })
@@ -828,14 +868,20 @@
             projectile.target.slowedUntil = now + GAME_CONFIG.freezeDuration
             sounds.hit()
           }
-        } else if (projectile.type === "blast" || projectile.type === "missile") {
+        } else if (
+          projectile.type === "blast" ||
+          projectile.type === "missile"
+        ) {
           // Splash damage using config
           sounds.explosion()
           for (const enemy of enemies) {
             const edx = enemy.x - projectile.targetX
             const edy = enemy.y - projectile.targetY
             const edist = Math.sqrt(edx * edx + edy * edy)
-            const radius = projectile.type === "missile" ? GAME_CONFIG.missileRadius : GAME_CONFIG.blastRadius
+            const radius =
+              projectile.type === "missile"
+                ? GAME_CONFIG.missileRadius
+                : GAME_CONFIG.blastRadius
             if (edist < radius) {
               enemy.health -= projectile.damage * (1 - edist / radius)
             }
@@ -856,10 +902,17 @@
   function triggerAirAttack() {
     // Only trigger during configured wave of each level (e.g., wave 5 in each level)
     const waveInLevel = ((wave - 1) % GAME_CONFIG.wavesPerLevel) + 1
-    if (!airAttackEnabled || towers.length === 0 || airAttackUsedThisWave || waveInLevel !== GAME_CONFIG.airAttackWave) return
+    if (
+      !airAttackEnabled ||
+      towers.length === 0 ||
+      airAttackUsedThisWave ||
+      waveInLevel !== GAME_CONFIG.airAttackWave
+    )
+      return
 
     // Trigger once at halfway through wave
-    const enemyCount = GAME_CONFIG.baseEnemyCount + wave * GAME_CONFIG.enemyCountPerWave
+    const enemyCount =
+      GAME_CONFIG.baseEnemyCount + wave * GAME_CONFIG.enemyCountPerWave
     const waveProgress = enemiesSpawned / enemyCount
     if (waveProgress < 0.5) return // Wait until halfway through wave
 
@@ -868,7 +921,8 @@
 
     // Calculate total damage potential for each tower
     for (const tower of towers) {
-      const damageScore = tower.damage * (tower.level || 1) * (1000 / tower.fireRate)
+      const damageScore =
+        tower.damage * (tower.level || 1) * (1000 / tower.fireRate)
       towerDamageStats.set(tower.id, damageScore)
     }
 
@@ -905,12 +959,14 @@
             clearInterval(jetInterval)
 
             // Remove tower
-            const index = towers.findIndex(t => t.id === targetTower.id)
+            const index = towers.findIndex((t) => t.id === targetTower.id)
             if (index !== -1) {
               towers.splice(index, 1)
               sounds.explosion()
               // Give some money back based on config
-              money += Math.floor(targetTower.cost * GAME_CONFIG.airAttackRefundPercent)
+              money += Math.floor(
+                targetTower.cost * GAME_CONFIG.airAttackRefundPercent,
+              )
             }
 
             // Add permanent skull marker to blocked squares
@@ -990,7 +1046,9 @@
     // Draw hover highlight
     if (hoveredCell && selectedTowerType) {
       const canPlace = canPlaceTower(hoveredCell.x, hoveredCell.y)
-      ctx.fillStyle = canPlace ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)"
+      ctx.fillStyle = canPlace
+        ? "rgba(34, 197, 94, 0.3)"
+        : "rgba(239, 68, 68, 0.3)"
       ctx.fillRect(
         hoveredCell.x * GRID_SIZE,
         hoveredCell.y * GRID_SIZE,
@@ -1050,7 +1108,7 @@
           tower.y,
           18,
           -Math.PI / 2,
-          -Math.PI / 2 + (Math.PI * 2 * reloadProgress),
+          -Math.PI / 2 + Math.PI * 2 * reloadProgress,
         )
         ctx.stroke()
       }
@@ -1059,11 +1117,7 @@
       ctx.font = "20px Arial"
       ctx.textAlign = "center"
       ctx.textBaseline = "middle"
-      ctx.fillText(
-        config.emoji,
-        tower.x,
-        tower.y,
-      )
+      ctx.fillText(config.emoji, tower.x, tower.y)
 
       // Draw level
       if (tower.level > 1) {
@@ -1102,7 +1156,12 @@
       const healthPercent = enemy.health / enemy.maxHealth
       ctx.fillStyle = "#1f2937"
       ctx.fillRect(enemy.x - 15, enemy.y - 20, 30, 4)
-      ctx.fillStyle = healthPercent > 0.5 ? "#22c55e" : healthPercent > 0.25 ? "#eab308" : "#ef4444"
+      ctx.fillStyle =
+        healthPercent > 0.5
+          ? "#22c55e"
+          : healthPercent > 0.25
+            ? "#eab308"
+            : "#ef4444"
       ctx.fillRect(enemy.x - 15, enemy.y - 20, 30 * healthPercent, 4)
     }
 
@@ -1122,8 +1181,14 @@
         ctx.lineWidth = 2
         ctx.beginPath()
         ctx.moveTo(projectile.x, projectile.y)
-        const angle = Math.atan2(projectile.targetY - projectile.y, projectile.targetX - projectile.x)
-        ctx.lineTo(projectile.x + Math.cos(angle) * 20, projectile.y + Math.sin(angle) * 20)
+        const angle = Math.atan2(
+          projectile.targetY - projectile.y,
+          projectile.targetX - projectile.x,
+        )
+        ctx.lineTo(
+          projectile.x + Math.cos(angle) * 20,
+          projectile.y + Math.sin(angle) * 20,
+        )
         ctx.stroke()
         ctx.fillStyle = "#06b6d4"
         ctx.beginPath()
@@ -1142,7 +1207,10 @@
         ctx.fillStyle = "#dc2626"
         ctx.save()
         ctx.translate(projectile.x, projectile.y)
-        const angle = Math.atan2(projectile.targetY - projectile.y, projectile.targetX - projectile.x)
+        const angle = Math.atan2(
+          projectile.targetY - projectile.y,
+          projectile.targetX - projectile.x,
+        )
         ctx.rotate(angle)
         ctx.fillRect(-8, -3, 16, 6)
         ctx.fillStyle = "#fca5a5"
@@ -1166,11 +1234,15 @@
 
     // Draw permanent skull markers on blocked squares
     for (const coordStr of blockedSquares) {
-      const [gridX, gridY] = coordStr.split(',').map(Number)
+      const [gridX, gridY] = coordStr.split(",").map(Number)
       ctx.font = "30px Arial"
       ctx.textAlign = "center"
       ctx.textBaseline = "middle"
-      ctx.fillText("💀", gridX * GRID_SIZE + GRID_SIZE / 2, gridY * GRID_SIZE + GRID_SIZE / 2)
+      ctx.fillText(
+        "💀",
+        gridX * GRID_SIZE + GRID_SIZE / 2,
+        gridY * GRID_SIZE + GRID_SIZE / 2,
+      )
     }
 
     animationId = requestAnimationFrame(draw)
@@ -1233,7 +1305,11 @@
     if (!canPlaceTower(gridX, gridY)) return
 
     // Check tower quantity limit (0 means no limit)
-    if (towerQuantities[selectedTowerType] !== 0 && towerQuantities[selectedTowerType] <= 0) return
+    if (
+      towerQuantities[selectedTowerType] !== 0 &&
+      towerQuantities[selectedTowerType] <= 0
+    )
+      return
 
     towers.push({
       id: nextTowerId++,
@@ -1274,7 +1350,9 @@
     }
   }
 
-  function selectTowerType(type: "basic" | "sniper" | "blast" | "laser" | "freeze" | "missile") {
+  function selectTowerType(
+    type: "basic" | "sniper" | "blast" | "laser" | "freeze" | "missile",
+  ) {
     selectedTowerType = selectedTowerType === type ? null : type
 
     // Hide "Buy & Place Towers" overlay when first tower is selected
@@ -1294,18 +1372,29 @@
     <h1 class="text-4xl font-bold" style="color: #660460;">🗼 Tower Assault</h1>
     <div class="flex gap-2">
       {#if !gameRunning && !gameOver}
-        <button class="btn text-white border-0 hover:opacity-90" style="background-color: #660460;" onclick={startGame}>
+        <button
+          class="btn text-white border-0 hover:opacity-90"
+          style="background-color: #660460;"
+          onclick={startGame}
+        >
           Start Game
         </button>
       {:else if gameOver}
-        <button class="btn text-white border-0 hover:opacity-90" style="background-color: #660460;" onclick={startGame}>
+        <button
+          class="btn text-white border-0 hover:opacity-90"
+          style="background-color: #660460;"
+          onclick={startGame}
+        >
           New Game
         </button>
       {:else if wave === 0 || (enemies.length === 0 && enemiesSpawned >= GAME_CONFIG.baseEnemyCount + (wave - 1) * GAME_CONFIG.enemyCountPerWave)}
-        {@const justCompletedLevel = wave > 0 && wave % GAME_CONFIG.wavesPerLevel === 0}
+        {@const justCompletedLevel =
+          wave > 0 && wave % GAME_CONFIG.wavesPerLevel === 0}
         {@const nextLevel = level + 1}
         <button class="btn btn-success" onclick={startWave}>
-          {justCompletedLevel ? `Start Level ${nextLevel}` : `Start Wave ${wave + 1}`}
+          {justCompletedLevel
+            ? `Start Level ${nextLevel}`
+            : `Start Wave ${wave + 1}`}
         </button>
       {:else}
         <button class="btn btn-disabled" disabled>
@@ -1331,45 +1420,65 @@
               onmouseleave={() => (hoveredCell = null)}
             ></canvas>
 
-        <!-- Subtle Countdown Timer (Top Right) -->
-        {#if countdown > 0}
-          <div class="absolute top-4 right-4 pointer-events-none">
-            <div class="bg-black bg-opacity-80 rounded-lg px-4 py-2 text-center border-2 border-blue-500">
-              <div class="text-sm text-blue-300 font-semibold mb-1">Wave starts in</div>
-              <div class="text-4xl font-bold text-white">{countdown}</div>
-            </div>
-          </div>
-        {/if}
+            <!-- Subtle Countdown Timer (Top Right) -->
+            {#if countdown > 0}
+              <div class="absolute top-4 right-4 pointer-events-none">
+                <div
+                  class="bg-black bg-opacity-80 rounded-lg px-4 py-2 text-center border-2 border-blue-500"
+                >
+                  <div class="text-sm text-blue-300 font-semibold mb-1">
+                    Wave starts in
+                  </div>
+                  <div class="text-4xl font-bold text-white">{countdown}</div>
+                </div>
+              </div>
+            {/if}
 
-        <!-- Level Complete Celebration Overlay -->
-        {#if levelCompleted}
-          <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div class="bg-gradient-to-br from-green-500 to-blue-500 bg-opacity-95 rounded-lg p-16 text-center shadow-2xl animate-pulse">
-              <div class="text-6xl mb-4">🎉</div>
-              <div class="text-5xl font-bold text-white mb-4">Level {level - 1} Complete!</div>
-              <div class="text-3xl text-white">Starting Level {level}...</div>
-              <div class="text-8xl mt-6">✨🎊✨</div>
-            </div>
-          </div>
-        {/if}
+            <!-- Level Complete Celebration Overlay -->
+            {#if levelCompleted}
+              <div
+                class="absolute inset-0 flex items-center justify-center pointer-events-none"
+              >
+                <div
+                  class="bg-gradient-to-br from-green-500 to-blue-500 bg-opacity-95 rounded-lg p-16 text-center shadow-2xl animate-pulse"
+                >
+                  <div class="text-6xl mb-4">🎉</div>
+                  <div class="text-5xl font-bold text-white mb-4">
+                    Level {level - 1} Complete!
+                  </div>
+                  <div class="text-3xl text-white">
+                    Starting Level {level}...
+                  </div>
+                  <div class="text-8xl mt-6">✨🎊✨</div>
+                </div>
+              </div>
+            {/if}
           </div>
         </div>
       </div>
     </div>
 
     <!-- Controls Panel - fixed 1/4 width -->
-    <div class="w-full lg:w-1/4 flex flex-col gap-4 lg:min-w-[280px] lg:overflow-y-auto lg:max-h-full">
+    <div
+      class="w-full lg:w-1/4 flex flex-col gap-4 lg:min-w-[280px] lg:overflow-y-auto lg:max-h-full"
+    >
       <!-- Stats Container -->
       <div class="card-standard">
         <div class="card-body p-4">
-          <div class="stats stats-vertical lg:stats-horizontal shadow w-full overflow-visible flex-wrap">
+          <div
+            class="stats stats-vertical lg:stats-horizontal shadow w-full overflow-visible flex-wrap"
+          >
             <div class="stat py-2 px-2 min-w-0">
               <div class="stat-title text-xs">Health</div>
-              <div class="stat-value text-lg lg:text-xl text-error">{health}</div>
+              <div class="stat-value text-lg lg:text-xl text-error">
+                {health}
+              </div>
             </div>
             <div class="stat py-2 px-2 min-w-0">
               <div class="stat-title text-xs">Money</div>
-              <div class="stat-value text-lg lg:text-xl text-success">${money}</div>
+              <div class="stat-value text-lg lg:text-xl text-success">
+                ${money}
+              </div>
             </div>
             <div class="stat py-2 px-2 min-w-0">
               <div class="stat-title text-xs">Wave</div>
@@ -1377,7 +1486,9 @@
             </div>
             <div class="stat py-2 px-2 min-w-0">
               <div class="stat-title text-xs">Level</div>
-              <div class="stat-value text-lg lg:text-xl text-warning">{level}</div>
+              <div class="stat-value text-lg lg:text-xl text-warning">
+                {level}
+              </div>
             </div>
             <div class="stat py-2 px-2 min-w-0">
               <div class="stat-title text-xs">Score</div>
@@ -1402,7 +1513,11 @@
             <div class="form-control">
               <label class="label cursor-pointer">
                 <span class="label-text">Sound Effects</span>
-                <input type="checkbox" class="checkbox" bind:checked={soundEnabled} />
+                <input
+                  type="checkbox"
+                  class="checkbox"
+                  bind:checked={soundEnabled}
+                />
               </label>
             </div>
 
@@ -1410,7 +1525,12 @@
             <div class="form-control">
               <label class="label cursor-pointer">
                 <span class="label-text">Randomize Road Pattern</span>
-                <input type="checkbox" class="checkbox" bind:checked={randomizePath} disabled={gameRunning} />
+                <input
+                  type="checkbox"
+                  class="checkbox"
+                  bind:checked={randomizePath}
+                  disabled={gameRunning}
+                />
               </label>
             </div>
 
@@ -1418,7 +1538,12 @@
             <div class="form-control">
               <label class="label cursor-pointer">
                 <span class="label-text">Second Enemy Entrance</span>
-                <input type="checkbox" class="checkbox" bind:checked={secondEntrance} disabled={gameRunning} />
+                <input
+                  type="checkbox"
+                  class="checkbox"
+                  bind:checked={secondEntrance}
+                  disabled={gameRunning}
+                />
               </label>
             </div>
 
@@ -1426,7 +1551,12 @@
             <div class="form-control">
               <label class="label cursor-pointer">
                 <span class="label-text">Air Attack</span>
-                <input type="checkbox" class="checkbox" bind:checked={airAttackEnabled} disabled={gameRunning} />
+                <input
+                  type="checkbox"
+                  class="checkbox"
+                  bind:checked={airAttackEnabled}
+                  disabled={gameRunning}
+                />
               </label>
             </div>
 
@@ -1438,21 +1568,27 @@
               </label>
               <div class="flex gap-2">
                 <button
-                  class="btn btn-xs flex-1 {enemySpeedMultiplier === 0.5 ? 'btn-success' : 'btn-outline'}"
+                  class="btn btn-xs flex-1 {enemySpeedMultiplier === 0.5
+                    ? 'btn-success'
+                    : 'btn-outline'}"
                   onclick={() => (enemySpeedMultiplier = 0.5)}
                   disabled={gameRunning}
                 >
                   Slow (0.5x)
                 </button>
                 <button
-                  class="btn btn-xs flex-1 {enemySpeedMultiplier === 1 ? 'btn-warning' : 'btn-outline'}"
+                  class="btn btn-xs flex-1 {enemySpeedMultiplier === 1
+                    ? 'btn-warning'
+                    : 'btn-outline'}"
                   onclick={() => (enemySpeedMultiplier = 1)}
                   disabled={gameRunning}
                 >
                   Normal (1x)
                 </button>
                 <button
-                  class="btn btn-xs flex-1 {enemySpeedMultiplier === 1.5 ? 'btn-error' : 'btn-outline'}"
+                  class="btn btn-xs flex-1 {enemySpeedMultiplier === 1.5
+                    ? 'btn-error'
+                    : 'btn-outline'}"
                   onclick={() => (enemySpeedMultiplier = 1.5)}
                   disabled={gameRunning}
                 >
@@ -1485,19 +1621,37 @@
             <div class="divider">Select Tower to Place</div>
             <div class="grid grid-cols-1 gap-2">
               {#each Object.entries(towerTypes).sort(([, a], [, b]) => a.cost - b.cost) as [key, tower]}
-                {@const quantity = towerQuantities[key as keyof typeof towerQuantities]}
+                {@const quantity =
+                  towerQuantities[key as keyof typeof towerQuantities]}
                 {@const isOutOfStock = quantity !== 0 && quantity <= 0}
                 {@const isSelected = selectedTowerType === key}
                 <button
-                  class="btn btn-block justify-start text-left {isSelected ? 'btn-success' : ''}"
-                  style="{isSelected ? 'background-color: #15803d; border-color: #15803d; color: white;' : `background-color: ${tower.color}; border-color: ${tower.color}; color: white;`}"
-                  onclick={() => selectTowerType(key as "basic" | "sniper" | "blast" | "laser" | "freeze" | "missile")}
+                  class="btn btn-block justify-start text-left {isSelected
+                    ? 'btn-success'
+                    : ''}"
+                  style={isSelected
+                    ? "background-color: #15803d; border-color: #15803d; color: white;"
+                    : `background-color: ${tower.color}; border-color: ${tower.color}; color: white;`}
+                  onclick={() =>
+                    selectTowerType(
+                      key as
+                        | "basic"
+                        | "sniper"
+                        | "blast"
+                        | "laser"
+                        | "freeze"
+                        | "missile",
+                    )}
                   disabled={!gameRunning || money < tower.cost || isOutOfStock}
                 >
-                  <div class="flex justify-between items-center w-full gap-2 p-2">
+                  <div
+                    class="flex justify-between items-center w-full gap-2 p-2"
+                  >
                     <div class="flex items-center gap-2">
                       <span class="font-bold">{tower.emoji} {tower.name}</span>
-                      <span class="text-xs opacity-90">- {tower.description}</span>
+                      <span class="text-xs opacity-90"
+                        >- {tower.description}</span
+                      >
                     </div>
                     <div class="flex gap-2 items-center flex-shrink-0">
                       <span>${tower.cost}</span>
@@ -1526,8 +1680,15 @@
                 <li>Towers automatically shoot enemies in range</li>
                 <li>Don't let enemies reach the end of the path</li>
                 <li>Earn money by defeating enemies</li>
-                <li>Complete {GAME_CONFIG.wavesPerLevel} waves to advance a level</li>
-                <li>Enemy speed increases {GAME_CONFIG.enemySpeedScalingType === 'multiplicative' ? (GAME_CONFIG.enemySpeedPerLevel * 100).toFixed(0) + '%' : GAME_CONFIG.enemySpeedPerLevel + 'x'} each level</li>
+                <li>
+                  Complete {GAME_CONFIG.wavesPerLevel} waves to advance a level
+                </li>
+                <li>
+                  Enemy speed increases {GAME_CONFIG.enemySpeedScalingType ===
+                  "multiplicative"
+                    ? (GAME_CONFIG.enemySpeedPerLevel * 100).toFixed(0) + "%"
+                    : GAME_CONFIG.enemySpeedPerLevel + "x"} each level
+                </li>
               </ul>
             </div>
           </div>
@@ -1539,12 +1700,14 @@
         <div class="card-body">
           <button
             class="flex justify-between items-center w-full text-left hover:bg-base-300 -m-2 p-2 rounded-lg transition-colors"
-            onclick={() => showConfigPanel = !showConfigPanel}
+            onclick={() => (showConfigPanel = !showConfigPanel)}
             disabled={gameRunning}
           >
-            <h2 class="card-title" style="color: #660460;">⚙️ Game Configuration</h2>
+            <h2 class="card-title" style="color: #660460;">
+              ⚙️ Game Configuration
+            </h2>
             <span class="text-sm">
-              {showConfigPanel ? '▼ Hide' : '▶ Show'}
+              {showConfigPanel ? "▼ Hide" : "▶ Show"}
             </span>
           </button>
 
@@ -1559,7 +1722,9 @@
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text">Starting Money</span>
-                    <span class="label-text-alt">${GAME_CONFIG.startingMoney}</span>
+                    <span class="label-text-alt"
+                      >${GAME_CONFIG.startingMoney}</span
+                    >
                   </label>
                   <input
                     type="range"
@@ -1575,7 +1740,9 @@
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text">Starting Health</span>
-                    <span class="label-text-alt">{GAME_CONFIG.startingHealth}</span>
+                    <span class="label-text-alt"
+                      >{GAME_CONFIG.startingHealth}</span
+                    >
                   </label>
                   <input
                     type="range"
@@ -1591,7 +1758,9 @@
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text">Level Completion Bonus</span>
-                    <span class="label-text-alt">${GAME_CONFIG.levelCompletionBonus}</span>
+                    <span class="label-text-alt"
+                      >${GAME_CONFIG.levelCompletionBonus}</span
+                    >
                   </label>
                   <input
                     type="range"
@@ -1636,7 +1805,9 @@
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text">Waves Per Level</span>
-                    <span class="label-text-alt">{GAME_CONFIG.wavesPerLevel}</span>
+                    <span class="label-text-alt"
+                      >{GAME_CONFIG.wavesPerLevel}</span
+                    >
                   </label>
                   <input
                     type="range"
@@ -1652,7 +1823,9 @@
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text">Base Enemy Count</span>
-                    <span class="label-text-alt">{GAME_CONFIG.baseEnemyCount}</span>
+                    <span class="label-text-alt"
+                      >{GAME_CONFIG.baseEnemyCount}</span
+                    >
                   </label>
                   <input
                     type="range"
@@ -1668,7 +1841,9 @@
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text">Enemies Added Per Wave</span>
-                    <span class="label-text-alt">+{GAME_CONFIG.enemyCountPerWave}</span>
+                    <span class="label-text-alt"
+                      >+{GAME_CONFIG.enemyCountPerWave}</span
+                    >
                   </label>
                   <input
                     type="range"
@@ -1684,7 +1859,11 @@
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text">Enemy Health Per Wave</span>
-                    <span class="label-text-alt">+{(GAME_CONFIG.enemyHealthPerWave * 100).toFixed(0)}%</span>
+                    <span class="label-text-alt"
+                      >+{(GAME_CONFIG.enemyHealthPerWave * 100).toFixed(
+                        0,
+                      )}%</span
+                    >
                   </label>
                   <input
                     type="range"
@@ -1700,7 +1879,9 @@
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text">Base Enemy Speed</span>
-                    <span class="label-text-alt">{GAME_CONFIG.baseEnemySpeed.toFixed(2)}</span>
+                    <span class="label-text-alt"
+                      >{GAME_CONFIG.baseEnemySpeed.toFixed(2)}</span
+                    >
                   </label>
                   <input
                     type="range"
@@ -1716,7 +1897,9 @@
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text">Fast Enemy Speed</span>
-                    <span class="label-text-alt">{GAME_CONFIG.fastEnemySpeed.toFixed(2)}</span>
+                    <span class="label-text-alt"
+                      >{GAME_CONFIG.fastEnemySpeed.toFixed(2)}</span
+                    >
                   </label>
                   <input
                     type="range"
@@ -1732,7 +1915,9 @@
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text">Tank Enemy Speed</span>
-                    <span class="label-text-alt">{GAME_CONFIG.tankEnemySpeed.toFixed(2)}</span>
+                    <span class="label-text-alt"
+                      >{GAME_CONFIG.tankEnemySpeed.toFixed(2)}</span
+                    >
                   </label>
                   <input
                     type="range"
@@ -1749,7 +1934,7 @@
                   <label class="label">
                     <span class="label-text">Enemy Speed Per Level</span>
                     <span class="label-text-alt">
-                      {GAME_CONFIG.enemySpeedScalingType === 'multiplicative'
+                      {GAME_CONFIG.enemySpeedScalingType === "multiplicative"
                         ? `×${(1 + GAME_CONFIG.enemySpeedPerLevel).toFixed(2)}`
                         : `+${GAME_CONFIG.enemySpeedPerLevel.toFixed(2)}`}
                     </span>
@@ -1775,7 +1960,9 @@
                     onchange={saveConfig}
                   >
                     <option value="additive">Additive (Linear)</option>
-                    <option value="multiplicative">Multiplicative (Exponential)</option>
+                    <option value="multiplicative"
+                      >Multiplicative (Exponential)</option
+                    >
                   </select>
                 </div>
               </div>
@@ -1785,7 +1972,8 @@
                 <h3 class="font-semibold text-lg">🏰 Tower Quantities</h3>
 
                 {#each Object.entries(GAME_CONFIG.towerQuantities) as [towerKey, quantity]}
-                  {@const towerName = towerTypes[towerKey as keyof typeof towerTypes].name}
+                  {@const towerName =
+                    towerTypes[towerKey as keyof typeof towerTypes].name}
                   <div class="form-control">
                     <label class="label">
                       <span class="label-text">{towerName}</span>
@@ -1806,7 +1994,9 @@
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text">Tower Damage Multiplier</span>
-                    <span class="label-text-alt">×{GAME_CONFIG.towerDamageMultiplier.toFixed(2)}</span>
+                    <span class="label-text-alt"
+                      >×{GAME_CONFIG.towerDamageMultiplier.toFixed(2)}</span
+                    >
                   </label>
                   <input
                     type="range"
@@ -1822,7 +2012,9 @@
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text">Tower Range Multiplier</span>
-                    <span class="label-text-alt">×{GAME_CONFIG.towerRangeMultiplier.toFixed(2)}</span>
+                    <span class="label-text-alt"
+                      >×{GAME_CONFIG.towerRangeMultiplier.toFixed(2)}</span
+                    >
                   </label>
                   <input
                     type="range"
@@ -1843,7 +2035,9 @@
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text">Base Spawn Interval (ms)</span>
-                    <span class="label-text-alt">{GAME_CONFIG.baseSpawnInterval}ms</span>
+                    <span class="label-text-alt"
+                      >{GAME_CONFIG.baseSpawnInterval}ms</span
+                    >
                   </label>
                   <input
                     type="range"
@@ -1859,7 +2053,9 @@
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text">Warp Speed Multiplier</span>
-                    <span class="label-text-alt">×{GAME_CONFIG.warpSpeedMultiplier}</span>
+                    <span class="label-text-alt"
+                      >×{GAME_CONFIG.warpSpeedMultiplier}</span
+                    >
                   </label>
                   <input
                     type="range"
@@ -1875,7 +2071,9 @@
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text">Freeze Slow Percent</span>
-                    <span class="label-text-alt">{(GAME_CONFIG.freezeSlowPercent * 100).toFixed(0)}%</span>
+                    <span class="label-text-alt"
+                      >{(GAME_CONFIG.freezeSlowPercent * 100).toFixed(0)}%</span
+                    >
                   </label>
                   <input
                     type="range"
@@ -1891,7 +2089,9 @@
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text">Freeze Duration (ms)</span>
-                    <span class="label-text-alt">{GAME_CONFIG.freezeDuration}ms</span>
+                    <span class="label-text-alt"
+                      >{GAME_CONFIG.freezeDuration}ms</span
+                    >
                   </label>
                   <input
                     type="range"
@@ -1907,7 +2107,9 @@
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text">Blast Radius</span>
-                    <span class="label-text-alt">{GAME_CONFIG.blastRadius}px</span>
+                    <span class="label-text-alt"
+                      >{GAME_CONFIG.blastRadius}px</span
+                    >
                   </label>
                   <input
                     type="range"
@@ -1923,7 +2125,9 @@
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text">Missile Radius</span>
-                    <span class="label-text-alt">{GAME_CONFIG.missileRadius}px</span>
+                    <span class="label-text-alt"
+                      >{GAME_CONFIG.missileRadius}px</span
+                    >
                   </label>
                   <input
                     type="range"
@@ -1941,23 +2145,31 @@
             <div class="divider my-4"></div>
 
             <div class="flex gap-2 justify-end">
-              <button
-                class="btn btn-error btn-sm"
-                onclick={resetConfig}
-              >
+              <button class="btn btn-error btn-sm" onclick={resetConfig}>
                 Reset to Defaults
               </button>
-              <button
-                class="btn btn-success btn-sm"
-                onclick={saveConfig}
-              >
+              <button class="btn btn-success btn-sm" onclick={saveConfig}>
                 💾 Save Configuration
               </button>
             </div>
 
             <div class="alert alert-info mt-4">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              <span>Configuration is saved to your browser's local storage. Changes take effect on the next game.</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                class="stroke-current shrink-0 w-6 h-6"
+                ><path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path></svg
+              >
+              <span
+                >Configuration is saved to your browser's local storage. Changes
+                take effect on the next game.</span
+              >
             </div>
           {/if}
         </div>
