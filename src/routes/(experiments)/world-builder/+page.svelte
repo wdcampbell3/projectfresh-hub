@@ -3274,9 +3274,7 @@
         </h2>
 
         <!-- Auto Generate Section - Moved to Top -->
-        <div
-          class="bg-custom-secondary p-3 mb-4 rounded-lg border-mauve shadow-sm"
-        >
+        <div class="card-standard p-3 mb-4">
           <h4 class="font-semibold mb-2">Auto Generate Settings</h4>
 
           <!-- Preset Radio Buttons -->
@@ -3565,10 +3563,7 @@
         <div class="divider my-4"></div>
 
         <!-- Current Map Info -->
-        <div
-          class="bg-custom-secondary p-3 mb-4 rounded-lg"
-          style="border: 1px solid #dac1cd; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);"
-        >
+        <div class="card-standard p-3 mb-4">
           <div class="text-sm font-semibold mb-1">Current Map:</div>
           <input
             type="text"
@@ -3718,7 +3713,7 @@
                 return games.includes("all") || games.includes(mapFilter)
               })
               .sort((a, b) => b.modified - a.modified) as map}
-              <div class="card bg-base-300 shadow-sm">
+              <div class="card-standard">
                 <div class="card-body p-3">
                   {#if map.thumbnail}
                     <img
