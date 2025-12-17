@@ -4011,7 +4011,7 @@
       {/if}
 
       <div
-        class="bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow-lg flex flex-nowrap gap-2 items-center whitespace-nowrap"
+        class="bg-base-100/90 backdrop-blur-sm p-4 rounded-lg shadow-lg flex flex-nowrap gap-2 items-center whitespace-nowrap border border-base-300"
       >
         <button
           class="btn btn-sm btn-ghost"
