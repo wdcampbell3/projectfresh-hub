@@ -1626,7 +1626,7 @@
                 {@const isOutOfStock = quantity !== 0 && quantity <= 0}
                 {@const isSelected = selectedTowerType === key}
                 <button
-                  class="btn btn-block justify-start text-left {isSelected
+                  class="btn h-auto min-h-[4.5rem] py-2 w-full justify-start text-left {isSelected
                     ? 'btn-success'
                     : ''}"
                   style={isSelected
@@ -1644,20 +1644,41 @@
                     )}
                   disabled={!gameRunning || money < tower.cost || isOutOfStock}
                 >
-                  <div
-                    class="flex justify-between items-center w-full gap-2 p-2"
-                  >
-                    <div class="flex items-center gap-2">
-                      <span class="font-bold">{tower.emoji} {tower.name}</span>
-                      <span class="text-xs opacity-90"
-                        >- {tower.description}</span
+                  <div class="flex items-center gap-3 w-full">
+                    <!-- Left: Icon & Cost -->
+                    <div class="flex flex-col items-center gap-1 min-w-[3.5rem]">
+                      <span class="text-3xl filter drop-shadow-md"
+                        >{tower.emoji}</span
                       >
+                      <span
+                        class="badge badge-sm border-0 font-bold bg-black/20 text-white w-full"
+                      >
+                        ${tower.cost}
+                      </span>
                     </div>
-                    <div class="flex gap-2 items-center flex-shrink-0">
-                      <span>${tower.cost}</span>
-                      {#if quantity > 0}
-                        <span class="badge badge-sm">{quantity} left</span>
-                      {/if}
+
+                    <!-- Right: Info -->
+                    <div class="flex-1 min-w-0 flex flex-col gap-0.5">
+                      <div class="flex justify-between items-start gap-2">
+                        <span class="font-bold leading-tight"
+                          >{tower.name}</span
+                        >
+                        {#if quantity !== 0}
+                          <span
+                            class="text-[10px] font-mono whitespace-nowrap px-1.5 py-0.5 rounded bg-black/10 {isOutOfStock
+                              ? 'text-red-200'
+                              : 'text-white/90'}"
+                          >
+                            {isOutOfStock ? "0" : quantity} LEFT
+                          </span>
+                        {/if}
+                      </div>
+
+                      <div
+                        class="text-xs opacity-90 whitespace-normal leading-tight"
+                      >
+                        {tower.description}
+                      </div>
                     </div>
                   </div>
                 </button>
