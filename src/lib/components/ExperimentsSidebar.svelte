@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/stores"
   import { hideSidebar } from "$lib/stores/gameState"
+  import ThemeToggle from "$lib/components/ThemeToggle.svelte"
 
   const experiments2D = [
     { name: "Space Invaders", path: "/space-invaders", icon: "👾" },
@@ -40,8 +41,9 @@
           </svg>
         </label>
       </div>
-      <div class="flex-1">
+      <div class="flex-1 flex justify-between items-center pr-2">
         <span class="text-xl font-bold">Experiments</span>
+        <ThemeToggle />
       </div>
     </div>
     <div class={$hideSidebar ? "" : "p-4"}>
@@ -58,7 +60,10 @@
       class="min-h-screen w-64 bg-base-200 text-base-content sidebar-border"
     >
       <div class="p-4">
-        <h2 class="text-2xl font-bold mb-6">🧪 Experiments</h2>
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold">🧪 Experiments</h2>
+          <ThemeToggle />
+        </div>
 
         <!-- Back to Home button -->
         <a
