@@ -23,7 +23,7 @@
   <input id="experiments-drawer" type="checkbox" class="drawer-toggle" />
   <div class="drawer-content flex flex-col">
     <!-- Page content here -->
-    <div class="navbar bg-base-200 {$hideSidebar ? 'hidden' : 'lg:hidden'}">
+    <div class="navbar bg-base-100 {$hideSidebar ? 'hidden' : 'lg:hidden'}">
       <div class="flex-none">
         <label for="experiments-drawer" class="btn btn-square btn-ghost">
           <svg
@@ -57,7 +57,7 @@
       class="drawer-overlay"
     ></label>
     <aside
-      class="min-h-screen w-64 bg-base-200 text-base-content sidebar-border"
+      class="min-h-screen w-64 bg-base-100 text-base-content sidebar-border"
     >
       <div class="p-4">
         <div class="flex justify-between items-center mb-6">
