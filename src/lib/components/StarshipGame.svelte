@@ -4878,6 +4878,7 @@
                           >
                             Random Map
                           </h4>
+                          <div
                             class="text-xs text-base-content text-center font-medium"
                           >
                             Surprise Me!
