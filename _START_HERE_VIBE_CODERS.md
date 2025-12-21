@@ -16,6 +16,7 @@ ProjectFresh Hub is a collection of playable browser games including:
 - **🏰 Strategy** - Tower defense, light-cycle racing
 
 **What can you do with it?**
+
 - ✨ Add entirely new games
 - 🎨 Change colors, sounds, and visual effects
 - ⚙️ Tweak game mechanics (speed, difficulty, power-ups)
@@ -30,10 +31,10 @@ ProjectFresh Hub is a collection of playable browser games including:
 
 You'll need a code editor with a built-in AI chatbot. Pick one:
 
-| Editor | Link | Notes |
-|--------|------|-------|
-| **Antigravity** | [Download](https://antigravity.google) | Made by Google, new and powerful |
-| **Cursor** | [Download](https://cursor.com) | Very popular, great for beginners |
+| Editor          | Link                                   | Notes                             |
+| --------------- | -------------------------------------- | --------------------------------- |
+| **Antigravity** | [Download](https://antigravity.google) | Made by Google, new and powerful  |
+| **Cursor**      | [Download](https://cursor.com)         | Very popular, great for beginners |
 
 Install it like any other app!
 
@@ -140,16 +141,19 @@ or
 Once you're comfortable, try these:
 
 ### Beginner
+
 - Change the snake's color in Worm Game
 - Add your name to the game titles
 - Change the background music or sound effects
 
-### Intermediate  
+### Intermediate
+
 - Add a new power-up to any game
 - Create a new difficulty level
 - Add a high score display
 
 ### Advanced
+
 - Create a simple new game (like Flappy Bird or Breakout)
 - Add multiplayer to Pong (two players, one keyboard)
 - Create custom 3D models for World Builder
@@ -163,6 +167,7 @@ Want to share your games with friends? Here's how to put them on the internet!
 ### Step 1: Create Accounts
 
 You'll need free accounts on:
+
 - **GitHub** - [github.com](https://github.com) (stores your code)
 - **Netlify** - [netlify.com](https://netlify.com) (hosts your website)
 
@@ -173,6 +178,7 @@ Ask your AI:
 > "Help me create a new GitHub repository and push this project to it"
 
 The AI will walk you through:
+
 1. Creating a repository on GitHub
 2. Connecting your local code to GitHub
 3. Uploading (pushing) your code
@@ -198,26 +204,29 @@ Want your own URL like `mygames.com`? Netlify supports custom domains - check th
 ## 🆘 If Something Goes Wrong
 
 ### The dev server won't start
-Ask your AI: *"The dev server isn't starting. Can you help me troubleshoot?"*
+
+Ask your AI: _"The dev server isn't starting. Can you help me troubleshoot?"_
 
 ### A game is broken
-Ask your AI: *"The [game name] stopped working after we made changes. Can you help fix it?"*
+
+Ask your AI: _"The [game name] stopped working after we made changes. Can you help fix it?"_
 
 ### You want to start over
-Ask your AI: *"Reset all my changes and restore the original code from GitHub"*
+
+Ask your AI: _"Reset all my changes and restore the original code from GitHub"_
 
 ---
 
 ## 🎯 Quick Reference
 
-| What you want | What to ask |
-|---------------|-------------|
-| Start the games | "Run npm run dev" |
-| Stop the server | "Stop the dev server" or press Ctrl+C |
-| See your changes | Refresh your browser |
-| Undo a change | "Undo the last change" |
-| Find a game file | "Where is the code for [game name]?" |
-| Understand code | "Explain what this code does" |
+| What you want    | What to ask                           |
+| ---------------- | ------------------------------------- |
+| Start the games  | "Run npm run dev"                     |
+| Stop the server  | "Stop the dev server" or press Ctrl+C |
+| See your changes | Refresh your browser                  |
+| Undo a change    | "Undo the last change"                |
+| Find a game file | "Where is the code for [game name]?"  |
+| Understand code  | "Explain what this code does"         |
 
 ---
 
@@ -229,4 +238,4 @@ Remember: There's no wrong way to vibe code. Experiment, break things, fix them,
 
 ---
 
-*Built with ❤️ by Dougie - "Where creativity meets code!"*
+_Built with ❤️ by Dougie - "Where creativity meets code!"_
