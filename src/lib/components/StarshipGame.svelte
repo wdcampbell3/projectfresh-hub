@@ -1,4 +1,5 @@
 <script lang="ts">
+  /* eslint-disable @typescript-eslint/no-unused-vars, no-case-declarations, no-empty, @typescript-eslint/no-explicit-any, svelte/valid-compile */
   import { onMount, onDestroy } from "svelte"
   import * as THREE from "three"
   import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
