@@ -1016,7 +1016,7 @@
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
 
     // Draw grid
-    ctx.strokeStyle = "#1a1a2e"
+    ctx.strokeStyle = "#1f203c"
     ctx.lineWidth = 1
     for (let x = 0; x < CANVAS_WIDTH; x += 20) {
       ctx.beginPath()
@@ -1563,30 +1563,27 @@
 <div class="h-[calc(100vh-2rem)] p-4 flex flex-col">
   <!-- Header with title and game controls -->
   <div class="flex justify-between items-center mb-4">
-    <h1 class="text-4xl font-bold" style="color: #660460;">
+    <h1 class="text-4xl font-bold game-title">
       💡 Light Particles
     </h1>
     <div class="flex gap-2">
       {#if !gameRunning && !roundOver && !gameOver}
         <button
-          class="btn text-white border-0 hover:opacity-90"
-          style="background-color: #660460;"
+          class="btn btn-game-action"
           onclick={startGame}
         >
           Start Game
         </button>
       {:else if roundOver && !gameOver}
         <button
-          class="btn text-white border-0 hover:opacity-90"
-          style="background-color: #660460;"
+          class="btn btn-game-action"
           onclick={nextRound}
         >
           Next Round
         </button>
       {:else if gameOver}
         <button
-          class="btn text-white border-0 hover:opacity-90"
-          style="background-color: #660460;"
+          class="btn btn-game-action"
           onclick={startGame}
         >
           New Game
@@ -1617,7 +1614,7 @@
     <div class="w-full lg:w-1/4 flex flex-col gap-4 lg:min-w-[280px]">
       <div class="card-standard flex-1 lg:overflow-y-auto lg:max-h-full">
         <div class="card-body">
-          <h2 class="card-title" style="color: #660460;">Settings</h2>
+          <h2 class="card-title settings-title">Settings</h2>
 
           <div class="space-y-4">
             <!-- Game Mode Toggle -->
@@ -1733,7 +1730,7 @@
                 <span class="label-text">Sound Effects</span>
                 <input
                   type="checkbox"
-                  class="checkbox"
+                  class="checkbox checkbox-game"
                   bind:checked={soundEnabled}
                 />
               </label>
@@ -1745,7 +1742,7 @@
                 <span class="label-text font-semibold">Power-Ups</span>
                 <input
                   type="checkbox"
-                  class="checkbox checkbox-primary"
+                  class="checkbox checkbox-game"
                   bind:checked={powerUpsEnabled}
                   disabled={gameRunning || roundOver}
                 />
@@ -1765,7 +1762,7 @@
                   <label class="label cursor-pointer justify-start gap-2 py-1">
                     <input
                       type="checkbox"
-                      class="checkbox checkbox-xs"
+                      class="checkbox checkbox-game checkbox-xs"
                       bind:checked={enabledPowerUps.dasher}
                       disabled={gameRunning || roundOver}
                     />
@@ -1781,7 +1778,7 @@
                   <label class="label cursor-pointer justify-start gap-2 py-1">
                     <input
                       type="checkbox"
-                      class="checkbox checkbox-xs"
+                      class="checkbox checkbox-game checkbox-xs"
                       bind:checked={enabledPowerUps.shield}
                       disabled={gameRunning || roundOver}
                     />
@@ -1797,7 +1794,7 @@
                   <label class="label cursor-pointer justify-start gap-2 py-1">
                     <input
                       type="checkbox"
-                      class="checkbox checkbox-xs"
+                      class="checkbox checkbox-game checkbox-xs"
                       bind:checked={enabledPowerUps.timewarp}
                       disabled={gameRunning || roundOver}
                     />
@@ -1813,7 +1810,7 @@
                   <label class="label cursor-pointer justify-start gap-2 py-1">
                     <input
                       type="checkbox"
-                      class="checkbox checkbox-xs"
+                      class="checkbox checkbox-game checkbox-xs"
                       bind:checked={enabledPowerUps.teleport}
                       disabled={gameRunning || roundOver}
                     />
@@ -1829,7 +1826,7 @@
                   <label class="label cursor-pointer justify-start gap-2 py-1">
                     <input
                       type="checkbox"
-                      class="checkbox checkbox-xs"
+                      class="checkbox checkbox-game checkbox-xs"
                       bind:checked={enabledPowerUps.flash}
                       disabled={gameRunning || roundOver}
                     />

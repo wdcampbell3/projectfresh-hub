@@ -14,18 +14,19 @@
     isSabotaged: boolean
   }
 
-  type Difficulty = "easy" | "medium" | "hard"
+  type BoardSize = "small" | "medium" | "large"
 
-  const DIFFICULTIES = {
-    easy: { rows: 15, cols: 15, mines: 25 },
-    medium: { rows: 20, cols: 20, mines: 50 },
-    hard: { rows: 25, cols: 25, mines: 100 },
+  const BOARD_SIZES = {
+    small: { rows: 10, cols: 10, defaultMines: 15 },
+    medium: { rows: 16, cols: 16, defaultMines: 35 },
+    large: { rows: 20, cols: 20, defaultMines: 55 },
   }
 
   const BOARD_SIZE = 700 // Fixed board size in pixels
 
   // Game state
-  let difficulty = $state<Difficulty>("easy")
+  let boardSize = $state<BoardSize>("medium")
+  let minesCount = $state(35)
   let grid = $state<Cell[][]>([])
   let gameStatus = $state<"playing" | "won" | "lost">("playing")
   let minesRemaining = $state(0)
@@ -83,12 +84,12 @@
   })
 
   function getCellSize(): number {
-    const config = DIFFICULTIES[difficulty]
+    const config = BOARD_SIZES[boardSize]
     return Math.floor(BOARD_SIZE / config.rows) - 1
   }
 
   function initGame() {
-    const config = DIFFICULTIES[difficulty]
+    const config = BOARD_SIZES[boardSize]
     grid = Array(config.rows)
       .fill(null)
       .map(() =>
@@ -121,8 +122,8 @@
   }
 
   function placeMines(excludeRow: number, excludeCol: number) {
-    const config = DIFFICULTIES[difficulty]
-    let minesToPlace = config.mines
+    const config = BOARD_SIZES[boardSize]
+    let minesToPlace = minesCount
 
     while (minesToPlace > 0) {
       const row = Math.floor(Math.random() * config.rows)
@@ -142,7 +143,7 @@
   }
 
   function calculateNeighborMines() {
-    const config = DIFFICULTIES[difficulty]
+    const config = BOARD_SIZES[boardSize]
     for (let row = 0; row < config.rows; row++) {
       for (let col = 0; col < config.cols; col++) {
         if (!grid[row][col].isMine) {
@@ -154,7 +155,7 @@
 
   function countNeighborMines(row: number, col: number): number {
     let count = 0
-    const config = DIFFICULTIES[difficulty]
+    const config = BOARD_SIZES[boardSize]
 
     for (let dr = -1; dr <= 1; dr++) {
       for (let dc = -1; dc <= 1; dc++) {
@@ -178,7 +179,7 @@
   }
 
   function placePowerUpsAndTraps() {
-    const config = DIFFICULTIES[difficulty]
+    const config = BOARD_SIZES[boardSize]
     const zeroCells: { row: number; col: number }[] = []
 
     // Find all cells with 0 neighbor mines
@@ -196,8 +197,8 @@
       ;[zeroCells[i], zeroCells[j]] = [zeroCells[j], zeroCells[i]]
     }
 
-    // Determine quantity based on difficulty: Easy=2, Medium=3, Hard=4
-    const quantity = difficulty === "easy" ? 2 : difficulty === "medium" ? 3 : 4
+    // Determine quantity based on board size: Small=2, Medium=3, Large=4
+    const quantity = boardSize === "small" ? 2 : boardSize === "medium" ? 3 : 4
 
     let index = 0
 
@@ -220,10 +221,10 @@
         grid[row][col].powerUp = "laser"
       }
     }
-    // Bomb detonator: 1 on easy, 2 on medium, 3 on hard
+    // Bomb detonator: 1 on small, 2 on medium, 3 on large
     if (powerUpsEnabled.bomb) {
       const bombQuantity =
-        difficulty === "easy" ? 1 : difficulty === "medium" ? 2 : 3
+        boardSize === "small" ? 1 : boardSize === "medium" ? 2 : 3
       for (let i = 0; i < bombQuantity && index < zeroCells.length; i++) {
         const { row, col } = zeroCells[index++]
         grid[row][col].powerUp = "bomb"
@@ -292,7 +293,7 @@
       }
 
       // Drop bomb and reveal 3x3 grid, flagging any mines
-      const config = DIFFICULTIES[difficulty]
+      const config = BOARD_SIZES[boardSize]
       bombActive = false
       bombTimeLeft = 0
       bombActivatedCell = null
@@ -487,7 +488,7 @@
   }
 
   function floodFill(row: number, col: number) {
-    const config = DIFFICULTIES[difficulty]
+    const config = BOARD_SIZES[boardSize]
 
     for (let dr = -1; dr <= 1; dr++) {
       for (let dc = -1; dc <= 1; dc++) {
@@ -556,7 +557,7 @@
       }, 100)
     } else if (type === "detector") {
       // Flag one random unflagged mine
-      const config = DIFFICULTIES[difficulty]
+      const config = BOARD_SIZES[boardSize]
       const unflaggedMines: { row: number; col: number }[] = []
 
       for (let r = 0; r < config.rows; r++) {
@@ -618,7 +619,7 @@
     if (!grid[row][col].isRevealed) {
       grid[row][col].isRevealed = true
     }
-    const config = DIFFICULTIES[difficulty]
+    const config = BOARD_SIZES[boardSize]
 
     if (type === "subterfuge") {
       // Add one mine in unknown area on blank square
@@ -808,7 +809,7 @@
     dr: number,
     dc: number,
   ) {
-    const config = DIFFICULTIES[difficulty]
+    const config = BOARD_SIZES[boardSize]
     let r = startRow + dr
     let c = startCol + dc
 
@@ -851,7 +852,7 @@
   }
 
   function checkWin() {
-    const config = DIFFICULTIES[difficulty]
+    const config = BOARD_SIZES[boardSize]
     let unrevealedCount = 0
 
     for (let row = 0; row < config.rows; row++) {
@@ -947,11 +948,10 @@
 <div class="h-[calc(100vh-2rem)] p-4 flex flex-col">
   <!-- Header with title and game controls -->
   <div class="flex justify-between items-center mb-4">
-    <h1 class="text-4xl font-bold" style="color: #660460;">💣 Mine Buster</h1>
+    <h1 class="text-4xl font-bold game-title">💣 Mine Buster</h1>
     <div class="flex gap-2">
       <button
-        class="btn text-white border-0 hover:opacity-90"
-        style="background-color: #660460;"
+        class="btn btn-game-action"
         onclick={initGame}
       >
         New Game
@@ -969,9 +969,9 @@
             style="width: min({BOARD_SIZE}px, 70vh);"
           >
             <div
-              class="grid gap-0.5"
-              style="grid-template-columns: repeat({DIFFICULTIES[difficulty]
-                .cols}, minmax(0, 1fr)); height: 100%;"
+              class="grid"
+              style="grid-template-columns: repeat({BOARD_SIZES[boardSize]
+                .cols}, minmax(0, 1fr)); height: 100%; gap: 1px;"
             >
               {#each grid as row, rowIndex}
                 {#each row as cell, colIndex}
@@ -1208,7 +1208,7 @@
             <div class="stat py-2 px-2 min-w-0">
               <div class="stat-title text-xs">Mines</div>
               <div class="stat-value text-lg lg:text-xl text-error">
-                {minesRemaining}
+                {minesCount}
               </div>
             </div>
             <div class="stat py-2 px-2 min-w-0">
@@ -1238,7 +1238,13 @@
               <span>You Won! Time: {formatTime(timer)}</span>
             </div>
           {:else if gameStatus === "lost"}
-            <div class="alert alert-error mt-2">
+            <div 
+              class="alert alert-error mt-2 cursor-pointer hover:brightness-110 transition-all"
+              onclick={() => initGame()}
+              role="button"
+              tabindex="0"
+              onkeydown={(e) => e.key === 'Enter' && initGame()}
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 class="stroke-current shrink-0 h-6 w-6"
@@ -1252,7 +1258,7 @@
                   d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <span>Game Over! You hit a mine.</span>
+              <span>Game Over! You hit a mine. Play again?</span>
             </div>
           {/if}
         </div>
@@ -1261,23 +1267,72 @@
       <!-- Settings Container -->
       <div class="card-standard flex-1 lg:overflow-y-auto lg:max-h-full">
         <div class="card-body">
-          <h2 class="card-title" style="color: #660460;">Settings</h2>
+          <h2 class="card-title settings-title">Settings</h2>
 
           <div class="space-y-4">
-            <!-- Difficulty Selection -->
+            <!-- Board Size Selection -->
             <div class="form-control">
               <label class="label">
-                <span class="label-text font-semibold">Difficulty</span>
+                <span class="label-text font-semibold">Board Size</span>
               </label>
-              <select
-                class="select select-bordered"
-                bind:value={difficulty}
-                onchange={initGame}
-              >
-                <option value="easy">Easy (15×15, 25 mines)</option>
-                <option value="medium">Medium (20×20, 50 mines)</option>
-                <option value="hard">Hard (25×25, 100 mines)</option>
-              </select>
+              <div class="flex gap-2">
+                <button
+                  class="btn btn-xs flex-1 {boardSize === 'small'
+                    ? 'btn-success'
+                    : 'btn-outline'}"
+                  onclick={() => {
+                    boardSize = "small"
+                    minesCount = BOARD_SIZES.small.defaultMines
+                    initGame()
+                  }}
+                >
+                  Small
+                </button>
+                <button
+                  class="btn btn-xs flex-1 {boardSize === 'medium'
+                    ? 'btn-warning'
+                    : 'btn-outline'}"
+                  onclick={() => {
+                    boardSize = "medium"
+                    minesCount = BOARD_SIZES.medium.defaultMines
+                    initGame()
+                  }}
+                >
+                  Medium
+                </button>
+                <button
+                  class="btn btn-xs flex-1 {boardSize === 'large'
+                    ? 'btn-error'
+                    : 'btn-outline'}"
+                  onclick={() => {
+                    boardSize = "large"
+                    minesCount = BOARD_SIZES.large.defaultMines
+                    initGame()
+                  }}
+                >
+                  Large
+                </button>
+              </div>
+            </div>
+
+            <!-- Mines Count Slider -->
+            <div class="form-control">
+              <div class="label">
+                <span class="label-text font-semibold">Mines: {minesCount}</span>
+              </div>
+              <input
+                type="range"
+                min="5"
+                max="80"
+                bind:value={minesCount}
+                class="range range-game range-xs"
+                onchange={() => initGame()}
+              />
+              <div class="w-full flex justify-between text-xs px-2">
+                <span>5</span>
+                <span>40</span>
+                <span>80</span>
+              </div>
             </div>
 
             <!-- Power-Ups Section -->
@@ -1293,13 +1348,12 @@
                 >
                 <input
                   type="checkbox"
-                  class="checkbox checkbox-sm"
+                  class="checkbox checkbox-game checkbox-sm"
                   checked={powerUpsEnabled.xray}
                   onchange={(e: Event) =>
                     (powerUpsEnabled.xray = (
                       e.currentTarget as HTMLInputElement
                     ).checked)}
-                  disabled={gameStatus === "playing"}
                 />
               </label>
             </div>
@@ -1309,13 +1363,12 @@
                 <span class="label-text">📡 Detector (auto-flag one mine)</span>
                 <input
                   type="checkbox"
-                  class="checkbox checkbox-sm"
+                  class="checkbox checkbox-game checkbox-sm"
                   checked={powerUpsEnabled.detector}
                   onchange={(e: Event) =>
                     (powerUpsEnabled.detector = (
                       e.currentTarget as HTMLInputElement
                     ).checked)}
-                  disabled={gameStatus === "playing"}
                 />
               </label>
             </div>
@@ -1327,13 +1380,12 @@
                 >
                 <input
                   type="checkbox"
-                  class="checkbox checkbox-sm"
+                  class="checkbox checkbox-game checkbox-sm"
                   checked={powerUpsEnabled.laser}
                   onchange={(e: Event) =>
                     (powerUpsEnabled.laser = (
                       e.currentTarget as HTMLInputElement
                     ).checked)}
-                  disabled={gameStatus === "playing"}
                 />
               </label>
             </div>
@@ -1345,13 +1397,12 @@
                 >
                 <input
                   type="checkbox"
-                  class="checkbox checkbox-sm"
+                  class="checkbox checkbox-game checkbox-sm"
                   checked={powerUpsEnabled.bomb}
                   onchange={(e: Event) =>
                     (powerUpsEnabled.bomb = (
                       e.currentTarget as HTMLInputElement
                     ).checked)}
-                  disabled={gameStatus === "playing"}
                 />
               </label>
             </div>
@@ -1367,13 +1418,12 @@
                 <span class="label-text">🎭 Subterfuge (adds hidden mine)</span>
                 <input
                   type="checkbox"
-                  class="checkbox checkbox-sm"
+                  class="checkbox checkbox-game checkbox-sm"
                   checked={trapsEnabled.subterfuge}
                   onchange={(e: Event) =>
                     (trapsEnabled.subterfuge = (
                       e.currentTarget as HTMLInputElement
                     ).checked)}
-                  disabled={gameStatus === "playing"}
                 />
               </label>
             </div>
@@ -1385,13 +1435,12 @@
                 >
                 <input
                   type="checkbox"
-                  class="checkbox checkbox-sm"
+                  class="checkbox checkbox-game checkbox-sm"
                   checked={trapsEnabled.sabotage}
                   onchange={(e: Event) =>
                     (trapsEnabled.sabotage = (
                       e.currentTarget as HTMLInputElement
                     ).checked)}
-                  disabled={gameStatus === "playing"}
                 />
               </label>
             </div>

@@ -1369,20 +1369,18 @@
 <div class="h-[calc(100vh-2rem)] p-4 flex flex-col">
   <!-- Header with title and game controls -->
   <div class="flex justify-between items-center mb-4">
-    <h1 class="text-4xl font-bold" style="color: #660460;">🗼 Tower Assault</h1>
+    <h1 class="text-4xl font-bold game-title">🗼 Tower Assault</h1>
     <div class="flex gap-2">
       {#if !gameRunning && !gameOver}
         <button
-          class="btn text-white border-0 hover:opacity-90"
-          style="background-color: #660460;"
+          class="btn btn-game-action"
           onclick={startGame}
         >
           Start Game
         </button>
       {:else if gameOver}
         <button
-          class="btn text-white border-0 hover:opacity-90"
-          style="background-color: #660460;"
+          class="btn btn-game-action"
           onclick={startGame}
         >
           New Game
@@ -1501,7 +1499,7 @@
       <!-- Settings Container -->
       <div class="card-standard">
         <div class="card-body">
-          <h2 class="card-title" style="color: #660460;">Settings</h2>
+          <h2 class="card-title settings-title">Settings</h2>
 
           <div class="space-y-4">
             <!-- Options Section -->
@@ -1515,7 +1513,7 @@
                 <span class="label-text">Sound Effects</span>
                 <input
                   type="checkbox"
-                  class="checkbox"
+                  class="checkbox checkbox-game"
                   bind:checked={soundEnabled}
                 />
               </label>
@@ -1527,7 +1525,7 @@
                 <span class="label-text">Randomize Road Pattern</span>
                 <input
                   type="checkbox"
-                  class="checkbox"
+                  class="checkbox checkbox-game"
                   bind:checked={randomizePath}
                   disabled={gameRunning}
                 />
@@ -1540,7 +1538,7 @@
                 <span class="label-text">Second Enemy Entrance</span>
                 <input
                   type="checkbox"
-                  class="checkbox"
+                  class="checkbox checkbox-game"
                   bind:checked={secondEntrance}
                   disabled={gameRunning}
                 />
@@ -1553,7 +1551,7 @@
                 <span class="label-text">Air Attack</span>
                 <input
                   type="checkbox"
-                  class="checkbox"
+                  class="checkbox checkbox-game"
                   bind:checked={airAttackEnabled}
                   disabled={gameRunning}
                 />
@@ -1724,7 +1722,7 @@
             onclick={() => (showConfigPanel = !showConfigPanel)}
             disabled={gameRunning}
           >
-            <h2 class="card-title" style="color: #660460;">
+            <h2 class="card-title settings-title">
               ⚙️ Game Configuration
             </h2>
             <span class="text-sm">

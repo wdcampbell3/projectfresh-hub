@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte"
 
-  let theme: "light" | "dark" = "light"
+  let theme: "light" | "dark" = "dark"
 
   onMount(() => {
     // Check localStorage first
@@ -39,7 +39,7 @@
       <!-- Moon Icon (Switch to Dark) -->
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        class="h-6 w-6 text-gray-500"
+        class="h-6 w-6 !text-white"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -55,7 +55,7 @@
       <!-- Sun Icon (Switch to Light) -->
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        class="h-6 w-6 text-gray-400"
+        class="h-6 w-6 !text-white"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"

@@ -699,12 +699,11 @@
 <div class="h-[calc(100vh-2rem)] p-4 flex flex-col">
   <!-- Header with title and game controls -->
   <div class="flex justify-between items-center mb-4">
-    <h1 class="text-4xl font-bold" style="color: #660460;">🐍 Snake-adelic</h1>
+    <h1 class="text-4xl font-bold game-title">🐍 Snake-adelic</h1>
     <div class="flex gap-2">
       {#if !gameStarted}
         <button
-          class="btn text-white border-0 hover:opacity-90"
-          style="background-color: #660460;"
+          class="btn btn-game-action"
           onclick={startGame}
         >
           {gameOver ? "Play Again" : "Start Game"}
@@ -819,7 +818,7 @@
       <!-- Settings Container -->
       <div class="card-standard flex-1 lg:overflow-y-auto lg:max-h-full">
         <div class="card-body">
-          <h2 class="card-title" style="color: #660460;">Settings</h2>
+          <h2 class="card-title settings-title">Settings</h2>
 
           <div class="space-y-4">
             <!-- Speed Setting -->
@@ -915,7 +914,7 @@
                 <span class="label-text">Wraparound Walls</span>
                 <input
                   type="checkbox"
-                  class="checkbox"
+                  class="checkbox checkbox-game"
                   checked={wallMode === "wraparound"}
                   onchange={(e: Event) =>
                     (wallMode = (e.currentTarget as HTMLInputElement).checked
@@ -947,7 +946,7 @@
                 <span class="label-text">Show Grid Dots</span>
                 <input
                   type="checkbox"
-                  class="checkbox"
+                  class="checkbox checkbox-game"
                   bind:checked={showGridDots}
                 />
               </label>
@@ -959,7 +958,7 @@
                 <span class="label-text">Sound Effects</span>
                 <input
                   type="checkbox"
-                  class="checkbox"
+                  class="checkbox checkbox-game"
                   bind:checked={soundEnabled}
                 />
               </label>

@@ -3867,7 +3867,7 @@
 
         <!-- Stats -->
         <div class="divider"></div>
-        <h3 class="text-lg font-bold mb-2" style="color: #660460;">
+        <h3 class="text-lg font-bold mb-2 settings-title">
           Scene Stats
         </h3>
         <div class="card-standard p-3">

@@ -2090,14 +2090,13 @@
 <div class="h-[calc(100vh-2rem)] p-4 flex flex-col">
   <!-- Header with title and game controls -->
   <div class="flex justify-between items-center mb-4">
-    <h1 class="text-4xl font-bold" style="color: #660460;">
+    <h1 class="text-4xl font-bold game-title">
       👾 Space Invaders
     </h1>
     <div class="flex gap-2">
       {#if !gameStarted}
         <button
-          class="btn text-white border-0 hover:opacity-90"
-          style="background-color: #660460;"
+          class="btn btn-game-action"
           onclick={initGame}
         >
           Start Game
@@ -2108,8 +2107,7 @@
         </button>
       {:else if gameOver}
         <button
-          class="btn text-white border-0 hover:opacity-90"
-          style="background-color: #660460;"
+          class="btn btn-game-action"
           onclick={initGame}
         >
           Play Again
@@ -2208,7 +2206,7 @@
       <!-- Settings Container -->
       <div class="card-standard flex-1 lg:overflow-y-auto lg:max-h-full">
         <div class="card-body">
-          <h2 class="card-title" style="color: #660460;">Settings</h2>
+          <h2 class="card-title settings-title">Settings</h2>
 
           <div class="space-y-4">
             <!-- Difficulty Setting -->
@@ -2253,7 +2251,7 @@
                 <span class="label-text">Sound Effects</span>
                 <input
                   type="checkbox"
-                  class="checkbox"
+                  class="checkbox checkbox-game"
                   bind:checked={soundEnabled}
                 />
               </label>
@@ -2265,7 +2263,7 @@
                 <span class="label-text">Queue Power-ups</span>
                 <input
                   type="checkbox"
-                  class="checkbox"
+                  class="checkbox checkbox-game"
                   bind:checked={queuePowerUps}
                 />
               </label>
@@ -2283,7 +2281,7 @@
                 min="0"
                 max="30"
                 bind:value={powerUpCount}
-                class="range range-xs"
+                class="range range-game range-xs"
                 disabled={gameRunning || gameOver}
               />
               <div class="w-full flex justify-between text-xs px-2">
@@ -2305,7 +2303,7 @@
                 min="1"
                 max="10"
                 bind:value={startingLives}
-                class="range range-xs"
+                class="range range-game range-xs"
                 disabled={gameRunning || gameOver}
               />
               <div class="w-full flex justify-between text-xs px-2">
@@ -2327,7 +2325,7 @@
                 min="1"
                 max="20"
                 bind:value={powerUpDuration}
-                class="range range-xs"
+                class="range range-game range-xs"
                 disabled={gameRunning || gameOver}
               />
               <div class="w-full flex justify-between text-xs px-2">

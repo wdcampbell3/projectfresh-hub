@@ -882,12 +882,11 @@
 <div class="h-[calc(100vh-2rem)] p-4 flex flex-col">
   <!-- Header with title and game controls -->
   <div class="flex justify-between items-center mb-4">
-    <h1 class="text-4xl font-bold" style="color: #660460;">🏓 Cosmic Pong</h1>
+    <h1 class="text-4xl font-bold game-title">🏓 Cosmic Pong</h1>
     <div class="flex gap-2">
       {#if !gameRunning || gameOver}
         <button
-          class="btn text-white border-0 hover:opacity-90"
-          style="background-color: #660460;"
+          class="btn btn-game-action"
           onclick={startGame}
         >
           {gameOver ? "New Game" : "Start Game"}
@@ -922,7 +921,7 @@
     <div class="w-full lg:w-1/4 flex flex-col gap-4 lg:min-w-[280px]">
       <div class="card-standard flex-1 lg:overflow-y-auto lg:max-h-full">
         <div class="card-body">
-          <h2 class="card-title" style="color: #660460;">Settings</h2>
+          <h2 class="card-title settings-title">Settings</h2>
 
           <div class="space-y-4">
             <!-- Versus Mode Toggle -->
@@ -1000,7 +999,7 @@
                 <span class="label-text">Speed Increase (5% per hit)</span>
                 <input
                   type="checkbox"
-                  class="checkbox"
+                  class="checkbox checkbox-game"
                   bind:checked={speedIncrease}
                   disabled={gameRunning}
                 />
@@ -1012,7 +1011,7 @@
                 <span class="label-text">English Spin</span>
                 <input
                   type="checkbox"
-                  class="checkbox"
+                  class="checkbox checkbox-game"
                   bind:checked={englishSpin}
                   disabled={gameRunning}
                 />
@@ -1024,7 +1023,7 @@
                 <span class="label-text">Power-Ups</span>
                 <input
                   type="checkbox"
-                  class="checkbox"
+                  class="checkbox checkbox-game"
                   bind:checked={powerUpsEnabled}
                   disabled={gameRunning}
                 />
@@ -1129,7 +1128,7 @@
                 <span class="label-text">Sound Effects</span>
                 <input
                   type="checkbox"
-                  class="checkbox"
+                  class="checkbox checkbox-game"
                   bind:checked={soundEnabled}
                 />
               </label>

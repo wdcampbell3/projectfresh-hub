@@ -59,10 +59,12 @@
   /* Keep the primary purple logic but adjust for dark mode visibility */
   --color-primary: #d46cd1;
   /* Vibrant orchid purple for titles */
-  --color-primary-content: #180042;
+  --color-primary-content: #ffffff;
+  /* White text on primary buttons */
 
-  --color-secondary: #660460;
-  --color-secondary-content: #fefbf6;
+  --color-secondary: #ffffff;
+  /* White for high scores */
+  --color-secondary-content: #660460;
 
 
   --color-accent: #db2777;
@@ -71,8 +73,8 @@
   --color-neutral: #fefbf6;
   --color-neutral-content: #180042;
 
-  --color-base-100: #1a1a2e;
-  /* Cards: Slightly lighter */
+  --color-base-100: #1f203c;
+  /* Cards: Purple-tinted dark */
   --color-base-200: #0f0f1a;
   /* Background: Darker violet/black */
   --color-base-300: #2a2a40;
@@ -275,11 +277,89 @@ button,
 }
 
 :root[data-theme="saasstarterdark"] .btn-launch-action {
-  background-color: #4c0248 !important;
+  background-color: #d46cd1 !important;
   color: white !important;
   border: none !important;
 }
 
 .btn-launch-action:hover {
   opacity: 0.9;
+}
+
+/* 
+  Theme-aware 2D Game Titles
+  Light Mode: Primary (Dark Purple #660460)  
+  Dark Mode: Bright Pink (#d46cd1) - Same as 3D games
+*/
+:root[data-theme="saasstartertheme"] .game-title {
+  color: #660460;
+}
+
+:root[data-theme="saasstarterdark"] .game-title {
+  color: #d46cd1;
+}
+
+/* 
+  Theme-aware Settings Title for 2D Games
+  Light Mode: Primary (Dark Purple #660460)
+  Dark Mode: White - Better readability
+*/
+:root[data-theme="saasstartertheme"] .settings-title {
+  color: #660460;
+}
+
+:root[data-theme="saasstarterdark"] .settings-title {
+  color: white;
+}
+
+/* 
+  Theme-aware Start/Action Button for 2D Games
+  Light Mode: Primary (Dark Purple #660460)
+  Dark Mode: Bright Pink (#d46cd1)
+*/
+:root[data-theme="saasstartertheme"] .btn-game-action {
+  background-color: #660460 !important;
+  color: white !important;
+  border: none !important;
+}
+
+:root[data-theme="saasstarterdark"] .btn-game-action {
+  background-color: #d46cd1 !important;
+  color: white !important;
+  border: none !important;
+}
+
+.btn-game-action:hover {
+  opacity: 0.9;
+}
+
+/* Game Checkbox Styling - circular with theme colors */
+.checkbox-game {
+  border-radius: 9999px;
+}
+
+:root[data-theme="saasstartertheme"] .checkbox-game:checked {
+  background-color: #660460;
+  border-color: #660460;
+}
+
+:root[data-theme="saasstarterdark"] .checkbox-game:checked {
+  background-color: #d46cd1;
+  border-color: #d46cd1;
+}
+
+/* Game Range Slider Styling */
+:root[data-theme="saasstartertheme"] .range-game {
+  color: #660460;
+  --range-shdw: #660460;
+}
+
+:root[data-theme="saasstarterdark"] .range-game {
+  color: #d46cd1;
+  --range-shdw: #d46cd1;
+}
+
+/* Ensure warning buttons (orange) have white text in dark mode */
+:root[data-theme="saasstarterdark"] .btn-warning {
+  color: white !important;
 }
