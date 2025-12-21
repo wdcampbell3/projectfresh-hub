@@ -885,10 +885,7 @@
     <h1 class="text-4xl font-bold game-title">🏓 Cosmic Pong</h1>
     <div class="flex gap-2">
       {#if !gameRunning || gameOver}
-        <button
-          class="btn btn-game-action"
-          onclick={startGame}
-        >
+        <button class="btn btn-game-action" onclick={startGame}>
           {gameOver ? "New Game" : "Start Game"}
         </button>
       {:else}

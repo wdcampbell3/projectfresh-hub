@@ -2090,15 +2090,10 @@
 <div class="h-[calc(100vh-2rem)] p-4 flex flex-col">
   <!-- Header with title and game controls -->
   <div class="flex justify-between items-center mb-4">
-    <h1 class="text-4xl font-bold game-title">
-      👾 Space Invaders
-    </h1>
+    <h1 class="text-4xl font-bold game-title">👾 Space Invaders</h1>
     <div class="flex gap-2">
       {#if !gameStarted}
-        <button
-          class="btn btn-game-action"
-          onclick={initGame}
-        >
+        <button class="btn btn-game-action" onclick={initGame}>
           Start Game
         </button>
       {:else if !gameRunning && !showLevelTransition && !gameOver}
@@ -2106,10 +2101,7 @@
           Resume
         </button>
       {:else if gameOver}
-        <button
-          class="btn btn-game-action"
-          onclick={initGame}
-        >
+        <button class="btn btn-game-action" onclick={initGame}>
           Play Again
         </button>
       {:else if gameRunning && !gameOver}

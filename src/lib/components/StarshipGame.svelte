@@ -877,7 +877,9 @@
     shipPreviews.clear()
   }
 
-  function dispose3DObject(obj: THREE.Object3D | THREE.Group | THREE.Mesh | undefined) {
+  function dispose3DObject(
+    obj: THREE.Object3D | THREE.Group | THREE.Mesh | undefined,
+  ) {
     if (!obj) return
 
     // Recursively dispose children first
@@ -958,26 +960,25 @@
       window.removeEventListener("resize", handleResize)
       document.removeEventListener("pointerlockchange", handlePointerLockChange)
       cancelAnimationFrame(animationId)
-      
+
       cleanupShipPreviews()
-      
+
       // Extensive Three.js cleanup
       if (scene) {
         dispose3DObject(scene)
         scene.clear()
       }
-      
+
       if (renderer) {
         renderer.dispose()
       }
-      
+
       // Clear all game arrays to free references
       enemies = []
       projectiles = []
       particles = []
       powerUps = []
       solidObjects = []
-      
     }
   })
 
@@ -4754,10 +4755,7 @@
             {gameMode === "ground" ? "👽" : "🚀"}
             {gameMode === "ground" ? "Alien Attack" : "Starship Flyer"}
           </h1>
-          <button
-            class="btn btn-launch-action"
-            on:click={startGame}
-          >
+          <button class="btn btn-launch-action" on:click={startGame}>
             Launch Mission
           </button>
         </div>
@@ -4769,7 +4767,9 @@
             <div class="max-w-4xl w-full pb-8 my-auto">
               <!-- Ship Selection -->
               {#if gameMode !== "ground"}
-                <div class="bg-base-100 rounded-lg p-6 mb-6 border-mauve shadow-lg">
+                <div
+                  class="bg-base-100 rounded-lg p-6 mb-6 border-mauve shadow-lg"
+                >
                   <h3 class="text-2xl font-bold text-base-content mb-4">
                     Select Your Ship
                   </h3>
@@ -4802,9 +4802,13 @@
               {/if}
 
               <!-- Select a Map -->
-              <div class="bg-base-100 rounded-lg p-6 mb-6 border-mauve shadow-lg">
+              <div
+                class="bg-base-100 rounded-lg p-6 mb-6 border-mauve shadow-lg"
+              >
                 <div class="flex justify-between items-center mb-4">
-                  <h3 class="text-2xl font-bold text-base-content">Select a Map</h3>
+                  <h3 class="text-2xl font-bold text-base-content">
+                    Select a Map
+                  </h3>
                   <a
                     class="text-primary font-semibold underline text-sm"
                     href="/world-builder"
@@ -4994,7 +4998,9 @@
                               >
                                 {map.name}
                               </h4>
-                              <div class="text-xs text-base-content/60 truncate">
+                              <div
+                                class="text-xs text-base-content/60 truncate"
+                              >
                                 {map.stats.objectCount} objects
                               </div>
                             </div>
@@ -5019,7 +5025,9 @@
               </div>
 
               <!-- Difficulty Settings (matching Blocky Shooter) -->
-              <div class="bg-base-100 rounded-lg p-6 mb-6 border-mauve shadow-lg">
+              <div
+                class="bg-base-100 rounded-lg p-6 mb-6 border-mauve shadow-lg"
+              >
                 <h3 class="text-2xl font-bold text-base-content mb-4">
                   Difficulty & Settings
                 </h3>
@@ -5057,7 +5065,8 @@
                 <!-- Sound Toggle -->
                 <div class="form-control mb-6">
                   <label class="label cursor-pointer justify-start gap-4">
-                    <span class="label-text text-lg font-bold text-base-content/60"
+                    <span
+                      class="label-text text-lg font-bold text-base-content/60"
                       >Sound Effects</span
                     >
                     <input

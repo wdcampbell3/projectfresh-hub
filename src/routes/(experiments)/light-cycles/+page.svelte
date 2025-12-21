@@ -1563,29 +1563,18 @@
 <div class="h-[calc(100vh-2rem)] p-4 flex flex-col">
   <!-- Header with title and game controls -->
   <div class="flex justify-between items-center mb-4">
-    <h1 class="text-4xl font-bold game-title">
-      💡 Light Particles
-    </h1>
+    <h1 class="text-4xl font-bold game-title">💡 Light Particles</h1>
     <div class="flex gap-2">
       {#if !gameRunning && !roundOver && !gameOver}
-        <button
-          class="btn btn-game-action"
-          onclick={startGame}
-        >
+        <button class="btn btn-game-action" onclick={startGame}>
           Start Game
         </button>
       {:else if roundOver && !gameOver}
-        <button
-          class="btn btn-game-action"
-          onclick={nextRound}
-        >
+        <button class="btn btn-game-action" onclick={nextRound}>
           Next Round
         </button>
       {:else if gameOver}
-        <button
-          class="btn btn-game-action"
-          onclick={startGame}
-        >
+        <button class="btn btn-game-action" onclick={startGame}>
           New Game
         </button>
       {:else}

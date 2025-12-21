@@ -702,10 +702,7 @@
     <h1 class="text-4xl font-bold game-title">🐍 Snake-adelic</h1>
     <div class="flex gap-2">
       {#if !gameStarted}
-        <button
-          class="btn btn-game-action"
-          onclick={startGame}
-        >
+        <button class="btn btn-game-action" onclick={startGame}>
           {gameOver ? "Play Again" : "Start Game"}
         </button>
       {:else}

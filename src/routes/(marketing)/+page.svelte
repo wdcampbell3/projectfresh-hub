@@ -79,7 +79,9 @@
 
 <div class="min-h-screen bg-base-200 transition-colors duration-300">
   <!-- Header Banner -->
-  <div class="w-full py-8 mb-8 bg-[#660460] text-white shadow-lg relative transition-colors duration-300">
+  <div
+    class="w-full py-8 mb-8 bg-[#660460] text-white shadow-lg relative transition-colors duration-300"
+  >
     <div class="absolute right-4 top-1/2 -translate-y-1/2">
       <ThemeToggle />
     </div>
@@ -105,9 +107,7 @@
   <div class="container mx-auto px-4 pb-12">
     <!-- 3D Games Section -->
     <div class="mb-16">
-      <h2 class="text-4xl font-bold mb-2 text-center text-primary">
-        3D Games
-      </h2>
+      <h2 class="text-4xl font-bold mb-2 text-center text-primary">3D Games</h2>
       <p class="text-lg text-base-content/70 text-center mb-8">
         Build a custom world... And play games in it!
       </p>
@@ -139,9 +139,7 @@
 
     <!-- 2D Games Section -->
     <div>
-      <h2 class="text-4xl font-bold mb-2 text-center text-primary">
-        2D Games
-      </h2>
+      <h2 class="text-4xl font-bold mb-2 text-center text-primary">2D Games</h2>
       <p class="text-lg text-base-content/70 text-center mb-8">
         Power Packed Upgrades to Old Classics!
       </p>
@@ -172,4 +170,3 @@
     </div>
   </div>
 </div>
-

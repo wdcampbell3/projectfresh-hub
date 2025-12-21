@@ -228,7 +228,7 @@
       if (animationId) {
         cancelAnimationFrame(animationId)
       }
-      
+
       if (scene) {
         dispose3DObject(scene)
         scene.clear()
@@ -237,13 +237,15 @@
       if (renderer) {
         renderer.dispose()
       }
-      
+
       // Cleanup thumbnails renderer if exists
       // (It's created locally in generateThumbnails but might persist in closures)
     }
   })
 
-  function dispose3DObject(obj: THREE.Object3D | THREE.Group | THREE.Mesh | undefined) {
+  function dispose3DObject(
+    obj: THREE.Object3D | THREE.Group | THREE.Mesh | undefined,
+  ) {
     if (!obj) return
 
     // Recursively dispose children first
@@ -3151,9 +3153,7 @@
     <div class="flex-1 overflow-y-auto p-4 pt-0" style="pointer-events: auto;">
       {#if activeTab === "models"}
         <!-- Models Tab -->
-        <h2 class="text-2xl font-bold mb-4 text-primary">
-          Object Palette
-        </h2>
+        <h2 class="text-2xl font-bold mb-4 text-primary">Object Palette</h2>
 
         <!-- Recent Models -->
         {#if recentModels.length > 0}
@@ -3269,9 +3269,7 @@
         </div>
       {:else if activeTab === "maps"}
         <!-- Maps Tab -->
-        <h2 class="text-2xl font-bold mb-4 text-primary">
-          Map Manager
-        </h2>
+        <h2 class="text-2xl font-bold mb-4 text-primary">Map Manager</h2>
 
         <!-- Auto Generate Section - Moved to Top -->
         <div class="card-standard p-3 mb-4">
@@ -3758,9 +3756,7 @@
         {/if}
       {:else if activeTab === "options"}
         <!-- Options Tab -->
-        <h2 class="text-2xl font-bold mb-4">
-          Controls
-        </h2>
+        <h2 class="text-2xl font-bold mb-4">Controls</h2>
         <div class="card-standard p-4 mb-6 text-xs space-y-2">
           <p><strong>Select:</strong> Click object</p>
           <p><strong>Move:</strong> Drag object</p>
@@ -3779,9 +3775,7 @@
           </p>
         </div>
 
-        <h2 class="text-2xl font-bold mb-4">
-          Environment
-        </h2>
+        <h2 class="text-2xl font-bold mb-4">Environment</h2>
 
         <!-- Time of Day -->
         <div class="form-control mb-4">
@@ -3867,9 +3861,7 @@
 
         <!-- Stats -->
         <div class="divider"></div>
-        <h3 class="text-lg font-bold mb-2 settings-title">
-          Scene Stats
-        </h3>
+        <h3 class="text-lg font-bold mb-2 settings-title">Scene Stats</h3>
         <div class="card-standard p-3">
           <div class="mb-2">
             <div class="text-xs text-gray-500">Objects</div>

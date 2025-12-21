@@ -3339,9 +3339,7 @@
         <div class="absolute inset-0 z-30 p-4 flex flex-col">
           <!-- Header with title and start button -->
           <div class="flex justify-between items-center mb-4">
-            <h1 class="text-4xl font-bold text-primary">
-              🎯 Blocky Shooter
-            </h1>
+            <h1 class="text-4xl font-bold text-primary">🎯 Blocky Shooter</h1>
             <button
               class="btn btn-primary text-primary-content border-0 hover:opacity-90"
               on:click={() => {
@@ -3538,7 +3536,9 @@
                             >
                               Default Map
                             </h4>
-                            <div class="text-xs text-base-content/60">Procedural</div>
+                            <div class="text-xs text-base-content/60">
+                              Procedural
+                            </div>
                           </div>
                         </button>
 

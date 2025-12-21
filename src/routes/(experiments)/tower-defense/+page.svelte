@@ -1372,17 +1372,11 @@
     <h1 class="text-4xl font-bold game-title">🗼 Tower Assault</h1>
     <div class="flex gap-2">
       {#if !gameRunning && !gameOver}
-        <button
-          class="btn btn-game-action"
-          onclick={startGame}
-        >
+        <button class="btn btn-game-action" onclick={startGame}>
           Start Game
         </button>
       {:else if gameOver}
-        <button
-          class="btn btn-game-action"
-          onclick={startGame}
-        >
+        <button class="btn btn-game-action" onclick={startGame}>
           New Game
         </button>
       {:else if wave === 0 || (enemies.length === 0 && enemiesSpawned >= GAME_CONFIG.baseEnemyCount + (wave - 1) * GAME_CONFIG.enemyCountPerWave)}
@@ -1644,7 +1638,9 @@
                 >
                   <div class="flex items-center gap-3 w-full">
                     <!-- Left: Icon & Cost -->
-                    <div class="flex flex-col items-center gap-1 min-w-[3.5rem]">
+                    <div
+                      class="flex flex-col items-center gap-1 min-w-[3.5rem]"
+                    >
                       <span class="text-3xl filter drop-shadow-md"
                         >{tower.emoji}</span
                       >
@@ -1658,8 +1654,7 @@
                     <!-- Right: Info -->
                     <div class="flex-1 min-w-0 flex flex-col gap-0.5">
                       <div class="flex justify-between items-start gap-2">
-                        <span class="font-bold leading-tight"
-                          >{tower.name}</span
+                        <span class="font-bold leading-tight">{tower.name}</span
                         >
                         {#if quantity !== 0}
                           <span
@@ -1722,9 +1717,7 @@
             onclick={() => (showConfigPanel = !showConfigPanel)}
             disabled={gameRunning}
           >
-            <h2 class="card-title settings-title">
-              ⚙️ Game Configuration
-            </h2>
+            <h2 class="card-title settings-title">⚙️ Game Configuration</h2>
             <span class="text-sm">
               {showConfigPanel ? "▼ Hide" : "▶ Show"}
             </span>

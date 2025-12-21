@@ -74,6 +74,20 @@
   let lastClickCell: { row: number; col: number } | null = null
   let singleClickTimer: ReturnType<typeof setTimeout> | null = null
 
+  // Notification state
+  let notificationText = $state("")
+  let showNotification = $state(false)
+  let notificationTimer: ReturnType<typeof setTimeout> | null = null
+
+  function triggerNotification(message: string) {
+    notificationText = message
+    showNotification = true
+    if (notificationTimer) clearTimeout(notificationTimer)
+    notificationTimer = setTimeout(() => {
+      showNotification = false
+    }, 3000)
+  }
+
   onMount(() => {
     initGame()
     window.addEventListener("keydown", handleKeyDown)
@@ -539,6 +553,7 @@
     }
 
     if (type === "xray") {
+      triggerNotification("🔍 X-Ray: Move mouse to scan for mines")
       xrayActive = true
       xrayTimeLeft = 2.5
       xrayActivatedCell = { row, col }
@@ -556,6 +571,7 @@
         }
       }, 100)
     } else if (type === "detector") {
+      triggerNotification("📡 Detector: One mine auto-detected")
       // Flag one random unflagged mine
       const config = BOARD_SIZES[boardSize]
       const unflaggedMines: { row: number; col: number }[] = []
@@ -579,6 +595,7 @@
         minesRemaining--
       }
     } else if (type === "laser") {
+      triggerNotification("🔫 Laser: Click a square and aim with arrow keys")
       laserActive = true
       laserTimeLeft = 2.5
       laserActivatedCell = { row, col }
@@ -596,6 +613,7 @@
         }
       }, 100)
     } else if (type === "bomb") {
+      triggerNotification("💥 Bomb: Move mouse to blast an area")
       bombActive = true
       bombTimeLeft = 2.5
       bombActivatedCell = { row, col }
@@ -622,6 +640,7 @@
     const config = BOARD_SIZES[boardSize]
 
     if (type === "subterfuge") {
+      triggerNotification("🎭 Subterfuge: Hidden mine added")
       // Add one mine in unknown area on blank square
       const unknownZeroCells: { row: number; col: number }[] = []
 
@@ -667,6 +686,7 @@
         // Don't recalculate neighbors - mine is hidden and won't affect visible numbers
       }
     } else if (type === "sabotage") {
+      triggerNotification("💀 Sabotage: Area re-covered & mine added")
       // Find largest contiguous area of revealed squares and re-hide them
       const visited = new Set<string>()
       let largestArea: { row: number; col: number }[] = []
@@ -950,18 +970,13 @@
   <div class="flex justify-between items-center mb-4">
     <h1 class="text-4xl font-bold game-title">💣 Mine Buster</h1>
     <div class="flex gap-2">
-      <button
-        class="btn btn-game-action"
-        onclick={initGame}
-      >
-        New Game
-      </button>
+      <button class="btn btn-game-action" onclick={initGame}> New Game </button>
     </div>
   </div>
 
   <div class="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
     <!-- Game Board - scales to fill available space -->
-    <div class="flex-1 flex items-center justify-center min-w-0">
+    <div class="flex-1 flex flex-col items-center justify-center min-w-0">
       <div class="card-standard">
         <div class="card-body p-4">
           <div
@@ -971,7 +986,7 @@
             <div
               class="grid"
               style="grid-template-columns: repeat({BOARD_SIZES[boardSize]
-                .cols}, minmax(0, 1fr)); height: 100%; gap: 1px;"
+                .cols}, minmax(0, 1fr)); height: 100%; gap: 2px;"
             >
               {#each grid as row, rowIndex}
                 {#each row as cell, colIndex}
@@ -1195,6 +1210,15 @@
           </div>
         </div>
       </div>
+      {#if showNotification}
+        <div class="mt-4 text-center h-8">
+          <span
+            class="inline-block px-4 py-2 rounded-full bg-base-300 text-primary font-bold animate-pulse shadow-lg border border-primary/30"
+          >
+            {notificationText}
+          </span>
+        </div>
+      {/if}
     </div>
 
     <!-- Settings Panel - fixed 1/4 width -->
@@ -1238,12 +1262,12 @@
               <span>You Won! Time: {formatTime(timer)}</span>
             </div>
           {:else if gameStatus === "lost"}
-            <div 
+            <div
               class="alert alert-error mt-2 cursor-pointer hover:brightness-110 transition-all"
               onclick={() => initGame()}
               role="button"
               tabindex="0"
-              onkeydown={(e) => e.key === 'Enter' && initGame()}
+              onkeydown={(e) => e.key === "Enter" && initGame()}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -1318,7 +1342,8 @@
             <!-- Mines Count Slider -->
             <div class="form-control">
               <div class="label">
-                <span class="label-text font-semibold">Mines: {minesCount}</span>
+                <span class="label-text font-semibold">Mines: {minesCount}</span
+                >
               </div>
               <input
                 type="range"
