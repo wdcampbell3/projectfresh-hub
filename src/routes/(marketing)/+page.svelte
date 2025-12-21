@@ -91,15 +91,12 @@
         Vibe Coded—100% AI Chat-Prompted—Game Experiments!
       </p>
       <div class="italic opacity-80 mt-2">
-        This project is open source on <a
-          class="underline hover:opacity-100 font-medium"
-          href="https://github.com/douglas-fresh/project-fresh-hub">GitHub</a
-        >! Wait, who's
+        This project is open source and great for beginners.<br><br>
         <a
           class="underline hover:opacity-100 font-medium"
-          href="http://www.projectfresh.com"
-          target="_blank">Dougie</a
-        >?
+          href="https://github.com/wdcampbell3/projectfresh-hub/blob/main/_START_HERE_VIBE_CODERS.md"
+          target="_blank">Read the Quick Start guide...</a
+        >
       </div>
     </div>
   </div>
@@ -168,5 +165,14 @@
         {/each}
       </div>
     </div>
+      <div class="italic opacity-70 mt-1 text-sm" align="center">
+        <br><br>— Made with ❤️ by
+        <a
+          class="underline hover:opacity-100 font-medium"
+          href="http://www.projectfresh.com"
+          target="_blank">Dougie</a
+        > —
+        <br><br>
+      </div>
   </div>
 </div>
