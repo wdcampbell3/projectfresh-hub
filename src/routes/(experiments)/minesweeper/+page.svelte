@@ -29,7 +29,7 @@
   let minesCount = $state(35)
   let grid = $state<Cell[][]>([])
   let gameStatus = $state<"playing" | "won" | "lost">("playing")
-  let minesRemaining = $state(0)
+  let _minesRemaining = $state(0)
   let timer = $state(0)
   let timerInterval: ReturnType<typeof setInterval> | null = null
   let firstClick = $state(true)
@@ -97,11 +97,6 @@
     }
   })
 
-  function getCellSize(): number {
-    const config = BOARD_SIZES[boardSize]
-    return Math.floor(BOARD_SIZE / config.rows) - 1
-  }
-
   function initGame() {
     const config = BOARD_SIZES[boardSize]
     grid = Array(config.rows)
@@ -120,7 +115,7 @@
           })),
       )
     gameStatus = "playing"
-    minesRemaining = config.mines
+    _minesRemaining = config.mines
     timer = 0
     firstClick = true
     spawnedPowerUps = new Set()
@@ -323,7 +318,7 @@
                 // Auto-flag mines in blast radius
                 if (!neighborCell.isFlagged) {
                   neighborCell.isFlagged = true
-                  minesRemaining--
+                  _minesRemaining--
                 }
               } else {
                 // Reveal non-mine cells
@@ -425,7 +420,7 @@
     if (grid[row][col].isSabotaged) return
 
     grid[row][col].isFlagged = !grid[row][col].isFlagged
-    minesRemaining += grid[row][col].isFlagged ? -1 : 1
+    _minesRemaining += grid[row][col].isFlagged ? -1 : 1
   }
 
   function revealCell(row: number, col: number) {
@@ -592,7 +587,7 @@
         const random =
           unflaggedMines[Math.floor(Math.random() * unflaggedMines.length)]
         grid[random.row][random.col].isFlagged = true
-        minesRemaining--
+        _minesRemaining--
       }
     } else if (type === "laser") {
       triggerNotification("🔫 Laser: Click a square and aim with arrow keys")
@@ -682,7 +677,7 @@
         const random =
           unknownZeroCells[Math.floor(Math.random() * unknownZeroCells.length)]
         grid[random.row][random.col].isMine = true
-        minesRemaining++
+        _minesRemaining++
         // Don't recalculate neighbors - mine is hidden and won't affect visible numbers
       }
     } else if (type === "sabotage") {
@@ -692,10 +687,10 @@
       let largestArea: { row: number; col: number }[] = []
 
       // Helper function to find contiguous revealed area using flood fill
-      function findRevealedArea(
+      const findRevealedArea = (
         startRow: number,
         startCol: number,
-      ): { row: number; col: number }[] {
+      ): { row: number; col: number }[] => {
         const area: { row: number; col: number }[] = []
         const queue: { row: number; col: number }[] = [
           { row: startRow, col: startCol },
@@ -768,7 +763,7 @@
           const random =
             safeForMine[Math.floor(Math.random() * safeForMine.length)]
           grid[random.row][random.col].isMine = true
-          minesRemaining++
+          _minesRemaining++
           // Recalculate neighbor counts for surrounding cells
           for (let dr = -1; dr <= 1; dr++) {
             for (let dc = -1; dc <= 1; dc++) {
@@ -838,7 +833,7 @@
 
       if (grid[r][c].isMine) {
         grid[r][c].isFlagged = true
-        minesRemaining--
+        _minesRemaining--
         break
       } else {
         if (!grid[r][c].isRevealed) {
@@ -1002,6 +997,7 @@
                       : ''}"
                     onclick={() => handleCellClick(rowIndex, colIndex)}
                     onmouseover={() => handleCellMouseOver(rowIndex, colIndex)}
+                    onfocus={() => handleCellMouseOver(rowIndex, colIndex)}
                     disabled={gameStatus !== "playing"}
                   >
                     {getCellContent(cell, rowIndex, colIndex)}
@@ -1134,6 +1130,9 @@
                         <div
                           class="absolute inset-0 flex items-center justify-center text-yellow-500 text-2xl font-bold cursor-pointer hover:scale-125 transition-transform"
                           onclick={(e) => handleArrowClick(e, -1, 0)}
+                          onkeydown={(e) =>
+                            e.key === "Enter" &&
+                            handleArrowClick(e as unknown as MouseEvent, -1, 0)}
                           role="button"
                           tabindex="0"
                         >
@@ -1145,6 +1144,9 @@
                         <div
                           class="absolute inset-0 flex items-center justify-center text-yellow-500 text-2xl font-bold cursor-pointer hover:scale-125 transition-transform"
                           onclick={(e) => handleArrowClick(e, 1, 0)}
+                          onkeydown={(e) =>
+                            e.key === "Enter" &&
+                            handleArrowClick(e as unknown as MouseEvent, 1, 0)}
                           role="button"
                           tabindex="0"
                         >
@@ -1156,6 +1158,9 @@
                         <div
                           class="absolute inset-0 flex items-center justify-center text-yellow-500 text-2xl font-bold cursor-pointer hover:scale-125 transition-transform"
                           onclick={(e) => handleArrowClick(e, 0, -1)}
+                          onkeydown={(e) =>
+                            e.key === "Enter" &&
+                            handleArrowClick(e as unknown as MouseEvent, 0, -1)}
                           role="button"
                           tabindex="0"
                         >
@@ -1167,6 +1172,9 @@
                         <div
                           class="absolute inset-0 flex items-center justify-center text-yellow-500 text-2xl font-bold cursor-pointer hover:scale-125 transition-transform"
                           onclick={(e) => handleArrowClick(e, 0, 1)}
+                          onkeydown={(e) =>
+                            e.key === "Enter" &&
+                            handleArrowClick(e as unknown as MouseEvent, 0, 1)}
                           role="button"
                           tabindex="0"
                         >
@@ -1296,9 +1304,9 @@
           <div class="space-y-4">
             <!-- Board Size Selection -->
             <div class="form-control">
-              <label class="label">
+              <div class="label">
                 <span class="label-text font-semibold">Board Size</span>
-              </label>
+              </div>
               <div class="flex gap-2">
                 <button
                   class="btn btn-xs flex-1 {boardSize === 'small'
