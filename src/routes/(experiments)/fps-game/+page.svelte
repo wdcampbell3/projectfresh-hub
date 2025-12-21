@@ -3717,8 +3717,8 @@
                       you)
                     </li>
                     <li>
-                      <span class="text-orange-600">Brown</span> - Tank (100 HP,
-                      heavy damage)
+                      <span class="text-orange-600">Brown</span> - Tank (100 HP, heavy
+                      damage)
                     </li>
                   </ul>
                 </div>

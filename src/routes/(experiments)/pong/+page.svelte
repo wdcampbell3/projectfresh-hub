@@ -1143,8 +1143,7 @@
                     <kbd class="kbd kbd-sm">↓</kbd> arrow keys
                   </li>
                   <li>
-                    Press <kbd class="kbd kbd-sm">Space</kbd> or click canvas to
-                    pause
+                    Press <kbd class="kbd kbd-sm">Space</kbd> or click canvas to pause
                   </li>
                   <li>First to 10 points wins!</li>
                   <li>Collect power-ups: ❄️ Freeze, ⚡ Split, 🔻 Shrink</li>
@@ -1160,8 +1159,7 @@
                     <kbd class="kbd kbd-sm">↓</kbd>
                   </li>
                   <li>
-                    Press <kbd class="kbd kbd-sm">Space</kbd> or click canvas to
-                    pause
+                    Press <kbd class="kbd kbd-sm">Space</kbd> or click canvas to pause
                   </li>
                   <li>First to 10 points wins!</li>
                 </ul>

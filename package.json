@@ -22,9 +22,6 @@
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
     "@tailwindcss/postcss": "^4.0.9",
     "@tailwindcss/typography": "^0.5.13",
-    "@types/glob": "^8.1.0",
-    "@types/html-to-text": "^9.0.4",
-    "@types/jsdom": "^21.1.7",
     "@types/three": "^0.181.0",
     "@typescript-eslint/eslint-plugin": "^6.20.0",
     "@typescript-eslint/parser": "^6.19.0",
@@ -49,24 +46,6 @@
   },
   "type": "module",
   "dependencies": {
-    "@supabase/auth-ui-shared": "^0.1.8",
-    "@supabase/auth-ui-svelte": "^0.2.9",
-    "@supabase/ssr": "^0.5.2",
-    "@supabase/supabase-js": "^2.45.2",
-    "handlebars": "^4.7.8",
-    "resend": "^3.5.0",
-    "stripe": "^13.3.0",
     "three": "^0.181.0"
-  },
-  "overrides": {
-    "@supabase/auth-ui-svelte": {
-      "svelte": "$svelte"
-    },
-    "@supabase/ssr": {
-      "cookie": "^0.7.0"
-    },
-    "@sveltejs/kit": {
-      "cookie": "^0.7.0"
-    }
   }
 }
