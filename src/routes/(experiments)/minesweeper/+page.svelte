@@ -29,7 +29,6 @@
   let minesCount = $state(35)
   let grid = $state<Cell[][]>([])
   let gameStatus = $state<"playing" | "won" | "lost">("playing")
-  let _minesRemaining = $state(0)
   let timer = $state(0)
   let timerInterval: ReturnType<typeof setInterval> | null = null
   let firstClick = $state(true)
@@ -115,7 +114,6 @@
           })),
       )
     gameStatus = "playing"
-    _minesRemaining = config.mines
     timer = 0
     firstClick = true
     spawnedPowerUps = new Set()
@@ -318,7 +316,6 @@
                 // Auto-flag mines in blast radius
                 if (!neighborCell.isFlagged) {
                   neighborCell.isFlagged = true
-                  _minesRemaining--
                 }
               } else {
                 // Reveal non-mine cells
@@ -420,7 +417,6 @@
     if (grid[row][col].isSabotaged) return
 
     grid[row][col].isFlagged = !grid[row][col].isFlagged
-    _minesRemaining += grid[row][col].isFlagged ? -1 : 1
   }
 
   function revealCell(row: number, col: number) {
@@ -587,7 +583,6 @@
         const random =
           unflaggedMines[Math.floor(Math.random() * unflaggedMines.length)]
         grid[random.row][random.col].isFlagged = true
-        _minesRemaining--
       }
     } else if (type === "laser") {
       triggerNotification("🔫 Laser: Click a square and aim with arrow keys")
@@ -677,7 +672,6 @@
         const random =
           unknownZeroCells[Math.floor(Math.random() * unknownZeroCells.length)]
         grid[random.row][random.col].isMine = true
-        _minesRemaining++
         // Don't recalculate neighbors - mine is hidden and won't affect visible numbers
       }
     } else if (type === "sabotage") {
@@ -763,7 +757,6 @@
           const random =
             safeForMine[Math.floor(Math.random() * safeForMine.length)]
           grid[random.row][random.col].isMine = true
-          _minesRemaining++
           // Recalculate neighbor counts for surrounding cells
           for (let dr = -1; dr <= 1; dr++) {
             for (let dc = -1; dc <= 1; dc++) {
@@ -833,7 +826,6 @@
 
       if (grid[r][c].isMine) {
         grid[r][c].isFlagged = true
-        _minesRemaining--
         break
       } else {
         if (!grid[r][c].isRevealed) {
