@@ -31,10 +31,10 @@ ProjectFresh Hub is a collection of playable browser games including:
 
 You'll need a code editor with a built-in AI chatbot. Pick one:
 
-| Editor          | Link                                   | Notes                             |
-| --------------- | -------------------------------------- | --------------------------------- |
-| **Antigravity** | [Download](https://antigravity.google) | Made by Google, new and powerful  |
-| **Cursor**      | [Download](https://cursor.com)         | Very popular, great for beginners |
+| Editor          | Link                                            | Notes                             |
+| --------------- | ----------------------------------------------- | --------------------------------- |
+| **Antigravity** | [Download](https://antigravity.google)          | Made by Google, new and powerful  |
+| **Cursor**      | [Download](https://cursor.com/home?from=agents) | Very popular, great for beginners |
 
 Install it like any other app!
 

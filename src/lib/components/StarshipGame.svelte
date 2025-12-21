@@ -41,12 +41,16 @@
     created: number
     modified: number
     thumbnail: string
+    planeVisible?: boolean
     environment: {
       timeOfDay: "dawn" | "day" | "sunset" | "night"
       weather: "clear" | "rain" | "snow" | "fog"
       fogDensity: number
+      skyColor?: number
+      fogColor?: number
     }
     objects: Array<{
+      id?: string
       modelPath: string
       position: { x: number; y: number; z: number }
       rotation: { x: number; y: number; z: number }
@@ -1565,11 +1569,15 @@
     const newMap: MapData = {
       id: `infinite-${level}`,
       name: `Sector ${level}`,
+      description: "Procedurally generated infinite level",
+      created: Date.now(),
+      modified: Date.now(),
       environment: {
         skyColor: 0x000000,
         fogColor: 0x000000,
         fogDensity: 0,
         timeOfDay: "night",
+        weather: "clear",
       },
       objects: [],
       stats: { objectCount: 0, polygonCount: 0 },
@@ -5074,7 +5082,7 @@
                       type="checkbox"
                       class="toggle toggle-primary"
                       checked={soundEnabled}
-                      on:change={(e) => {
+                      on:change={(e: any) => {
                         soundEnabled = e.currentTarget.checked
                         soundManager.toggle(soundEnabled)
                       }}

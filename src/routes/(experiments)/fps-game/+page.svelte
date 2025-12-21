@@ -513,6 +513,13 @@
   let solidObjects: THREE.Object3D[] = [] // Buildings, cars, walls - block player AND bullets
   let walkthroughObjects: THREE.Object3D[] = [] // Plants, trees, decorations - no collision
 
+  // Progress tracking
+  let mapGenerationProgress = 0
+
+  function playPowerUpSound() {
+    // Placeholder for sound effect
+  }
+
   // Raycaster for shooting
   let raycaster = new THREE.Raycaster()
 
@@ -3804,7 +3811,7 @@
       {#if isPlayerHit}
         <div
           class="absolute inset-0 bg-red-500/30 animate-flash pointer-events-none z-20"
-        />
+        ></div>
       {/if}
 
       <!-- Game Over Screen -->

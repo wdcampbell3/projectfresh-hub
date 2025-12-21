@@ -1121,8 +1121,9 @@
                       {#if laserChargedCell.row === rowIndex + 1 && laserChargedCell.col === colIndex}
                         <div
                           class="absolute inset-0 flex items-center justify-center text-yellow-500 text-2xl font-bold cursor-pointer hover:scale-125 transition-transform"
-                          onclick={(e) => handleArrowClick(e, -1, 0)}
-                          onkeydown={(e) =>
+                          onclick={(e: MouseEvent) =>
+                            handleArrowClick(e, -1, 0)}
+                          onkeydown={(e: KeyboardEvent) =>
                             e.key === "Enter" &&
                             handleArrowClick(e as unknown as MouseEvent, -1, 0)}
                           role="button"
@@ -1135,8 +1136,8 @@
                       {#if laserChargedCell.row === rowIndex - 1 && laserChargedCell.col === colIndex}
                         <div
                           class="absolute inset-0 flex items-center justify-center text-yellow-500 text-2xl font-bold cursor-pointer hover:scale-125 transition-transform"
-                          onclick={(e) => handleArrowClick(e, 1, 0)}
-                          onkeydown={(e) =>
+                          onclick={(e: MouseEvent) => handleArrowClick(e, 1, 0)}
+                          onkeydown={(e: KeyboardEvent) =>
                             e.key === "Enter" &&
                             handleArrowClick(e as unknown as MouseEvent, 1, 0)}
                           role="button"
@@ -1149,8 +1150,9 @@
                       {#if laserChargedCell.row === rowIndex && laserChargedCell.col === colIndex + 1}
                         <div
                           class="absolute inset-0 flex items-center justify-center text-yellow-500 text-2xl font-bold cursor-pointer hover:scale-125 transition-transform"
-                          onclick={(e) => handleArrowClick(e, 0, -1)}
-                          onkeydown={(e) =>
+                          onclick={(e: MouseEvent) =>
+                            handleArrowClick(e, 0, -1)}
+                          onkeydown={(e: KeyboardEvent) =>
                             e.key === "Enter" &&
                             handleArrowClick(e as unknown as MouseEvent, 0, -1)}
                           role="button"
@@ -1163,8 +1165,8 @@
                       {#if laserChargedCell.row === rowIndex && laserChargedCell.col === colIndex - 1}
                         <div
                           class="absolute inset-0 flex items-center justify-center text-yellow-500 text-2xl font-bold cursor-pointer hover:scale-125 transition-transform"
-                          onclick={(e) => handleArrowClick(e, 0, 1)}
-                          onkeydown={(e) =>
+                          onclick={(e: MouseEvent) => handleArrowClick(e, 0, 1)}
+                          onkeydown={(e: KeyboardEvent) =>
                             e.key === "Enter" &&
                             handleArrowClick(e as unknown as MouseEvent, 0, 1)}
                           role="button"
@@ -1267,7 +1269,7 @@
               onclick={() => initGame()}
               role="button"
               tabindex="0"
-              onkeydown={(e) => e.key === "Enter" && initGame()}
+              onkeydown={(e: KeyboardEvent) => e.key === "Enter" && initGame()}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

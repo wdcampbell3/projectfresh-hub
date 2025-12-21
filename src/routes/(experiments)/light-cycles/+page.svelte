@@ -650,7 +650,7 @@
               flashTimeoutId = setTimeout(() => {
                 flashActive = !flashActive
                 doFlash()
-              }, 500)
+              }, 500) as unknown as number
             }, 500) as unknown as number
           } else {
             flashTimeoutId = setTimeout(() => {

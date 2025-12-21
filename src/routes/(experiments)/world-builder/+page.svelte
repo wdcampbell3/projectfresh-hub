@@ -55,6 +55,7 @@
   let clipboard = $state<
     Array<{
       modelPath: string
+      position: { x: number; y: number; z: number }
       rotation: { x: number; y: number; z: number }
       scale: { x: number; y: number; z: number }
     }>
@@ -80,8 +81,16 @@
 
   // Box Selection
   let isBoxSelecting = $state(false)
-  let boxSelectionStart = $state({ x: 0, y: 0 })
-  let boxSelectionEnd = $state({ x: 0, y: 0 })
+  let boxSelectionStart = $state<{ x: number; y: number } | null>({
+    x: 0,
+    y: 0,
+  })
+  let boxSelectionEnd = $state<{ x: number; y: number } | null>({ x: 0, y: 0 })
+  let selectionBoxStyle = $derived(
+    !boxSelectionStart || !boxSelectionEnd
+      ? ""
+      : `left: ${Math.min(boxSelectionStart!.x, boxSelectionEnd!.x)}px; top: ${Math.min(boxSelectionStart!.y, boxSelectionEnd!.y)}px; width: ${Math.abs(boxSelectionEnd!.x - boxSelectionStart!.x)}px; height: ${Math.abs(boxSelectionEnd!.y - boxSelectionStart!.y)}px;`,
+  )
 
   // Maps Management
   interface MapData {
@@ -214,16 +223,19 @@
     return shuffled
   }
 
-  onMount(async () => {
-    // Randomize the catalog order
-    modelCatalog = shuffleArray(modelCatalog)
+  onMount(() => {
+    const init = async () => {
+      // Randomize the catalog order
+      modelCatalog = shuffleArray(modelCatalog)
 
-    // Load saved maps from localStorage
-    loadMapsFromStorage()
+      // Load saved maps from localStorage
+      loadMapsFromStorage()
 
-    initScene()
-    animate()
-    generateThumbnails()
+      initScene()
+      animate()
+      generateThumbnails()
+    }
+    init()
 
     return () => {
       if (animationId) {
@@ -995,7 +1007,7 @@
       saveHistory()
     }
 
-    if (isBoxSelecting) {
+    if (isBoxSelecting && boxSelectionStart && boxSelectionEnd) {
       // Finalize box selection
       const rect = renderer.domElement.getBoundingClientRect()
 
@@ -1802,11 +1814,9 @@
     // Clear existing objects
     placedObjects.forEach((obj) => {
       scene.remove(obj.mesh)
-      if (obj.mixer) {
-        const index = animatedObjects.findIndex((a) => a.mesh === obj.mesh)
-        if (index !== -1) {
-          animatedObjects.splice(index, 1)
-        }
+      const index = animatedObjects.findIndex((a) => a.mesh === obj.mesh)
+      if (index !== -1) {
+        animatedObjects.splice(index, 1)
       }
     })
     placedObjects = []
@@ -1949,7 +1959,7 @@
         const modelMesh = gltf.scene
 
         // Enable shadows
-        modelMesh.traverse((child) => {
+        modelMesh.traverse((child: THREE.Object3D) => {
           if (child instanceof THREE.Mesh) {
             child.castShadow = true
             child.receiveShadow = true
@@ -3115,39 +3125,35 @@
       <button
         type="button"
         class="tab {activeTab === 'models' ? 'tab-active' : ''}"
-        onclick={(e) => {
+        onclick={(e: MouseEvent) => {
           e.preventDefault()
-          requestAnimationFrame(() => {
-            activeTab = "models"
-          })
+          activeTab = "models"
         }}
       >
-        🎨 Models
+        Models
       </button>
-      <button
-        type="button"
+      <a
+        href="#maps"
+        role="tab"
         class="tab {activeTab === 'maps' ? 'tab-active' : ''}"
-        onclick={(e) => {
+        onclick={(e: MouseEvent) => {
           e.preventDefault()
-          requestAnimationFrame(() => {
-            activeTab = "maps"
-          })
+          activeTab = "maps"
         }}
       >
-        🗺️ Maps
-      </button>
-      <button
-        type="button"
+        Maps
+      </a>
+      <a
+        href="#options"
+        role="tab"
         class="tab {activeTab === 'options' ? 'tab-active' : ''}"
-        onclick={(e) => {
+        onclick={(e: MouseEvent) => {
           e.preventDefault()
-          requestAnimationFrame(() => {
-            activeTab = "options"
-          })
+          activeTab = "options"
         }}
       >
         ⚙️ Options
-      </button>
+      </a>
     </div>
 
     <!-- Tab Content -->
@@ -3892,15 +3898,10 @@
   <div class="flex-1 relative min-w-0">
     <div bind:this={container} class="w-full h-full bg-black relative">
       <!-- Selection Box -->
-      {#if isBoxSelecting}
+      {#if isBoxSelecting && boxSelectionStart && boxSelectionEnd}
         <div
           class="absolute border-2 border-green-500 bg-green-500/20 pointer-events-none z-50"
-          style="
-            left: {Math.min(boxSelectionStart.x, boxSelectionEnd.x)}px;
-            top: {Math.min(boxSelectionStart.y, boxSelectionEnd.y)}px;
-            width: {Math.abs(boxSelectionEnd.x - boxSelectionStart.x)}px;
-            height: {Math.abs(boxSelectionEnd.y - boxSelectionStart.y)}px;
-          "
+          style={selectionBoxStyle}
         ></div>
       {/if}
       <!-- Instructions overlay -->
